@@ -2,6 +2,7 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
+import { Button, Card } from '@mui/material'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -16,11 +17,17 @@ function App() {
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
       </div>
-      <h1>Vite + React</h1>
+      <Card
+        sx={{
+          minWidth: 275,
+          backgroundColor: 'primary.main',
+          padding: 2,
+          marginBottom: 2,
+        }}></Card>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
+        <Button onClick={() => setCount((count) => count + 1)} color='primary'>
           count is {count}
-        </button>
+        </Button>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
