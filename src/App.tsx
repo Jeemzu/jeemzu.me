@@ -1,41 +1,76 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { Button, CircularProgress, CssBaseline, Grid, Box } from '@mui/material'
 import './App.css'
-import { Button, Card } from '@mui/material'
+import { lazy, Suspense, type JSX } from 'react';
+import { Route, Router, Switch } from "wouter";
+import Footer from './components/Footer';
+
+type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
+
+function LC(Component: LazyComponentT) {
+  return () => {
+    return (
+      <Suspense fallback={<CircularProgress className="mx-auto my-20" size="3" />}>
+        <Component />
+      </Suspense >
+    );
+  };
+}
+
+function Custom404() {
+  return (
+    <div className="grid grid-flow-col grid-rows-2 gap-4 justify-center my-auto">
+      <img className="row-span-2 col-span-2" src="./src/assets/images/confused-john-travolta.gif" alt="404 Not Found" />
+      <span>
+        <h1 className="text-2xl font-bold">*Visible Confusion*</h1>
+        <p>(404, this page doesn't exist...)</p>
+      </span>
+      <Button className="" onClick={() => window.location.href = "/"}>
+        Go To Home
+      </Button>
+    </div>
+  )
+}
+
+const Home = LC(lazy(() => import("./components/MainContent")));
+
+export function Routes() {
+  return (
+    <Router>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route>
+          <Custom404 />
+        </Route>
+      </Switch>
+    </Router>
+  );
+}
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <Card
-        sx={{
-          minWidth: 275,
-          backgroundColor: 'primary.main',
-          padding: 2,
-          marginBottom: 2,
-        }}></Card>
-      <div className="card">
-        <Button onClick={() => setCount((count) => count + 1)} color='primary'>
-          count is {count}
-        </Button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <Box sx={{
+      display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: '100vw',
+      backgroundColor: '#121212'
+    }}>
+      {/* Main content area */}
+      <Box>
+        <Grid container spacing={0}>
+          <Grid size={12}>
+            <Routes />
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Footer area */}
+      <Box>
+        <Grid container spacing={0}>
+          <Grid size={12}>
+            <Footer />
+          </Grid>
+        </Grid>
+      </Box>
+
+    </Box>
   )
 }
 
