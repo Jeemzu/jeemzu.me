@@ -4,7 +4,6 @@ import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 
 const MainContent = () => {
-
     const [showScrollToTopButton, setShowScrollToTopButton] = useState(false);
 
     useEffect(() => {
@@ -34,11 +33,10 @@ const MainContent = () => {
                 height: '100vh', // Height of the viewport
                 backgroundImage: "url('/src/assets/images/bg.png')",
                 backgroundSize: 'auto',
-                backgroundPosition: 'center top',
-                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'left top',
+                backgroundRepeat: 'repeat',
                 // Combines vertical fade with horizontal fade
-                maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%)',
-                WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%)',
+                maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%)',
                 zIndex: 0
             }
         }}>
