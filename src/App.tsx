@@ -1,4 +1,4 @@
-import { Button, CircularProgress, CssBaseline, Grid, Box } from '@mui/material'
+import { Button, CircularProgress, Grid, Box } from '@mui/material'
 import './App.css'
 import { lazy, Suspense, type JSX } from 'react';
 import { Route, Router, Switch } from "wouter";

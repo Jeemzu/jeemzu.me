@@ -13,6 +13,16 @@
   src: local('Pixer'), url(./assets/fonts/Pixer-Regular.otf) format('opentype');
 }
 
+@font-face {
+  font-family: 'TopShow';
+  src: local('TopShow'), url(./assets/fonts/TopShow.otf) format('opentype');
+}
+
+@font-face {
+  font-family: 'Trap-Black';
+  src: local('Trap-Black'), url(./assets/fonts/Trap-Black.otf) format('opentype');
+}
+
 :root {
   font-family: "Palace", Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

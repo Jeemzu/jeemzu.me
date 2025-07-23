@@ -2,29 +2,27 @@
 import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
-    palette: {
-        primary: {
-            main: '#38C767',
-            contrastText: '#ffffff',
-        },
-        secondary: {
-            main: '#C76738',
-            contrastText: '#ffffff',
-        },
-        background: {
-            default: '#ffffff',   // page background
-            paper: '#f9f9f9',     // cards, surfaces
-        },
-        text: {
-            primary: '#212121',   // main body text
-            secondary: '#555555', // muted text
-        },
-    },
     components: {
         MuiButton: {
             styleOverrides: {
                 root: {
                     borderRadius: 8,
+                },
+            },
+        },
+        MuiTypography: {
+            defaultProps: {
+                variantMapping: {
+                    h1: 'h1',
+                    h2: 'h2',
+                    h3: 'h3',
+                    h4: 'h4',
+                    h5: 'h5',
+                    h6: 'h6',
+                    subtitle1: 'h6',
+                    subtitle2: 'h6',
+                    body1: 'span',
+                    body2: 'span',
                 },
             },
         },

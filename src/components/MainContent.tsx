@@ -1,14 +1,9 @@
 import { Grid, Container, IconButton } from "@mui/material";
-import { useNavigationStore } from "../stores/navigationStore";
-import Experience from "./Experience";
-import Projects from "./Projects";
-import Resume from "./Resume";
 import Home from "./Home";
 import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 
 const MainContent = () => {
-    const { activeSection } = useNavigationStore();
 
     const [showScrollToTopButton, setShowScrollToTopButton] = useState(false);
 
@@ -49,10 +44,7 @@ const MainContent = () => {
         }}>
             <Grid container spacing={4} sx={{ position: 'relative', zIndex: 1 }}>
                 <Grid size={12}>
-                    {activeSection === 'about' && <Home />}
-                    {activeSection === 'experience' && <Experience />}
-                    {activeSection === 'projects' && <Projects />}
-                    {activeSection === 'resume' && <Resume />}
+                    <Home />
                 </Grid>
             </Grid>
 
