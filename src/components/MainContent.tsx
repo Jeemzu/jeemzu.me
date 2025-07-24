@@ -30,20 +30,15 @@ const MainContent = () => {
                 top: 0,
                 left: 0,
                 width: '100%',
-                height: '100vh', // Height of the viewport
+                height: '100vh',
                 backgroundImage: "url('/src/assets/images/bg.png')",
-                backgroundSize: 'auto',
-                backgroundPosition: 'left top',
                 backgroundRepeat: 'repeat',
-                // Combines vertical fade with horizontal fade
                 maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%)',
                 zIndex: 0
-            }
+            },
         }}>
             <Grid container spacing={4} sx={{ position: 'relative', zIndex: 1 }}>
-                <Grid size={12}>
-                    <Home />
-                </Grid>
+                <Home />
             </Grid>
 
             {showScrollToTopButton && (
