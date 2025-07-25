@@ -1,4 +1,4 @@
-import { Grid, Container, IconButton } from "@mui/material";
+import { Container, IconButton } from "@mui/material";
 import Home from "./Home";
 import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
@@ -37,10 +37,7 @@ const MainContent = () => {
                 zIndex: 0
             },
         }}>
-            <Grid container spacing={4} sx={{ position: 'relative', zIndex: 1 }}>
-                <Home />
-            </Grid>
-
+            <Home />
             {showScrollToTopButton && (
                 <IconButton onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ color: "#bdeb92ff", position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }}>
                     <FaCircleArrowUp size={40} />

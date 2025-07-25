@@ -31,16 +31,18 @@ const HomeHeaderTooltip = styled(({ className, ...props }: TooltipProps) => (
 const HomeHeaderButton = ({
     onClick,
     icon,
-    ariaLabel
+    ariaLabel,
+    degrees
 }: {
     onClick: React.MouseEventHandler<HTMLButtonElement> | undefined;
     icon: React.ReactNode;
     ariaLabel: string;
+    degrees: number;
 }) => {
     return (
         <HomeHeaderTooltip title={ariaLabel}>
             <IconButton
-                sx={{ color: '#bdeb92ff', '&:hover': { color: '#ffffffff', filter: 'drop-shadow(0 0 10px #bdeb92ff) drop-shadow(0 0 20px #bdeb92ff)' }, ":active": { border: 'none', background: 'none' } }}
+                sx={{ color: '#bdeb92ff', transform: `translateY(${degrees * 2}%) rotate(${degrees}deg)`, '&:hover': { color: '#ffffffff', filter: 'drop-shadow(0 0 10px #bdeb92ff) drop-shadow(0 0 20px #bdeb92ff)' }, ":active": { border: 'none', background: 'none' } }}
                 size="small"
                 onClick={onClick}
                 aria-label={ariaLabel}
@@ -60,57 +62,51 @@ const Home = () => {
         <Grid size={12}>
             {/* Header Section */}
             <Grid size={12}>
-                <Grid size={12} sx={{
-                    textAlign: 'left', mb: 2
-                }}>
-                    <Typography
-                        fontFamily={'aArt'}
-                        variant="h1"
-                        sx={{
-                            ml: '10%',
-                            textAlign: 'left',
-                            letterSpacing: 2,
-                            position: 'relative'
-                        }}
-                    >
-                        Hi! I'm James Friedenberg.
-                    </Typography>
-                </Grid>
+                <Typography
+                    fontFamily={'aArt'}
+                    variant="h2"
+                    sx={{
+                        textAlign: 'center',
+                        letterSpacing: 2,
+                        position: 'relative',
+                        transform: 'translateY(-80%) ',
+                        mb: 2,
+                    }}
+                >
+                    Hi! I'm James Friedenberg.
+                </Typography>
 
-                <Grid size={12} sx={{
-                    textAlign: 'left', mb: 4
-                }}>
-                    <Typography
-                        fontFamily={'aArt'}
-                        sx={{
-                            mb: 1,
-                            ml: '10%',
-                            letterSpacing: 2,
-                            position: 'relative'
-                        }}
-                        variant="h5"
-                    >
-                        I work at Mojang Studios developing cool new stuff for <b style={{ fontSize: 30 }}>Minecraft</b>! <br />
-                    </Typography>
-                </Grid>
-
-                <Grid size={12}>
-                    <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ justifyContent: { xs: 'start', sm: 'start' }, mt: 4, ml: '10%' }}
-                    >
-                        <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} icon={<FaPerson size={40} />} ariaLabel="Learn About Me" />
-                        <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} icon={<FaRoad size={40} />} ariaLabel="My Journey So Far" />
-                        <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} icon={<FaCode size={40} />} ariaLabel="My Projects" />
-                        <HomeHeaderButton onClick={onClickUrl("https://www.linkedin.com/in/james-friedenberg-664643105/")} icon={<FaLinkedin size={40} />} ariaLabel="LinkedIn" />
-                        <HomeHeaderButton onClick={onClickUrl("https://github.com/Jeemzu")} icon={<FaGithub size={40} />} ariaLabel="GitHub" />
-                        <HomeHeaderButton onClick={onClickUrl("mailto:jamesfriedenberg@gmail.com?subject=Hello from your website!")} icon={<FaEnvelope size={40} />} ariaLabel="Get in touch!" />
-                        <HomeHeaderButton onClick={onClickUrl("https://www.minecraft.net/en-us/credits")} icon={<FaGamepad size={40} />} ariaLabel="Find me in the Minecraft Credits!" />
-                    </Stack>
-                </Grid>
-
-
+                <Typography
+                    fontFamily={'aArt'}
+                    sx={{
+                        textAlign: 'center',
+                        letterSpacing: 2,
+                        position: 'relative',
+                        transform: 'translateY(-80%)',
+                        mb: 1,
+                    }}
+                    variant="h5"
+                >
+                    I work at Mojang Studios developing cool new stuff for Minecraft! <br />
+                </Typography>
+                <Stack
+                    direction="row"
+                    spacing={12}
+                    sx={{
+                        justifyContent: {
+                            xs: 'center', sm: 'center',
+                            mb: 2,
+                        }, mt: 10, mx: 'auto'
+                    }}
+                >
+                    <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={80} />} ariaLabel="Learn About Me" degrees={-12} />
+                    <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={80} />} ariaLabel="My Journey So Far" degrees={8} />
+                    <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={80} />} ariaLabel="My Projects" degrees={-5} />
+                    <HomeHeaderButton onClick={onClickUrl("https://www.linkedin.com/in/james-friedenberg-664643255/")} icon={<FaLinkedin size={80} />} ariaLabel="LinkedIn" degrees={15} />
+                    <HomeHeaderButton onClick={onClickUrl("https://github.com/Jeemzu")} icon={<FaGithub size={80} />} ariaLabel="GitHub" degrees={-6} />
+                    <HomeHeaderButton onClick={onClickUrl("mailto:jamesfriedenberg@gmail.com?subject=Hello from your website!")} icon={<FaEnvelope size={80} />} ariaLabel="Get in touch!" degrees={4} />
+                    <HomeHeaderButton onClick={onClickUrl("https://www.minecraft.net/en-us/credits")} icon={<FaGamepad size={80} />} ariaLabel="Find me in the Minecraft Credits!" degrees={-12} />
+                </Stack>
             </Grid>
 
             {/* About Me Section */}
