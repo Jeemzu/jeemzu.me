@@ -1,33 +1,106 @@
-import { Button, CircularProgress, Grid, Box } from '@mui/material'
+import { Button, CircularProgress, Grid, Box, Typography, Container } from '@mui/material'
 import './App.css'
 import { lazy, Suspense, type JSX } from 'react';
 import { Route, Router, Switch } from "wouter";
 import Footer from './components/Footer';
+import confusedTravolta from './assets/images/confused-john-travolta.gif';
+import { FONTS } from './lib/globals';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
+
+// Enhanced Loading Component
+const LoadingSpinner = () => (
+  <Container
+    maxWidth={false}
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '50vh',
+      backgroundColor: '#121212'
+    }}
+  >
+    <CircularProgress
+      size={60}
+      sx={{
+        color: '#bdeb92ff',
+        mb: 2
+      }}
+    />
+    <Typography
+      variant="h6"
+      fontFamily={FONTS.A_ART}
+      sx={{
+        color: '#bdeb92ff',
+        textAlign: 'center'
+      }}
+    >
+      Loading...
+    </Typography>
+  </Container>
+);
 
 function LC(Component: LazyComponentT) {
   return () => {
     return (
-      <Suspense fallback={<CircularProgress className="mx-auto my-20" size="3" />}>
+      <Suspense fallback={<LoadingSpinner />}>
         <Component />
-      </Suspense >
+      </Suspense>
     );
   };
 }
 
 function Custom404() {
   return (
-    <div className="grid grid-flow-col grid-rows-2 gap-4 justify-center my-auto">
-      <img className="row-span-2 col-span-2" src="./src/assets/images/confused-john-travolta.gif" alt="404 Not Found" />
-      <span>
-        <h1 className="text-2xl font-bold">*Visible Confusion*</h1>
-        <p>(404, this page doesn't exist...)</p>
-      </span>
-      <Button className="" onClick={() => window.location.href = "/"}>
+    <Container sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '50vh',
+      textAlign: 'center',
+      color: '#bdeb92ff'
+    }}>
+      <img
+        src={confusedTravolta}
+        alt="Confused John Travolta"
+        style={{
+          maxWidth: '300px',
+          width: '100%',
+          height: 'auto',
+          marginBottom: '1rem'
+        }}
+      />
+      <Typography
+        variant="h4"
+        fontFamily={FONTS.A_ART}
+        sx={{ mb: 2 }}
+      >
+        *Visible Confusion*
+      </Typography>
+      <Typography
+        variant="h6"
+        fontFamily={FONTS.TRAP_BLACK}
+        sx={{ mb: 3 }}
+      >
+        (404, this page doesn't exist...)
+      </Typography>
+      <Button
+        variant="contained"
+        onClick={() => window.location.href = "/"}
+        sx={{
+          backgroundColor: '#bdeb92ff',
+          color: '#121212',
+          fontFamily: FONTS.A_ART,
+          '&:hover': {
+            backgroundColor: '#a8d67eff'
+          }
+        }}
+      >
         Go To Home
       </Button>
-    </div>
+    </Container>
   )
 }
 
@@ -49,11 +122,14 @@ export function Routes() {
 function App() {
   return (
     <Box sx={{
-      display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: '100vw',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      minWidth: '100vw',
       backgroundColor: '#121212'
     }}>
       {/* Main content area */}
-      <Box>
+      <Box sx={{ flex: 1 }}>
         <Grid container spacing={0}>
           <Grid size={12}>
             <Routes />
@@ -69,7 +145,6 @@ function App() {
           </Grid>
         </Grid>
       </Box>
-
     </Box>
   )
 }

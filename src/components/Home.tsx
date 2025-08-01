@@ -1,32 +1,59 @@
-import { Grid, IconButton, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps } from "@mui/material";
-import { FaCode, FaEnvelope, FaGamepad, FaGithub, FaLinkedin, FaPerson, FaRoad } from "react-icons/fa6";
-import { useRef } from "react";
+import { Grid, IconButton, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton } from "@mui/material";
+import { FaCode, FaEnvelope, FaFile, FaGamepad, FaGithub, FaLinkedin, FaPerson, FaRoad } from "react-icons/fa6";
+import { useRef, Suspense, lazy } from "react";
 import { onClickUrl } from "../utils/openInNewTab";
-import AboutMe from "./AboutMe";
-import MyJourney from "./MyJourney";
 import React from "react";
-import Projects from "./Projects";
+import { EFFECTS, FONTS, LAYOUT, LINKS } from "../lib/globals";
 
-const tooltipStyles = {
+// Lazy load heavy components
+const AboutMe = lazy(() => import("./AboutMe"));
+const MyJourney = lazy(() => import("./MyJourney"));
+const Projects = lazy(() => import("./Projects"));
+
+// Section Loading Component
+const SectionSkeleton = () => (
+    <Grid container spacing={4} sx={{ mb: 4 }}>
+        <Grid size={12} sx={{ textAlign: 'center' }}>
+            <Skeleton
+                variant="text"
+                width="30%"
+                height={60}
+                sx={{
+                    mx: 'auto',
+                    backgroundColor: '#333'
+                }}
+            />
+        </Grid>
+        <Grid size={12}>
+            <Skeleton
+                variant="rectangular"
+                height={200}
+                sx={{
+                    backgroundColor: '#333'
+                }}
+            />
+        </Grid>
+    </Grid>
+);
+
+const HomeHeaderTooltip = styled(({ className, ...props }: TooltipProps) => (
+    <Tooltip {...props} arrow classes={{ popper: className }} slots={{ transition: Zoom }} />
+))(({ theme }) => ({
     [`& .${tooltipClasses.tooltip}`]: {
-        backgroundColor: '#222222ff',
-        color: '#bdeb92ff',
+        backgroundColor: theme.palette.darkBackground.main,
+        color: theme.palette.primaryGreen.main,
         boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)",
         fontSize: 16,
-        fontFamily: 'aArt',
+        fontFamily: FONTS.A_ART,
         textAlign: 'center',
         padding: '8px 16px',
         textWrap: 'nowrap',
         maxWidth: '100%',
     },
     [`& .${tooltipClasses.arrow}`]: {
-        color: '#222222ff',
+        color: theme.palette.darkBackground.main,
     },
-}
-
-const HomeHeaderTooltip = styled(({ className, ...props }: TooltipProps) => (
-    <Tooltip {...props} arrow classes={{ popper: className }} slots={{ transition: Zoom }} />
-))(() => (tooltipStyles));
+}));
 
 const HomeHeaderButton = ({
     onClick,
@@ -39,10 +66,23 @@ const HomeHeaderButton = ({
     ariaLabel: string;
     degrees: number;
 }) => {
+    const theme = useTheme();
+
     return (
         <HomeHeaderTooltip title={ariaLabel}>
             <IconButton
-                sx={{ color: '#bdeb92ff', transform: `translateY(${degrees * 2}%) rotate(${degrees}deg)`, '&:hover': { color: '#ffffffff', filter: 'drop-shadow(0 0 10px #bdeb92ff) drop-shadow(0 0 20px #bdeb92ff)' }, ":active": { border: 'none', background: 'none' } }}
+                sx={{
+                    color: theme.palette.primaryGreen.main,
+                    transform: `translateY(${degrees * 2}%) rotate(${degrees}deg)`,
+                    '&:hover': {
+                        color: theme.palette.whiteHover.main,
+                        filter: EFFECTS.GLOW_FILTER
+                    },
+                    ":active": {
+                        border: 'none',
+                        background: 'none'
+                    }
+                }}
                 size="small"
                 onClick={onClick}
                 aria-label={ariaLabel}
@@ -60,10 +100,10 @@ const Home = () => {
 
     return (
         <Grid size={12}>
-            {/* Header Section */}
+            {/* Header Section - Load immediately */}
             <Grid size={12}>
                 <Typography
-                    fontFamily={'aArt'}
+                    fontFamily={FONTS.A_ART}
                     variant="h2"
                     sx={{
                         textAlign: 'center',
@@ -77,7 +117,7 @@ const Home = () => {
                 </Typography>
 
                 <Typography
-                    fontFamily={'aArt'}
+                    fontFamily={FONTS.A_ART}
                     sx={{
                         textAlign: 'center',
                         letterSpacing: 2,
@@ -89,6 +129,7 @@ const Home = () => {
                 >
                     I work at Mojang Studios developing cool new stuff for Minecraft! <br />
                 </Typography>
+
                 <Stack
                     direction="row"
                     spacing={12}
@@ -99,34 +140,41 @@ const Home = () => {
                         }, mt: 10, mx: 'auto'
                     }}
                 >
-                    <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={80} />} ariaLabel="Learn About Me" degrees={-12} />
-                    <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={80} />} ariaLabel="My Journey So Far" degrees={8} />
-                    <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={80} />} ariaLabel="My Projects" degrees={-5} />
-                    <HomeHeaderButton onClick={onClickUrl("https://www.linkedin.com/in/james-friedenberg-664643255/")} icon={<FaLinkedin size={80} />} ariaLabel="LinkedIn" degrees={15} />
-                    <HomeHeaderButton onClick={onClickUrl("https://github.com/Jeemzu")} icon={<FaGithub size={80} />} ariaLabel="GitHub" degrees={-6} />
-                    <HomeHeaderButton onClick={onClickUrl("mailto:jamesfriedenberg@gmail.com?subject=Hello from your website!")} icon={<FaEnvelope size={80} />} ariaLabel="Get in touch!" degrees={4} />
-                    <HomeHeaderButton onClick={onClickUrl("https://www.minecraft.net/en-us/credits")} icon={<FaGamepad size={80} />} ariaLabel="Find me in the Minecraft Credits!" degrees={-12} />
+                    <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={LAYOUT.ICON_SIZE} />} ariaLabel="Learn About Me" degrees={-12} />
+                    <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={LAYOUT.ICON_SIZE} />} ariaLabel="My Journey So Far" degrees={8} />
+                    <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={LAYOUT.ICON_SIZE} />} ariaLabel="My Projects" degrees={-5} />
+                    <HomeHeaderButton onClick={onClickUrl(LINKS.LINKEDIN)} icon={<FaLinkedin size={LAYOUT.ICON_SIZE} />} ariaLabel="LinkedIn" degrees={15} />
+                    <HomeHeaderButton onClick={onClickUrl(LINKS.GITHUB)} icon={<FaGithub size={LAYOUT.ICON_SIZE} />} ariaLabel="GitHub" degrees={-6} />
+                    <HomeHeaderButton onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)} icon={<FaGamepad size={LAYOUT.ICON_SIZE} />} ariaLabel="Find me in the Minecraft Credits!" degrees={3} />
+                    <HomeHeaderButton onClick={onClickUrl(LINKS.EMAIL)} icon={<FaEnvelope size={LAYOUT.ICON_SIZE} />} ariaLabel="Get in touch!" degrees={-8} />
+                    <HomeHeaderButton onClick={onClickUrl(LINKS.RESUME)} icon={<FaFile size={LAYOUT.ICON_SIZE} />} ariaLabel="Download My Resume" degrees={4} />
                 </Stack>
             </Grid>
 
             {/* About Me Section */}
-            <Grid size={12} sx={{ mt: "50vh" }}>
+            <Grid size={12} sx={{ mt: LAYOUT.HEADER_SPACING }}>
                 <div ref={aboutMeRef}>
-                    <AboutMe />
+                    <Suspense fallback={<SectionSkeleton />}>
+                        <AboutMe />
+                    </Suspense>
                 </div>
             </Grid>
 
             {/* My Journey Section */}
-            <Grid size={12} sx={{ mt: "20vh" }}>
+            <Grid size={12} sx={{ mt: LAYOUT.SECTION_SPACING }}>
                 <div ref={experienceRef}>
-                    <MyJourney />
+                    <Suspense fallback={<SectionSkeleton />}>
+                        <MyJourney />
+                    </Suspense>
                 </div>
             </Grid>
 
             {/* Projects Section */}
-            <Grid size={12} sx={{ mt: "20vh" }}>
+            <Grid size={12} sx={{ mt: LAYOUT.SECTION_SPACING }}>
                 <div ref={projectsRef}>
-                    <Projects />
+                    <Suspense fallback={<SectionSkeleton />}>
+                        <Projects />
+                    </Suspense>
                 </div>
             </Grid>
         </Grid>

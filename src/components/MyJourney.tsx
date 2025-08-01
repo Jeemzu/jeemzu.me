@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FaCaretRight } from "react-icons/fa6";
 import type { JourneyCardModal, JourneyCardProps } from "../lib/MyJourneyTypes";
 import { cardData, modalStyle } from "../lib/data/JourneyData";
+import { FONTS } from "../lib/globals";
 
 const JourneyCard = ({
     onClick,
@@ -30,17 +31,17 @@ const JourneyCard = ({
                 transform: `rotate(${degrees}deg)`,
             }}>
             <CardContent sx={{ color: '#bdeb92ff' }}>
-                <Typography fontFamily={'aArt'} variant="h4" gutterBottom>
+                <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
                     {milestoneLocation}
                 </Typography>
-                <Typography fontFamily={'aArt'} variant="h6" gutterBottom >
+                <Typography fontFamily={FONTS.A_ART} variant="h6" gutterBottom >
                     {milestoneTitle}
                 </Typography>
-                <Typography fontFamily={'aArt'} variant="h6" >
+                <Typography fontFamily={FONTS.A_ART} variant="h6" >
                     {milestoneTimeline}
                 </Typography>
                 <br />
-                <Typography fontFamily={'Trap-Black'} variant="subtitle1" >
+                <Typography fontFamily={FONTS.TRAP_BLACK} variant="subtitle1" >
                     {milestoneDescription}
                 </Typography>
             </CardContent>
@@ -53,13 +54,13 @@ const JourneyModal = (props: JourneyCardModal) => {
     return (
         <Modal open={open || false} onClose={handleClose}>
             <Box sx={modalStyle}>
-                <Typography fontFamily={'aArt'} variant="h4" gutterBottom>
+                <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
                     {milestoneLocation}
                 </Typography>
-                <Typography fontFamily={'aArt'} variant="h5" gutterBottom >
+                <Typography fontFamily={FONTS.A_ART} variant="h5" gutterBottom >
                     {milestoneTitle}
                 </Typography>
-                <Typography fontFamily={'aArt'} variant="h5" gutterBottom>
+                <Typography fontFamily={FONTS.A_ART} variant="h5" gutterBottom>
                     {milestoneTimeline}
                 </Typography>
                 <JourneyDescriptionList bullets={milestoneBullets} />
@@ -110,7 +111,7 @@ const MyJourney = () => {
         <Grid container spacing={4}>
             <Grid size={12} sx={{ justifyContent: 'center', textAlign: 'center' }}>
                 <Typography
-                    fontFamily={'aArt'}
+                    fontFamily={FONTS.A_ART}
                     variant="h2"
                 >
                     My Journey So Far
@@ -121,9 +122,9 @@ const MyJourney = () => {
 
             <Grid container rowGap={6} sx={{ justifyContent: 'center' }}>
                 {cardData.map((milestone, idx) => (
-                    <Grid size={12}>
+                    <Grid size={12} key={idx}>
                         <JourneyCard
-                            key={idx}
+                            key={milestone.milestoneTitle}
                             onClick={() =>
                                 handleOpen({
                                     ...milestone,

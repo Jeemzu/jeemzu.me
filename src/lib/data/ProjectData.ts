@@ -1,5 +1,10 @@
+import websiteImg from '../../assets/images/website.png';
+import filterkitImg from '../../assets/images/filterkit.png';
+import legendsImg from '../../assets/images/legends.webp';
+import mobvoteImg from '../../assets/images/mobvote.jpg';
 
-type ProjectData = {
+export type ProjectDataProps = {
+    onClick?: () => void;
     title: string;
     img: string;
     description: string;
@@ -7,33 +12,33 @@ type ProjectData = {
     degrees?: number;
 }
 
-export const projectData: ProjectData[] = [
+export const projectData: ProjectDataProps[] = [
     {
-        img: 'https://images.unsplash.com/photo-1551963831-b3b1ca40c98e',
-        title: 'Breakfast',
-        description: 'A delicious breakfast spread.',
-        link: 'https://example.com/breakfast',
-        degrees: 1,
+        title: 'Personal Website',
+        img: websiteImg,
+        description: 'My personal portfolio website built with React and TypeScript',
+        link: 'https://github.com/Jeemzu/jeemzu.com',
+        degrees: 0
     },
     {
-        img: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d',
-        title: 'Burger',
-        description: 'A juicy burger with all the fixings.',
-        link: 'https://example.com/burger',
+        img: filterkitImg,
+        title: 'Filter Pipeline',
+        description: 'A toolkit for crafting beautiful, professional-grade visual effects with intuitive, node-based editing.',
+        link: '#',
         degrees: -1,
     },
     {
-        img: 'https://images.unsplash.com/photo-1522770179533-24471fcdba45',
-        title: 'Camera',
-        description: 'A high-quality camera for photography enthusiasts.',
-        link: 'https://example.com/camera',
+        img: legendsImg,
+        title: 'Minecraft Legends Live Event',
+        description: 'A Minecraft: Bedrock Edition Live Event hosted by Mojang Studios to celebrate the release of Minecraft Legends.',
+        link: 'https://minecraft.fandom.com/wiki/Minecraft_Legends_Live_Event',
         degrees: 0,
     },
     {
-        img: 'https://images.unsplash.com/photo-1444418776041-9c7e33cc5a9c',
-        title: 'Coffee',
-        description: 'A steaming cup of coffee to kickstart your day.',
-        link: 'https://example.com/coffee',
+        img: mobvoteImg,
+        title: 'Minecraft Mob Vote 2022 Live Event',
+        description: 'The first-ever Minecraft Live Event, hosted by Mojang Studios to celebrate the annual Mob Vote.',
+        link: 'https://minecraft.fandom.com/wiki/Minecraft_Live_2022',
         degrees: -2
     },
 ];

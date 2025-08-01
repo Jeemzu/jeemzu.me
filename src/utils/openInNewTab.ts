@@ -3,4 +3,4 @@ export const openInNewTab = (url: string): void => {
     if (newWindow) newWindow.opener = null
 }
 
-export const onClickUrl = (url: string): (() => void) => () => openInNewTab(url)
+export const onClickUrl = (url: string): (() => void) => () => openInNewTab(url);

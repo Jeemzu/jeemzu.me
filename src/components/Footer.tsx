@@ -1,7 +1,10 @@
-import { Container, Grid, Typography } from "@mui/material"
+import { Container, Grid, Typography, useTheme } from "@mui/material"
 import React from "react"
+import { FONTS } from "../lib/globals"
 
 const Footer = () => {
+    const theme = useTheme();
+
     return (
         <React.Fragment>
             <Container
@@ -19,7 +22,14 @@ const Footer = () => {
                     right: 0,
                 }}>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="body2">
+                        <Typography
+                            variant="body2"
+                            fontFamily={FONTS.A_ART}
+                            sx={{
+                                color: theme.palette.primaryGreen.main,
+                                textAlign: 'center'
+                            }}
+                        >
                             © 2025 James Friedenberg
                         </Typography>
                     </Grid>
