@@ -3,7 +3,6 @@ import Home from "./Home";
 import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import { EFFECTS } from "../lib/globals";
-import bg from '../assets/images/bg.png';
 
 const MainContent = () => {
     const theme = useTheme();
@@ -27,11 +26,6 @@ const MainContent = () => {
             py: "20%",
             position: 'relative',
             color: theme.palette.primaryGreen.main,
-            backgroundImage: `url(${bg})`,
-            backgroundRepeat: 'repeat',
-            backgroundAttachment: 'fixed',
-            backgroundSize: 'auto',
-            backgroundColor: '#121212',
         }}>
             <Home />
             {showScrollToTopButton && (

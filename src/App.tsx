@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/ErrorBoundary';
+import bg from './assets/images/bg.png';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -128,7 +129,11 @@ function App() {
         flexDirection: 'column',
         minHeight: '100vh',
         minWidth: '100vw',
-        backgroundColor: '#121212'
+        backgroundImage: `url(${bg})`,
+        backgroundRepeat: 'repeat',
+        backgroundAttachment: 'fixed',
+        backgroundSize: 'auto',
+        backgroundColor: '#121212',
       }}>
         {/* Main content area */}
         <Box sx={{ flex: 1 }}>
