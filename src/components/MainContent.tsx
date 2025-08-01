@@ -2,8 +2,8 @@ import { Container, IconButton, useTheme } from "@mui/material";
 import Home from "./Home";
 import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
-import bgImage from '../assets/images/bg.png';
 import { EFFECTS } from "../lib/globals";
+import bg from '../assets/images/bg.png';
 
 const MainContent = () => {
     const theme = useTheme();
@@ -27,18 +27,11 @@ const MainContent = () => {
             py: "20%",
             position: 'relative',
             color: theme.palette.primaryGreen.main,
-            '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100vh',
-                backgroundImage: `url(${bgImage})`,
-                backgroundRepeat: 'repeat',
-                maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 90%)',
-                zIndex: 0
-            },
+            backgroundImage: `url(${bg})`,
+            backgroundRepeat: 'repeat',
+            backgroundAttachment: 'fixed',
+            backgroundSize: 'auto',
+            backgroundColor: '#121212',
         }}>
             <Home />
             {showScrollToTopButton && (

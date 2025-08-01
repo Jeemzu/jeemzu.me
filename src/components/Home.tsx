@@ -1,11 +1,10 @@
-import { Grid, IconButton, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton } from "@mui/material";
+import { Grid, IconButton, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton, useMediaQuery } from "@mui/material";
 import { FaCode, FaEnvelope, FaFile, FaGamepad, FaGithub, FaLinkedin, FaPerson, FaRoad } from "react-icons/fa6";
 import { useRef, Suspense, lazy } from "react";
 import { onClickUrl } from "../utils/openInNewTab";
 import React from "react";
 import { EFFECTS, FONTS, LAYOUT, LINKS } from "../lib/globals";
 
-// Lazy load heavy components
 const AboutMe = lazy(() => import("./AboutMe"));
 const MyJourney = lazy(() => import("./MyJourney"));
 const Projects = lazy(() => import("./Projects"));
@@ -59,12 +58,14 @@ const HomeHeaderButton = ({
     onClick,
     icon,
     ariaLabel,
-    degrees
+    degrees,
+    isMobile
 }: {
     onClick: React.MouseEventHandler<HTMLButtonElement> | undefined;
     icon: React.ReactNode;
     ariaLabel: string;
     degrees: number;
+    isMobile?: boolean;
 }) => {
     const theme = useTheme();
 
@@ -81,7 +82,8 @@ const HomeHeaderButton = ({
                     ":active": {
                         border: 'none',
                         background: 'none'
-                    }
+                    },
+                    padding: `${isMobile ? 6 : 0}px`,
                 }}
                 size="small"
                 onClick={onClick}
@@ -94,23 +96,25 @@ const HomeHeaderButton = ({
 };
 
 const Home = () => {
+    const isMobile = useMediaQuery('(max-width:600px)');
     const aboutMeRef = useRef<HTMLDivElement>(null);
     const experienceRef = useRef<HTMLDivElement>(null);
     const projectsRef = useRef<HTMLDivElement>(null);
 
     return (
-        <Grid size={12}>
-            {/* Header Section - Load immediately */}
+        <Grid size={12} sx={{ mt: isMobile ? '20vh' : 0 }}>
+            {/* Header Section */}
             <Grid size={12}>
                 <Typography
                     fontFamily={FONTS.A_ART}
-                    variant="h2"
+                    variant={isMobile ? "h3" : "h2"}
                     sx={{
                         textAlign: 'center',
                         letterSpacing: 2,
                         position: 'relative',
-                        transform: 'translateY(-80%) ',
-                        mb: 2,
+                        transform: `${isMobile ? 'translateY(-50%)' : 'translateY(-80%)'}`,
+                        mb: isMobile ? 8 : 2,
+                        mt: isMobile ? 4 : 0,
                     }}
                 >
                     Hi! I'm James Friedenberg.
@@ -122,33 +126,49 @@ const Home = () => {
                         textAlign: 'center',
                         letterSpacing: 2,
                         position: 'relative',
-                        transform: 'translateY(-80%)',
-                        mb: 1,
+                        transform: `${isMobile ? 'translateY(-50%)' : 'translateY(-80%)'}`,
                     }}
                     variant="h5"
                 >
                     I work at Mojang Studios developing cool new stuff for Minecraft! <br />
                 </Typography>
+            </Grid>
 
-                <Stack
-                    direction="row"
-                    spacing={12}
-                    sx={{
-                        justifyContent: {
-                            xs: 'center', sm: 'center',
-                            mb: 2,
-                        }, mt: 10, mx: 'auto'
-                    }}
-                >
-                    <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={LAYOUT.ICON_SIZE} />} ariaLabel="Learn About Me" degrees={-12} />
-                    <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={LAYOUT.ICON_SIZE} />} ariaLabel="My Journey So Far" degrees={8} />
-                    <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={LAYOUT.ICON_SIZE} />} ariaLabel="My Projects" degrees={-5} />
-                    <HomeHeaderButton onClick={onClickUrl(LINKS.LINKEDIN)} icon={<FaLinkedin size={LAYOUT.ICON_SIZE} />} ariaLabel="LinkedIn" degrees={15} />
-                    <HomeHeaderButton onClick={onClickUrl(LINKS.GITHUB)} icon={<FaGithub size={LAYOUT.ICON_SIZE} />} ariaLabel="GitHub" degrees={-6} />
-                    <HomeHeaderButton onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)} icon={<FaGamepad size={LAYOUT.ICON_SIZE} />} ariaLabel="Find me in the Minecraft Credits!" degrees={3} />
-                    <HomeHeaderButton onClick={onClickUrl(LINKS.EMAIL)} icon={<FaEnvelope size={LAYOUT.ICON_SIZE} />} ariaLabel="Get in touch!" degrees={-8} />
-                    <HomeHeaderButton onClick={onClickUrl(LINKS.RESUME)} icon={<FaFile size={LAYOUT.ICON_SIZE} />} ariaLabel="Download My Resume" degrees={4} />
-                </Stack>
+            <Grid size={12}>
+                {isMobile ? (
+                    <Grid container spacing={2}>
+                        <Grid size={6}>
+                            <HomeHeaderButton isMobile onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={LAYOUT.ICON_SIZE} />} ariaLabel="Learn About Me" degrees={-12} />
+                            <HomeHeaderButton isMobile onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={LAYOUT.ICON_SIZE} />} ariaLabel="My Journey So Far" degrees={8} />
+                            <HomeHeaderButton isMobile onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={LAYOUT.ICON_SIZE} />} ariaLabel="My Projects" degrees={-5} />
+                            <HomeHeaderButton isMobile onClick={onClickUrl(LINKS.LINKEDIN)} icon={<FaLinkedin size={LAYOUT.ICON_SIZE} />} ariaLabel="LinkedIn" degrees={15} />
+                        </Grid>
+                        <Grid size={6}>
+                            <HomeHeaderButton isMobile onClick={onClickUrl(LINKS.GITHUB)} icon={<FaGithub size={LAYOUT.ICON_SIZE} />} ariaLabel="GitHub" degrees={-6} />
+                            <HomeHeaderButton isMobile onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)} icon={<FaGamepad size={LAYOUT.ICON_SIZE} />} ariaLabel="Find me in the Minecraft Credits!" degrees={3} />
+                            <HomeHeaderButton isMobile onClick={onClickUrl(LINKS.EMAIL)} icon={<FaEnvelope size={LAYOUT.ICON_SIZE} />} ariaLabel="Get in touch!" degrees={-8} />
+                            <HomeHeaderButton isMobile onClick={onClickUrl(LINKS.RESUME)} icon={<FaFile size={LAYOUT.ICON_SIZE} />} ariaLabel="Download My Resume" degrees={4} />
+                        </Grid>
+                    </Grid>
+                ) : (
+                    <Stack
+                        direction="row"
+                        spacing={12}
+                        sx={{
+                            justifyContent: 'center', mt: 10, mx: 'auto'
+                        }}
+                    >
+                        <HomeHeaderButton onClick={() => aboutMeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaPerson size={LAYOUT.ICON_SIZE} />} ariaLabel="Learn About Me" degrees={-12} />
+                        <HomeHeaderButton onClick={() => experienceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaRoad size={LAYOUT.ICON_SIZE} />} ariaLabel="My Journey So Far" degrees={8} />
+                        <HomeHeaderButton onClick={() => projectsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })} icon={<FaCode size={LAYOUT.ICON_SIZE} />} ariaLabel="My Projects" degrees={-5} />
+                        <HomeHeaderButton onClick={onClickUrl(LINKS.LINKEDIN)} icon={<FaLinkedin size={LAYOUT.ICON_SIZE} />} ariaLabel="LinkedIn" degrees={15} />
+                        <HomeHeaderButton onClick={onClickUrl(LINKS.GITHUB)} icon={<FaGithub size={LAYOUT.ICON_SIZE} />} ariaLabel="GitHub" degrees={-6} />
+                        <HomeHeaderButton onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)} icon={<FaGamepad size={LAYOUT.ICON_SIZE} />} ariaLabel="Find me in the Minecraft Credits!" degrees={3} />
+                        <HomeHeaderButton onClick={onClickUrl(LINKS.EMAIL)} icon={<FaEnvelope size={LAYOUT.ICON_SIZE} />} ariaLabel="Get in touch!" degrees={-8} />
+                        <HomeHeaderButton onClick={onClickUrl(LINKS.RESUME)} icon={<FaFile size={LAYOUT.ICON_SIZE} />} ariaLabel="Download My Resume" degrees={4} />
+                    </Stack>
+                )}
+
             </Grid>
 
             {/* About Me Section */}

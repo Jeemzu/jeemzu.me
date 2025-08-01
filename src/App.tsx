@@ -5,6 +5,7 @@ import { Route, Router, Switch } from "wouter";
 import Footer from './components/Footer';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
+import ErrorBoundary from './components/ErrorBoundary';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -121,31 +122,33 @@ export function Routes() {
 
 function App() {
   return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: '100vh',
-      minWidth: '100vw',
-      backgroundColor: '#121212'
-    }}>
-      {/* Main content area */}
-      <Box sx={{ flex: 1 }}>
-        <Grid container spacing={0}>
-          <Grid size={12}>
-            <Routes />
+    <ErrorBoundary>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        minWidth: '100vw',
+        backgroundColor: '#121212'
+      }}>
+        {/* Main content area */}
+        <Box sx={{ flex: 1 }}>
+          <Grid container spacing={0}>
+            <Grid size={12}>
+              <Routes />
+            </Grid>
           </Grid>
-        </Grid>
-      </Box>
+        </Box>
 
-      {/* Footer area */}
-      <Box>
-        <Grid container spacing={0}>
-          <Grid size={12}>
-            <Footer />
+        {/* Footer area */}
+        <Box>
+          <Grid container spacing={0}>
+            <Grid size={12}>
+              <Footer />
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
       </Box>
-    </Box>
+    </ErrorBoundary>
   )
 }
 

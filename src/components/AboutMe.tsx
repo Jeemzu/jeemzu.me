@@ -52,18 +52,23 @@ const AboutMe = () => {
 
     return (
         <Grid container spacing={4}>
-            <Grid size={12} sx={{ justifyContent: 'center', textAlign: 'center' }}>
-                <Typography
-                    fontFamily={FONTS.A_ART}
-                    variant="h2"
-                >
-                    "Who are you again?"
-                </Typography>
-            </Grid>
-
-            <Divider sx={{ width: '50%', height: '.001rem', backgroundColor: theme.palette.primaryGreen.main, justifyContent: 'center', mx: 'auto' }} />
-
             {!isMobile &&
+                <>
+                    <Grid size={12} sx={{ justifyContent: 'center', textAlign: 'center' }}>
+                        <Typography
+                            fontFamily={FONTS.A_ART}
+                            variant="h2"
+                        >
+                            "Who are you again?"
+                        </Typography>
+                    </Grid>
+
+                    <Divider sx={{ width: '50%', height: '.001rem', backgroundColor: theme.palette.primaryGreen.main, justifyContent: 'center', mx: 'auto' }} />
+                </>
+            }
+
+
+            {!isMobile ? (
                 <Grid container sx={{ justifyContent: 'center' }}>
                     <Grid size={12} >
                         <Grid size={6} sx={{ justifyContent: 'center', textAlign: 'start', p: 4, mx: 'auto' }}>
@@ -88,7 +93,7 @@ const AboutMe = () => {
                     <Grid container>
                         <Grid size={6}>
                             <img alt="James and Courtney" src={meAndCourtneyImg} style={{
-                                width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%)',
+                                width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%) scale(1.2)',
                             }} />
                         </Grid>
 
@@ -99,12 +104,13 @@ const AboutMe = () => {
                         </Grid>
                     </Grid>
 
-                </Grid> ||
+                </Grid>
+            ) : (
                 <Grid container>
                     <Grid container>
                         <Grid size={12}>
                             <img alt="James and Courtney" src={meAndCourtneyImg} style={{
-                                width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%)',
+                                width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%) scale(1.2)',
                             }} />
                         </Grid>
 
@@ -122,7 +128,8 @@ const AboutMe = () => {
                         </Button>
                     </Grid>
                     <MobileAboutMe open={open} handleClose={handleClose} />
-                </Grid>}
+                </Grid>
+            )}
         </Grid>
     );
 }

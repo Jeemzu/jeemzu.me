@@ -1,4 +1,4 @@
-import { Typography, Grid, Card, Modal, Box, List, ListItem, ListItemText, ListItemIcon, ListSubheader, Divider, CardContent } from "@mui/material";
+import { Typography, Grid, Card, Modal, Box, List, ListItem, ListItemText, ListItemIcon, ListSubheader, Divider, CardContent, useMediaQuery, useTheme } from "@mui/material";
 import { useState } from "react";
 import { FaCaretRight } from "react-icons/fa6";
 import type { JourneyCardModal, JourneyCardProps } from "../lib/MyJourneyTypes";
@@ -13,6 +13,7 @@ const JourneyCard = ({
     milestoneDescription,
     degrees,
 }: JourneyCardProps) => {
+    const theme = useTheme();
     return (
         <Card color='#bdeb92ff'
             onClick={onClick}
@@ -25,12 +26,12 @@ const JourneyCard = ({
                     opacity: 0.8,
                     transform: 'scale(1.01)'
                 },
-                width: '25%',
+                width: { xs: '80%', sm: '50%', md: '25%' },
                 height: 'auto',
                 mx: 'auto',
                 transform: `rotate(${degrees}deg)`,
             }}>
-            <CardContent sx={{ color: '#bdeb92ff' }}>
+            <CardContent sx={{ color: theme.palette.primaryGreen.main }}>
                 <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
                     {milestoneLocation}
                 </Typography>
@@ -74,6 +75,8 @@ const JourneyDescriptionList = ({
 }: {
     bullets: Record<string, string[]>;
 }) => {
+    const theme = useTheme();
+
     return (
         <Grid size={12}>
             {Object.entries(bullets).map(([key, values], groupIdx) => (
@@ -81,13 +84,13 @@ const JourneyDescriptionList = ({
                     key={key || `group-${groupIdx}`}
                     sx={{ paddingLeft: 2 }}
                 >
-                    <ListSubheader sx={{ fontFamily: 'Trap-Black', fontSize: 24, color: '#bdeb92ff', paddingLeft: 2, background: 'none' }}>{key}</ListSubheader>
+                    <ListSubheader sx={{ fontFamily: FONTS.TRAP_BLACK, fontSize: 24, color: theme.palette.primaryGreen.main, paddingLeft: 2, background: 'none' }}>{key}</ListSubheader>
                     {values.map((value, valueIdx) => (
                         <ListItem key={`${key}-${valueIdx}`}>
                             <ListItemIcon>
-                                <FaCaretRight size={16} color="#bdeb92ff" />
+                                <FaCaretRight size={16} color={theme.palette.primaryGreen.main} />
                             </ListItemIcon>
-                            <ListItemText primary={value} slotProps={{ primary: { sx: { fontFamily: 'Trap-Black', color: '#bdeb92ff' } } }} />
+                            <ListItemText primary={value} slotProps={{ primary: { sx: { fontFamily: FONTS.TRAP_BLACK, color: theme.palette.primaryGreen.main } } }} />
                         </ListItem>
                     ))}
                 </List>
@@ -97,6 +100,9 @@ const JourneyDescriptionList = ({
 }
 
 const MyJourney = () => {
+    const isMobile = useMediaQuery('(max-width:600px)');
+    const theme = useTheme();
+
     const [open, setOpen] = useState(false);
     const [currentModalProps, setCurrentModalProps] = useState<JourneyCardModal | null>(null);
     const handleOpen = (props: JourneyCardModal) => {
@@ -112,13 +118,13 @@ const MyJourney = () => {
             <Grid size={12} sx={{ justifyContent: 'center', textAlign: 'center' }}>
                 <Typography
                     fontFamily={FONTS.A_ART}
-                    variant="h2"
+                    variant={isMobile ? 'h3' : 'h2'}
                 >
                     My Journey So Far
                 </Typography>
             </Grid>
 
-            <Divider sx={{ width: '50%', height: '.001rem', backgroundColor: '#bdeb92ff', justifyContent: 'center', mx: 'auto', mb: 1 }} />
+            <Divider sx={{ width: '50%', height: '.001rem', backgroundColor: theme.palette.primaryGreen.main, justifyContent: 'center', mx: 'auto', mb: 1 }} />
 
             <Grid container rowGap={6} sx={{ justifyContent: 'center' }}>
                 {cardData.map((milestone, idx) => (

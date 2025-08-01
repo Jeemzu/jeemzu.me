@@ -30,5 +30,5 @@ export const LAYOUT = {
 export const EFFECTS = {
     HOVER_SCALE: 'scale(1.01)',
     HOVER_OPACITY: 0.8,
-    GLOW_FILTER: 'drop-shadow(0 0 10px var(--primary-green)) drop-shadow(0 0 20px var(--primary-green))',
+    GLOW_FILTER: 'drop-shadow(0 0 10px #bdeb92ff) drop-shadow(0 0 20px #bdeb92ff)',
 } as const;
