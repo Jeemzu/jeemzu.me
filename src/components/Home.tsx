@@ -1,4 +1,4 @@
-import { Grid, IconButton, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton, useMediaQuery } from "@mui/material";
+import { Grid, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton, useMediaQuery, Button } from "@mui/material";
 import { FaCode, FaEnvelope, FaFile, FaGamepad, FaGithub, FaLinkedin, FaPerson, FaRoad } from "react-icons/fa6";
 import { useRef, Suspense, lazy } from "react";
 import { onClickUrl } from "../utils/openInNewTab";
@@ -71,7 +71,8 @@ const HomeHeaderButton = ({
 
     return (
         <HomeHeaderTooltip title={ariaLabel}>
-            <IconButton
+            <Button
+                variant="text"
                 sx={{
                     color: theme.palette.primaryGreen.main,
                     transform: `translateY(${degrees * 2}%) rotate(${degrees}deg)`,
@@ -86,11 +87,12 @@ const HomeHeaderButton = ({
                     padding: `${isMobile ? 6 : 0}px`,
                 }}
                 size="small"
+
                 onClick={onClick}
                 aria-label={ariaLabel}
             >
                 {icon}
-            </IconButton>
+            </Button>
         </HomeHeaderTooltip>
     );
 };
