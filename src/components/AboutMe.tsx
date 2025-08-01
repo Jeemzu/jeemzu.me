@@ -5,21 +5,27 @@ import meAndCourtneyImg from '../assets/images/meandcourtney.png';
 import beansImg from '../assets/images/beans.png';
 
 const modalStyle: SxProps = {
-    position: 'absolute',
-    width: 'auto',
-    height: 'auto',
-    p: 4,
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 'calc(100vw - 32px)',
+    maxWidth: '400px',
+    maxHeight: '80vh',
+    p: 2,
     color: '#bdeb92ff',
     background: '#222222ff',
-    overflow: 'scroll',
+    overflow: 'auto',
+    borderRadius: 2,
+    boxShadow: 24,
 };
 
 const MobileAboutMe = ({ open, handleClose }: { open: boolean; handleClose: () => void; }) => {
     return (
         <Modal open={open || false} onClose={handleClose}>
             <Grid container sx={modalStyle}>
-                <Grid size={12} sx={{ justifyContent: 'center' }}>
-                    <Typography fontFamily={FONTS.TRAP_BLACK} variant="h6" gutterBottom>
+                <Grid size={12}>
+                    <Typography fontFamily={FONTS.TRAP_BLACK} variant="body1" gutterBottom>
                         Thanks for asking!
                         <br />
                         I'm James Friedenberg - developer, gamer, woodworker, home cook, disc golfer, and most importantly, boyfriend and cat dad.

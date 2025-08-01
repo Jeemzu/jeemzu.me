@@ -2,15 +2,20 @@ import type { SxProps } from "@mui/material";
 import type { JourneyCardModal } from "../MyJourneyTypes";
 
 export const modalStyle: SxProps = {
-    position: 'absolute',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    width: '40%',
-    p: 4,
     color: '#bdeb92ff',
     background: '#222222ff',
     border: '2px solid #bdeb92ff',
+    position: 'fixed',
+    width: 'calc(100vw - 32px)',
+    maxWidth: '100vh',
+    maxHeight: '80vh',
+    p: 2,
+    overflow: 'auto',
+    borderRadius: 2,
+    boxShadow: 24,
 };
 
 export const cardData: JourneyCardModal[] = [

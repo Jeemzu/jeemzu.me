@@ -84,7 +84,7 @@ const JourneyDescriptionList = ({
                     key={key || `group-${groupIdx}`}
                     sx={{ paddingLeft: 2 }}
                 >
-                    <ListSubheader sx={{ fontFamily: FONTS.TRAP_BLACK, fontSize: 24, color: theme.palette.primaryGreen.main, paddingLeft: 2, background: 'none' }}>{key}</ListSubheader>
+                    <ListSubheader disableSticky sx={{ fontFamily: FONTS.TRAP_BLACK, fontSize: 24, color: theme.palette.primaryGreen.main, paddingLeft: 2, background: 'none' }}>{key}</ListSubheader>
                     {values.map((value, valueIdx) => (
                         <ListItem key={`${key}-${valueIdx}`}>
                             <ListItemIcon>
