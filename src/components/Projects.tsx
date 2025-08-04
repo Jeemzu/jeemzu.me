@@ -1,12 +1,46 @@
-import { Typography, Grid, Divider, Card, CardContent, CardMedia, Container, IconButton, useMediaQuery, useTheme } from "@mui/material";
+import { Typography, Grid, Divider, Card, CardContent, CardMedia, Container, IconButton, useMediaQuery, useTheme, Box, Fade } from "@mui/material";
 import { projectData, type ProjectDataProps } from "../lib/data/ProjectData";
 import Slider, { type Settings } from "react-slick";
 import { onClickUrl } from "../utils/openInNewTab";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { FaCaretLeft, FaCaretRight } from "react-icons/fa6";
-import React from "react";
+import { FaCaretLeft, FaCaretRight, FaArrowRight } from "react-icons/fa6";
+import React, { useState, useEffect, useRef } from "react";
 import { FONTS } from "../lib/globals";
+
+// Animated Arrow Component
+const SwipeIndicator = ({ visible }: { visible: boolean }) => {
+    return (
+        <Fade in={visible} timeout={500}>
+            <Box
+                sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: '10%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    color: '#bdeb92ff',
+                    animation: 'bounce 2s infinite',
+                    '@keyframes bounce': {
+                        '0%, 20%, 50%, 80%, 100%': {
+                            transform: 'translateY(-50%) translateX(0)',
+                        },
+                        '40%': {
+                            transform: 'translateY(-50%) translateX(10px)',
+                        },
+                        '60%': {
+                            transform: 'translateY(-50%) translateX(5px)',
+                        },
+                    },
+                    // Hide after 5 seconds
+                    animationDuration: '1.5s',
+                }}
+            >
+                <FaArrowRight size={32} />
+            </Box>
+        </Fade>
+    );
+};
 
 const ProjectCard = ({
     onClick,
@@ -16,6 +50,7 @@ const ProjectCard = ({
     degrees,
 }: ProjectDataProps) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery('(max-width:600px)');
 
     return (
         <Card onClick={onClick}
@@ -29,24 +64,25 @@ const ProjectCard = ({
                     opacity: 0.8,
                     transform: 'scale(1.01)'
                 },
-                width: { xs: '80%', sm: '50%', md: '60%' },
+                width: { xs: '90%', sm: '50%', md: '60%' },
                 height: 'auto',
                 mx: 'auto',
                 transform: `rotate(${degrees}deg)`,
+                position: 'relative', // Add this for the arrow positioning
             }}>
             <CardContent sx={{ color: theme.palette.primaryGreen.main }}>
                 <CardMedia
                     component="img"
-                    height={300}
+                    height={isMobile ? 200 : 300} // Responsive height
                     image={img}
                     alt={title}
                     sx={{ borderRadius: 2, mb: 2 }}
                     loading="lazy"
                 />
-                <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
+                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "h5" : "h5"} gutterBottom>
                     {title}
                 </Typography>
-                <Typography fontFamily={FONTS.TRAP_BLACK} variant="h6" gutterBottom >
+                <Typography fontFamily={FONTS.TRAP_BLACK} variant={isMobile ? "subtitle1" : "h6"} >
                     {description}
                 </Typography>
             </CardContent>
@@ -111,7 +147,38 @@ const CustomNextArrow = ({ style, onClick }: any) => {
 
 const Projects = () => {
     const isMobile = useMediaQuery('(max-width:600px)');
+    const [showSwipeIndicator, setShowSwipeIndicator] = useState(false);
+    const [hasInteracted, setHasInteracted] = useState(false);
+    const sliderRef = useRef<HTMLDivElement>(null);
     const slider = React.useRef(null);
+
+    // Intersection Observer to detect when slider comes into view
+    useEffect(() => {
+        if (!isMobile) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && !hasInteracted) {
+                    setShowSwipeIndicator(true);
+                    // Hide indicator after 5 seconds
+                    setTimeout(() => {
+                        setShowSwipeIndicator(false);
+                    }, 5000);
+                }
+            },
+            { threshold: 0.5 }
+        );
+
+        if (sliderRef.current) {
+            observer.observe(sliderRef.current);
+        }
+
+        return () => {
+            if (sliderRef.current) {
+                observer.unobserve(sliderRef.current);
+            }
+        };
+    }, [isMobile, hasInteracted]);
 
     const sliderSettings: Settings = {
         infinite: true,
@@ -121,6 +188,15 @@ const Projects = () => {
         arrows: !isMobile,
         nextArrow: <CustomNextArrow />,
         prevArrow: <CustomPrevArrow />,
+        swipe: true,
+        touchMove: true,
+        // Hide indicator when user starts interacting
+        beforeChange: () => {
+            if (isMobile && !hasInteracted) {
+                setHasInteracted(true);
+                setShowSwipeIndicator(false);
+            }
+        },
     };
 
     const theme = useTheme();
@@ -140,10 +216,12 @@ const Projects = () => {
 
             <Grid size={12} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
                 <Container
+                    ref={sliderRef}
                     className="slider-container"
                     sx={{
+                        position: 'relative',
                         '& .slick-arrow': {
-                            display: 'none !important' // Hide default arrows
+                            display: 'none !important'
                         }
                     }}
                 >
@@ -160,6 +238,11 @@ const Projects = () => {
                             />
                         ))}
                     </Slider>
+
+                    {/* Move SwipeIndicator outside the slider, positioned relative to container */}
+                    {isMobile && (
+                        <SwipeIndicator visible={showSwipeIndicator} />
+                    )}
                 </Container>
             </Grid>
         </Grid >

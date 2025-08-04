@@ -109,7 +109,7 @@ const Home = () => {
             <Grid size={12}>
                 <Typography
                     fontFamily={FONTS.A_ART}
-                    variant={isMobile ? "h3" : "h2"}
+                    variant={isMobile ? "h4" : "h2"}
                     sx={{
                         textAlign: 'center',
                         letterSpacing: 2,
@@ -130,7 +130,7 @@ const Home = () => {
                         position: 'relative',
                         transform: `${isMobile ? 'translateY(-50%)' : 'translateY(-80%)'}`,
                     }}
-                    variant="h5"
+                    variant={isMobile ? "h6" : "h5"}
                 >
                     I work at Mojang Studios developing cool new stuff for Minecraft! <br />
                 </Typography>

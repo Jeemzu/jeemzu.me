@@ -14,31 +14,33 @@ const JourneyCard = ({
     degrees,
 }: JourneyCardProps) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery('(max-width:600px)');
+
     return (
         <Card color='#bdeb92ff'
             onClick={onClick}
             sx={{
                 textAlign: 'start',
-                p: 3,
+                p: { xs: 2, sm: 3, md: 4 },
                 backgroundColor: '#222222ff',
                 ":hover": {
                     cursor: 'pointer',
                     opacity: 0.8,
                     transform: 'scale(1.01)'
                 },
-                width: { xs: '80%', sm: '50%', md: '25%' },
+                width: { xs: '90%', sm: '50%', md: '25%' },
                 height: 'auto',
                 mx: 'auto',
                 transform: `rotate(${degrees}deg)`,
             }}>
             <CardContent sx={{ color: theme.palette.primaryGreen.main }}>
-                <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
+                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "h5" : "h4"} gutterBottom>
                     {milestoneLocation}
                 </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant="h6" gutterBottom >
+                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "subtitle1" : "h5"} gutterBottom >
                     {milestoneTitle}
                 </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant="h6" >
+                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "subtitle1" : "h5"} >
                     {milestoneTimeline}
                 </Typography>
                 <br />
