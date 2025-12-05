@@ -112,6 +112,7 @@ const Footer = () => {
                             >
                                 © 2025 James Friedenberg
                             </Typography>
+                            <br />
                             <Typography
                                 variant="caption"
                                 fontFamily={FONTS.TRAP_BLACK}
