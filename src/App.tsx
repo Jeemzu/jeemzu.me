@@ -3,6 +3,8 @@ import './App.css'
 import { lazy, Suspense, type JSX } from 'react';
 import { Route, Router, Switch } from "wouter";
 import Footer from './components/Footer';
+import Navigation from './components/Navigation';
+import PageTransition from './components/PageTransition';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -106,17 +108,23 @@ function Custom404() {
   )
 }
 
-const Home = LC(lazy(() => import("./components/MainContent")));
+const LandingPage = LC(lazy(() => import("./components/LandingPage")));
+const ProjectsPage = LC(lazy(() => import("./components/ProjectsPage")));
+const ExperiencePage = LC(lazy(() => import("./components/ExperiencePage")));
 
 export function Routes() {
   return (
     <Router>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route>
-          <Custom404 />
-        </Route>
-      </Switch>
+      <PageTransition>
+        <Switch>
+          <Route path="/" component={LandingPage} />
+          <Route path="/projects" component={ProjectsPage} />
+          <Route path="/experience" component={ExperiencePage} />
+          <Route>
+            <Custom404 />
+          </Route>
+        </Switch>
+      </PageTransition>
     </Router>
   );
 }
@@ -135,6 +143,9 @@ function App() {
         backgroundSize: 'auto',
         backgroundColor: '#121212',
       }}>
+        {/* Navigation */}
+        <Navigation />
+
         {/* Main content area */}
         <Box sx={{ flex: 1 }}>
           <Grid container spacing={0}>

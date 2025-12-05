@@ -1,9 +1,10 @@
-import { Typography, Grid, Card, Modal, Box, List, ListItem, ListItemText, ListItemIcon, ListSubheader, Divider, CardContent, useMediaQuery, useTheme } from "@mui/material";
+import { Typography, Grid, Card, Modal, Box, List, ListItem, ListItemText, ListItemIcon, ListSubheader, CardContent, useMediaQuery, useTheme } from "@mui/material";
 import { useState } from "react";
 import { FaCaretRight } from "react-icons/fa6";
 import type { JourneyCardModal, JourneyCardProps } from "../lib/MyJourneyTypes";
 import { cardData, modalStyle } from "../lib/data/JourneyData";
-import { FONTS } from "../lib/globals";
+import { ANIMATIONS, EFFECTS, FONTS } from "../lib/globals";
+import { useScrollAnimation } from "../utils/useScrollAnimation";
 
 const JourneyCard = ({
     onClick,
@@ -11,59 +12,116 @@ const JourneyCard = ({
     milestoneTitle,
     milestoneTimeline,
     milestoneDescription,
-    degrees,
-}: JourneyCardProps) => {
+    index = 0,
+    isLeftSide = true,
+}: JourneyCardProps & { index?: number; isLeftSide?: boolean }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery('(max-width:600px)');
+    const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
+
+    const animationStyle = isMobile
+        ? ANIMATIONS.FADE_IN
+        : (isLeftSide ? ANIMATIONS.SLIDE_IN_LEFT : ANIMATIONS.SLIDE_IN_RIGHT);
+
+    const visibleStyle = isMobile
+        ? ANIMATIONS.FADE_IN_VISIBLE
+        : (isLeftSide ? ANIMATIONS.SLIDE_IN_LEFT_VISIBLE : ANIMATIONS.SLIDE_IN_RIGHT_VISIBLE);
 
     return (
-        <Card color='#bdeb92ff'
-            onClick={onClick}
+        <Box
+            ref={ref}
             sx={{
-                textAlign: 'start',
-                p: { xs: 2, sm: 3, md: 4 },
-                backgroundColor: '#222222ff',
-                ":hover": {
-                    cursor: 'pointer',
-                    opacity: 0.8,
-                    transform: 'scale(1.01)'
-                },
-                width: { xs: '90%', sm: '50%', md: '25%' },
-                height: 'auto',
-                mx: 'auto',
-                transform: `rotate(${degrees}deg)`,
-            }}>
-            <CardContent sx={{ color: theme.palette.primaryGreen.main }}>
-                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "h5" : "h4"} gutterBottom>
-                    {milestoneLocation}
-                </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "subtitle1" : "h5"} gutterBottom >
-                    {milestoneTitle}
-                </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant={isMobile ? "subtitle1" : "h5"} >
-                    {milestoneTimeline}
-                </Typography>
-                <br />
-                <Typography fontFamily={FONTS.TRAP_BLACK} variant="subtitle1" >
-                    {milestoneDescription}
-                </Typography>
-            </CardContent>
-        </Card>
+                ...animationStyle,
+                ...(isVisible && visibleStyle),
+                transitionDelay: `${index * ANIMATIONS.STAGGER_DELAY}s`,
+            }}
+        >
+            <Card
+                onClick={onClick}
+                sx={{
+                    textAlign: 'start',
+                    p: { xs: 3, md: 3.5 },
+                    backgroundColor: theme.palette.cardBackground.main,
+                    boxShadow: EFFECTS.CARD_SHADOW,
+                    transition: EFFECTS.TRANSITION,
+                    ":hover": {
+                        cursor: 'pointer',
+                        transform: EFFECTS.HOVER_SCALE,
+                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+                    },
+                    width: '100%',
+                    height: 'auto',
+                }}>
+                <CardContent>
+                    <Typography
+                        fontFamily={FONTS.A_ART}
+                        variant={isMobile ? "h5" : "h4"}
+                        gutterBottom
+                        sx={{ color: theme.palette.primaryGreen.main }}
+                    >
+                        {milestoneLocation}
+                    </Typography>
+                    <Typography
+                        fontFamily={FONTS.TRAP_BLACK}
+                        variant={isMobile ? "body1" : "h6"}
+                        gutterBottom
+                        sx={{ color: theme.palette.text.primary, fontWeight: 500 }}
+                    >
+                        {milestoneTitle}
+                    </Typography>
+                    <br />
+                    <Typography
+                        fontFamily={FONTS.TRAP_BLACK}
+                        variant="body2"
+                        sx={{ color: theme.palette.textSecondary.main, mb: 2 }}
+                    >
+                        {milestoneTimeline}
+                    </Typography>
+                    <br />
+                    <Typography
+                        fontFamily={FONTS.TRAP_BLACK}
+                        variant="body1"
+                        sx={{
+                            color: theme.palette.textSecondary.main,
+                            lineHeight: 1.7,
+                        }}
+                    >
+                        {milestoneDescription}
+                    </Typography>
+                </CardContent>
+            </Card>
+        </Box>
     );
 };
 
 const JourneyModal = (props: JourneyCardModal) => {
+    const theme = useTheme();
     const { open, handleClose, milestoneLocation, milestoneTitle, milestoneTimeline, milestoneBullets } = props;
     return (
         <Modal open={open || false} onClose={handleClose}>
             <Box sx={modalStyle}>
-                <Typography fontFamily={FONTS.A_ART} variant="h4" gutterBottom>
+                <Typography
+                    fontFamily={FONTS.A_ART}
+                    variant="h4"
+                    gutterBottom
+                    sx={{ color: theme.palette.primaryGreen.main }}
+                >
                     {milestoneLocation}
                 </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant="h5" gutterBottom >
+                <Typography
+                    fontFamily={FONTS.TRAP_BLACK}
+                    variant="h6"
+                    gutterBottom
+                    sx={{ color: theme.palette.text.primary, fontWeight: 500 }}
+                >
                     {milestoneTitle}
                 </Typography>
-                <Typography fontFamily={FONTS.A_ART} variant="h5" gutterBottom>
+                <Typography
+                    fontFamily={FONTS.TRAP_BLACK}
+                    variant="body2"
+                    gutterBottom
+                    sx={{ color: theme.palette.textSecondary.main, mb: 3 }}
+                >
                     {milestoneTimeline}
                 </Typography>
                 <JourneyDescriptionList bullets={milestoneBullets} />
@@ -86,13 +144,36 @@ const JourneyDescriptionList = ({
                     key={key || `group-${groupIdx}`}
                     sx={{ paddingLeft: 2 }}
                 >
-                    <ListSubheader disableSticky sx={{ fontFamily: FONTS.TRAP_BLACK, fontSize: 24, color: theme.palette.primaryGreen.main, paddingLeft: 2, background: 'none' }}>{key}</ListSubheader>
+                    <ListSubheader
+                        disableSticky
+                        sx={{
+                            fontFamily: FONTS.A_ART,
+                            fontSize: '1.25rem',
+                            color: theme.palette.primaryGreen.main,
+                            paddingLeft: 2,
+                            background: 'none',
+                            mb: 1,
+                        }}
+                    >
+                        {key}
+                    </ListSubheader>
                     {values.map((value, valueIdx) => (
                         <ListItem key={`${key}-${valueIdx}`}>
-                            <ListItemIcon>
+                            <ListItemIcon sx={{ minWidth: 32 }}>
                                 <FaCaretRight size={16} color={theme.palette.primaryGreen.main} />
                             </ListItemIcon>
-                            <ListItemText primary={value} slotProps={{ primary: { sx: { fontFamily: FONTS.TRAP_BLACK, color: theme.palette.primaryGreen.main } } }} />
+                            <ListItemText
+                                primary={value}
+                                slotProps={{
+                                    primary: {
+                                        sx: {
+                                            fontFamily: FONTS.TRAP_BLACK,
+                                            color: theme.palette.textSecondary.main,
+                                            lineHeight: 1.7,
+                                        }
+                                    }
+                                }}
+                            />
                         </ListItem>
                     ))}
                 </List>
@@ -102,9 +183,8 @@ const JourneyDescriptionList = ({
 }
 
 const MyJourney = () => {
-    const isMobile = useMediaQuery('(max-width:600px)');
     const theme = useTheme();
-
+    const isMobile = useMediaQuery('(max-width:900px)');
     const [open, setOpen] = useState(false);
     const [currentModalProps, setCurrentModalProps] = useState<JourneyCardModal | null>(null);
     const handleOpen = (props: JourneyCardModal) => {
@@ -116,40 +196,110 @@ const MyJourney = () => {
     }
 
     return (
-        <Grid container spacing={4}>
-            <Grid size={12} sx={{ justifyContent: 'center', textAlign: 'center' }}>
-                <Typography
-                    fontFamily={FONTS.A_ART}
-                    variant={isMobile ? 'h3' : 'h2'}
-                >
-                    My Journey So Far
-                </Typography>
+        <Box sx={{ position: 'relative', maxWidth: '1000px', mx: 'auto' }}>
+            {/* Center line for desktop */}
+            {!isMobile && (
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: 0,
+                        bottom: 0,
+                        width: '2px',
+                        backgroundColor: theme.palette.primaryGreen.main,
+                        opacity: 0.3,
+                        transform: 'translateX(-50%)',
+                    }}
+                />
+            )}
+
+            {/* Mobile side line */}
+            {isMobile && (
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        left: '20px',
+                        top: 0,
+                        bottom: 0,
+                        width: '2px',
+                        backgroundColor: theme.palette.primaryGreen.main,
+                        opacity: 0.3,
+                    }}
+                />
+            )}
+
+            <Grid container spacing={4}>
+                {cardData.map((milestone, idx) => {
+                    const isLeft = idx % 2 === 0;
+
+                    return (
+                        <Grid size={12} key={idx}>
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    justifyContent: isMobile ? 'flex-start' : (isLeft ? 'flex-end' : 'flex-start'),
+                                    position: 'relative',
+                                    pl: isMobile ? 6 : 0,
+                                }}
+                            >
+                                {/* Connector dot */}
+                                <Box
+                                    sx={{
+                                        position: 'absolute',
+                                        left: isMobile ? '20px' : '50%',
+                                        top: '50%',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        backgroundColor: theme.palette.cardBackground.main,
+                                        border: `3px solid ${theme.palette.primaryGreen.main}`,
+                                        transform: 'translate(-50%, -50%)',
+                                        zIndex: 2,
+                                    }}
+                                />
+
+                                {/* Horizontal connector line */}
+                                {!isMobile && (
+                                    <Box
+                                        sx={{
+                                            position: 'absolute',
+                                            left: isLeft ? 'calc(50% - 10px)' : '50%',
+                                            right: isLeft ? '52%' : 'calc(50% - 10px)',
+                                            top: '50%',
+                                            height: '2px',
+                                            backgroundColor: theme.palette.primaryGreen.main,
+                                            opacity: 0.3,
+                                            transform: 'translateY(-50%)',
+                                        }}
+                                    />
+                                )}
+
+                                {/* Card */}
+                                <Box sx={{ width: isMobile ? '100%' : '48%', mb: 4 }}>
+                                    <JourneyCard
+                                        onClick={() =>
+                                            handleOpen({
+                                                ...milestone,
+                                                open: open,
+                                                handleClose: handleClose,
+                                                milestoneBullets: milestone.milestoneBullets
+                                            })
+                                        }
+                                        milestoneLocation={milestone.milestoneLocation}
+                                        milestoneTitle={milestone.milestoneTitle}
+                                        milestoneTimeline={milestone.milestoneTimeline}
+                                        milestoneDescription={milestone.milestoneDescription}
+                                        degrees={0}
+                                        index={idx}
+                                        isLeftSide={isLeft}
+                                    />
+                                </Box>
+                            </Box>
+                        </Grid>
+                    );
+                })}
             </Grid>
 
-            <Divider sx={{ width: '50%', height: '.001rem', backgroundColor: theme.palette.primaryGreen.main, justifyContent: 'center', mx: 'auto', mb: 1 }} />
-
-            <Grid container rowGap={6} sx={{ justifyContent: 'center' }}>
-                {cardData.map((milestone, idx) => (
-                    <Grid size={12} key={idx}>
-                        <JourneyCard
-                            key={milestone.milestoneTitle}
-                            onClick={() =>
-                                handleOpen({
-                                    ...milestone,
-                                    open: open,
-                                    handleClose: handleClose,
-                                    milestoneBullets: milestone.milestoneBullets
-                                })
-                            }
-                            milestoneLocation={milestone.milestoneLocation}
-                            milestoneTitle={milestone.milestoneTitle}
-                            milestoneTimeline={milestone.milestoneTimeline}
-                            milestoneDescription={milestone.milestoneDescription}
-                            degrees={milestone.degrees || 0}
-                        />
-                    </Grid>
-                ))}
-            </Grid>
             <JourneyModal
                 open={open}
                 handleClose={handleClose}
@@ -161,7 +311,7 @@ const MyJourney = () => {
                 degrees={0}
                 onClick={undefined}
             />
-        </Grid>
+        </Box>
     );
 };
 
