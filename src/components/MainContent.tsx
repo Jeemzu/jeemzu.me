@@ -37,9 +37,10 @@ const MainContent = () => {
                         bottom: 20,
                         right: 20,
                         zIndex: 1000,
+                        transition: EFFECTS.TRANSITION,
                         '&:hover': {
-                            color: theme.palette.whiteHover.main,
-                            filter: EFFECTS.GLOW_FILTER
+                            color: theme.palette.softGreen.main,
+                            transform: 'scale(1.1)'
                         }
                     }}
                 >

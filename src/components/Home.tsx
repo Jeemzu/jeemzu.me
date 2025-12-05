@@ -3,7 +3,7 @@ import { FaCode, FaEnvelope, FaFile, FaGamepad, FaGithub, FaLinkedin, FaPerson, 
 import { useRef, Suspense, lazy } from "react";
 import { onClickUrl } from "../utils/openInNewTab";
 import React from "react";
-import { EFFECTS, FONTS, LAYOUT, LINKS } from "../lib/globals";
+import { FONTS, LAYOUT, LINKS } from "../lib/globals";
 
 const AboutMe = lazy(() => import("./AboutMe"));
 const MyJourney = lazy(() => import("./MyJourney"));
@@ -77,8 +77,8 @@ const HomeHeaderButton = ({
                     color: theme.palette.primaryGreen.main,
                     transform: `translateY(${degrees * 2}%) rotate(${degrees}deg)`,
                     '&:hover': {
-                        color: theme.palette.whiteHover.main,
-                        filter: EFFECTS.GLOW_FILTER
+                        color: theme.palette.softGreen.main,
+                        transform: `translateY(${degrees * 2}%) rotate(${degrees}deg) scale(1.1)`,
                     },
                     ":active": {
                         border: 'none',
@@ -174,7 +174,7 @@ const Home = () => {
             </Grid>
 
             {/* About Me Section */}
-            <Grid size={12} sx={{ mt: LAYOUT.HEADER_SPACING }}>
+            <Grid size={12} sx={{ mt: LAYOUT.SECTION_SPACING }}>
                 <div ref={aboutMeRef}>
                     <Suspense fallback={<SectionSkeleton />}>
                         <AboutMe />
