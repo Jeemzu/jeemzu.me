@@ -64,12 +64,10 @@ const JourneyCard = ({
                     <Typography
                         fontFamily={FONTS.TRAP_BLACK}
                         variant={isMobile ? "body1" : "h6"}
-                        gutterBottom
                         sx={{ color: theme.palette.text.primary, fontWeight: 500 }}
                     >
                         {milestoneTitle}
                     </Typography>
-                    <br />
                     <Typography
                         fontFamily={FONTS.TRAP_BLACK}
                         variant="body2"
@@ -77,6 +75,7 @@ const JourneyCard = ({
                     >
                         {milestoneTimeline}
                     </Typography>
+                    <br />
                     <br />
                     <Typography
                         fontFamily={FONTS.TRAP_BLACK}

@@ -22,7 +22,7 @@ export const cardData: JourneyCardModal[] = [
         milestoneLocation: "Mojang Studios",
         milestoneTitle: "Software Engineer",
         milestoneTimeline: "March 2022 - Present",
-        milestoneDescription: "At Mojang Studios, I collaborate with some of the world's best gameplay designers on the amazing Minecraft: Bedrock Edition!",
+        milestoneDescription: "At Mojang Studios, I collaborate with some of the world's best gameplay designers on Minecraft: Bedrock Edition!",
         milestoneBullets: {
             "Minecraft Live Events": [
                 "Helped launch Minecraft's Live Events platform for the 2022 Mob Vote by pioneering the game's first automated multiplayer performance testing.",
@@ -121,8 +121,8 @@ export const cardData: JourneyCardModal[] = [
                 "Eat.",
                 "Cry (maybe).",
                 "Code.",
-                "Poop.",
-                "Sleep (hopefully)."
+                "Game.",
+                "Sleep."
             ]
         },
         degrees: -2
