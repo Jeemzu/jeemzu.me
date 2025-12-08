@@ -12,31 +12,31 @@ const Footer = () => {
             <Box
                 sx={{
                     borderTop: `1px solid ${theme.palette.primaryGreen.main}33`,
-                    mt: 8,
-                    py: 6,
+                    mt: 4,
+                    py: 3,
                     px: 2,
                 }}
             >
                 <Container maxWidth="lg">
-                    <Grid container spacing={4}>
+                    <Grid container spacing={2}>
                         {/* Left Section - Branding */}
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'left' } }}>
                             <Typography
-                                variant="h5"
+                                variant="h6"
                                 fontFamily={FONTS.A_ART}
                                 sx={{
                                     color: theme.palette.primaryGreen.main,
-                                    mb: 1,
+                                    mb: 0.5,
                                 }}
                             >
                                 James Friedenberg
                             </Typography>
                             <Typography
-                                variant="body2"
+                                variant="caption"
                                 fontFamily={FONTS.TRAP_BLACK}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
-                                    lineHeight: 1.7,
+                                    lineHeight: 1.5,
                                 }}
                             >
                                 Building cool things for Minecraft and beyond
@@ -45,56 +45,59 @@ const Footer = () => {
 
                         {/* Center Section - Quick Links */}
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: 'center' }}>
-                            <Stack spacing={1} sx={{ alignItems: 'center' }}>
+                            <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
                                 <Typography
-                                    variant="subtitle2"
+                                    variant="caption"
                                     fontFamily={FONTS.A_ART}
                                     sx={{
                                         color: theme.palette.primaryGreen.main,
-                                        mb: 1,
+                                        mb: 0.5,
                                     }}
                                 >
                                     Connect
                                 </Typography>
-                                <Stack direction="row" spacing={2}>
+                                <Stack direction="row" spacing={1.5}>
                                     <IconButton
+                                        size="small"
                                         onClick={onClickUrl(LINKS.GITHUB)}
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
                                                 color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-4px)',
+                                                transform: 'translateY(-2px)',
                                             }
                                         }}
                                     >
-                                        <FaGithub size={24} />
+                                        <FaGithub size={20} />
                                     </IconButton>
                                     <IconButton
+                                        size="small"
                                         onClick={onClickUrl(LINKS.LINKEDIN)}
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
                                                 color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-4px)',
+                                                transform: 'translateY(-2px)',
                                             }
                                         }}
                                     >
-                                        <FaLinkedin size={24} />
+                                        <FaLinkedin size={20} />
                                     </IconButton>
                                     <IconButton
+                                        size="small"
                                         onClick={onClickUrl(LINKS.EMAIL)}
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
                                                 color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-4px)',
+                                                transform: 'translateY(-2px)',
                                             }
                                         }}
                                     >
-                                        <FaEnvelope size={24} />
+                                        <FaEnvelope size={20} />
                                     </IconButton>
                                 </Stack>
                             </Stack>
@@ -103,22 +106,23 @@ const Footer = () => {
                         {/* Right Section - Copyright */}
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'right' } }}>
                             <Typography
-                                variant="body2"
+                                variant="caption"
                                 fontFamily={FONTS.TRAP_BLACK}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
-                                    mb: 0.5,
+                                    display: 'block',
+                                    mb: 0.25,
                                 }}
                             >
                                 © 2025 James Friedenberg
                             </Typography>
-                            <br />
                             <Typography
                                 variant="caption"
                                 fontFamily={FONTS.TRAP_BLACK}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
                                     opacity: 0.7,
+                                    fontSize: '0.7rem',
                                 }}
                             >
                                 Built with React + TypeScript
@@ -127,7 +131,7 @@ const Footer = () => {
 
                         {/* Bottom Divider */}
                         <Grid size={12}>
-                            <Divider sx={{ borderColor: `${theme.palette.primaryGreen.main}22`, mt: 3 }} />
+                            <Divider sx={{ borderColor: `${theme.palette.primaryGreen.main}22`, mt: 1.5 }} />
                             <Typography
                                 variant="caption"
                                 fontFamily={FONTS.TRAP_BLACK}
@@ -136,7 +140,8 @@ const Footer = () => {
                                     opacity: 0.6,
                                     textAlign: 'center',
                                     display: 'block',
-                                    mt: 2,
+                                    mt: 1,
+                                    fontSize: '0.7rem',
                                 }}
                             >
                                 Made with ☕ and 💚
