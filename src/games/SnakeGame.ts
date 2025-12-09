@@ -86,36 +86,44 @@ export class SnakeScene extends Phaser.Scene {
     private handleKeyPress(key: string) {
         if (this.isGameOver) return;
 
-        // Prevent reversing into yourself
+        let newDirection: { x: number; y: number } | null = null;
+
+        // Determine desired direction
         switch (key) {
             case 'ArrowLeft':
             case 'a':
             case 'A':
-                if (this.direction.x === 0) {
-                    this.nextDirection = { x: -1, y: 0 };
-                }
+                newDirection = { x: -1, y: 0 };
                 break;
             case 'ArrowRight':
             case 'd':
             case 'D':
-                if (this.direction.x === 0) {
-                    this.nextDirection = { x: 1, y: 0 };
-                }
+                newDirection = { x: 1, y: 0 };
                 break;
             case 'ArrowUp':
             case 'w':
             case 'W':
-                if (this.direction.y === 0) {
-                    this.nextDirection = { x: 0, y: -1 };
-                }
+                newDirection = { x: 0, y: -1 };
                 break;
             case 'ArrowDown':
             case 's':
             case 'S':
-                if (this.direction.y === 0) {
-                    this.nextDirection = { x: 0, y: 1 };
-                }
+                newDirection = { x: 0, y: 1 };
                 break;
+        }
+
+        // Only update if it's not a reverse direction
+        if (newDirection) {
+            // Check if the new direction would make the head move into the neck (reverse)
+            const head = this.snake[0];
+            const neck = this.snake[1];
+            const futureHeadX = head.x + newDirection.x;
+            const futureHeadY = head.y + newDirection.y;
+
+            // Allow the direction change only if it doesn't reverse into the neck
+            if (futureHeadX !== neck.x || futureHeadY !== neck.y) {
+                this.nextDirection = newDirection;
+            }
         }
     }
 
