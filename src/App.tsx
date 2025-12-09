@@ -110,6 +110,7 @@ function Custom404() {
 
 const LandingPage = LC(lazy(() => import("./components/LandingPage")));
 const ProjectsPage = LC(lazy(() => import("./components/ProjectsPage")));
+const GamesPage = LC(lazy(() => import("./components/GamesPage")));
 const ExperiencePage = LC(lazy(() => import("./components/ExperiencePage")));
 
 export function Routes() {
@@ -119,6 +120,7 @@ export function Routes() {
         <Switch>
           <Route path="/" component={LandingPage} />
           <Route path="/projects" component={ProjectsPage} />
+          <Route path="/games" component={GamesPage} />
           <Route path="/experience" component={ExperiencePage} />
           <Route>
             <Custom404 />

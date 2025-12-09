@@ -42,7 +42,7 @@ export const EFFECTS = {
     HOVER_OPACITY: 0.9,
     TRANSITION: 'all 0.2s ease-in-out',
     CARD_SHADOW: '0 4px 20px rgba(0, 0, 0, 0.3)',
-    CARD_SHADOW_HOVER: '0 8px 30px rgba(168, 214, 126, 0.15)',
+    CARD_SHADOW_HOVER: '0 4px 20px rgba(168, 214, 126, 0.3), 0 2px 8px rgba(168, 214, 126, 0.2)',
 } as const;
 
 // Animation Keyframes & Durations
