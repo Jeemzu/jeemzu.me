@@ -8,8 +8,8 @@ const ExperiencePage = () => {
     return (
         <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
             <Typography
-                fontFamily={FONTS.A_ART}
-                variant="h2"
+                fontFamily={FONTS.ANTON}
+                variant="h1"
                 sx={{
                     textAlign: 'center',
                     mb: { xs: 2, md: 3 },
@@ -19,7 +19,7 @@ const ExperiencePage = () => {
                 My Journey
             </Typography>
             <Typography
-                fontFamily={FONTS.TRAP_BLACK}
+                fontFamily={FONTS.NECTO_MONO}
                 variant="h6"
                 sx={{
                     textAlign: 'center',

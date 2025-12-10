@@ -34,261 +34,225 @@ const LandingPage = () => {
 
     return (
         <Container maxWidth="xl" sx={{ position: 'relative' }}>
-            {/* Side Images - Only on wide screens */}
-            {isWideScreen && heroHeight > 0 && (
-                <>
-                    {/* Left Image - Me and Courtney */}
-                    <Box
-                        onClick={() => setOpenImage(meAndCourtneyImg)}
-                        sx={{
-                            position: 'absolute',
-                            left: { xl: -180, lg: -80 },
-                            top: { xs: '4rem', md: '3rem' },
-                            height: `${heroHeight}px`,
-                            display: 'flex',
-                            alignItems: 'stretch',
-                            width: '500px',
-                            zIndex: 10,
-                            cursor: 'pointer',
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                borderRadius: 2,
-                                overflow: 'hidden',
-                                boxShadow: EFFECTS.CARD_SHADOW,
-                                transition: EFFECTS.TRANSITION,
-                                flex: 1,
-                                display: 'flex',
-                                '&:hover': {
-                                    transform: 'scale(1.05)',
-                                    boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                }
-                            }}
-                        >
-                            <img
-                                alt="James and Courtney"
-                                src={meAndCourtneyImg}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    display: 'block',
-                                }}
-                            />
-                        </Box>
-                    </Box>
-
-                    {/* Right Image - Bean Squad */}
-                    <Box
-                        onClick={() => setOpenImage(beansImg)}
-                        sx={{
-                            position: 'absolute',
-                            right: { xl: -180, lg: -80 },
-                            top: { xs: '4rem', md: '3rem' },
-                            height: `${heroHeight}px`,
-                            display: 'flex',
-                            alignItems: 'stretch',
-                            width: '500px',
-                            zIndex: 10,
-                            cursor: 'pointer',
-                        }}
-                    >
-                        <Box
-                            sx={{
-                                borderRadius: 2,
-                                overflow: 'hidden',
-                                boxShadow: EFFECTS.CARD_SHADOW,
-                                transition: EFFECTS.TRANSITION,
-                                flex: 1,
-                                display: 'flex',
-                                '&:hover': {
-                                    transform: 'scale(1.05)',
-                                    boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                }
-                            }}
-                        >
-                            <img
-                                alt="Our Cats"
-                                src={beansImg}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    display: 'block',
-                                }}
-                            />
-                        </Box>
-                    </Box>
-                </>
-            )}
-
-            <Grid container spacing={3} sx={{ minHeight: '75vh', alignItems: 'center', py: { xs: 4, md: 3 }, position: 'relative' }}>
+            <Grid container spacing={3} sx={{ minHeight: '75vh', alignItems: 'center', py: { xs: 4, md: 6 }, position: 'relative' }}>
                 {/* Hero Section */}
                 <Grid size={12}>
-                    <Box ref={heroRef} sx={{ textAlign: 'center', mb: { xs: 2, md: 3 } }}>
-                        <Typography
-                            fontFamily={FONTS.A_ART}
-                            variant={isMobile ? "h3" : "h1"}
-                            sx={{
-                                mb: { xs: 2, md: 3 },
-                                color: theme.palette.primaryGreen.main,
-                            }}
-                        >
-                            James Friedenberg
-                        </Typography>
+                    {/* Name - Centered above everything */}
+                    <Typography
+                        fontFamily={FONTS.ANTON}
+                        variant={isMobile ? "h3" : "h1"}
+                        sx={{
+                            textAlign: 'center',
+                            mb: { xs: 3, md: 5 },
+                            color: theme.palette.primaryGreen.main,
+                        }}
+                    >
+                        James Friedenberg
+                    </Typography>
 
-                        <Typography
-                            fontFamily={FONTS.TRAP_BLACK}
-                            variant={isMobile ? "h6" : "h4"}
+                    {/* Two-column layout */}
+                    <Box ref={heroRef} sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: { xs: 3, md: 6 } }}>
+                        {/* Left side - Image */}
+                        <Box
                             sx={{
-                                mb: { xs: 2.5, md: 4 },
-                                color: theme.palette.text.primary,
-                                fontWeight: 500,
+                                flex: isMobile ? 'none' : '0 0 33%',
+                                display: 'flex',
+                                justifyContent: isMobile ? 'center' : 'flex-start',
+                                order: isMobile ? 2 : 1,
                             }}
                         >
-                            Software Engineer at Mojang Studios
-                        </Typography>
+                            <Box
+                                onClick={() => setOpenImage(meAndCourtneyImg)}
+                                sx={{
+                                    width: { xs: '280px', md: '380px' },
+                                    height: { xs: '280px', md: '330px' },
+                                    borderRadius: '12px',
+                                    overflow: 'hidden',
+                                    boxShadow: EFFECTS.CARD_SHADOW,
+                                    transition: EFFECTS.TRANSITION,
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        transform: 'scale(1.05)',
+                                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+                                    }
+                                }}
+                            >
+                                <img
+                                    alt="Me and Courtney"
+                                    src={meAndCourtneyImg}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        display: 'block',
+                                    }}
+                                />
+                            </Box>
+                        </Box>
 
-                        <Typography
-                            fontFamily={FONTS.TRAP_BLACK}
-                            variant={isMobile ? "body1" : "h6"}
-                            sx={{
-                                mb: { xs: 3.5, md: 4.5 },
-                                color: theme.palette.textSecondary.main,
-                                maxWidth: '700px',
-                                mx: 'auto',
-                                fontSize: { xs: '1rem', md: '1.125rem' },
-                            }}
-                        >
-                            Developing cool new features for Minecraft.
-                            Passionate about clean code, collaboration, gaming, and woodworking.
-                        </Typography>
-
-                        {/* CTA Buttons */}
-                        <Stack
-                            direction={isMobile ? "column" : "row"}
-                            spacing={2}
-                            sx={{
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                mb: { xs: 3, md: 4.5 },
-                            }}
-                        >
-                            <Link href="/projects">
-                                <Button
-                                    variant="contained"
-                                    size="large"
+                        {/* Right side - Content */}
+                        <Box sx={{ flex: isMobile ? 'none' : '0 0 66%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', order: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}>
+                            <Box sx={{
+                                backgroundColor: theme.palette.cardBackground.main,
+                                borderRadius: 2,
+                                p: { xs: 3, md: 3 },
+                                boxShadow: EFFECTS.CARD_SHADOW,
+                                width: '100%',
+                            }}>
+                                <Typography
+                                    fontFamily={FONTS.NECTO_MONO}
+                                    variant={isMobile ? "h6" : "h4"}
                                     sx={{
-                                        backgroundColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.background.default,
-                                        fontFamily: FONTS.A_ART,
-                                        px: 4,
-                                        py: 1.5,
-                                        fontSize: '1.1rem',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.softGreen.main,
-                                            transform: EFFECTS.HOVER_SCALE,
-                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                        }
+                                        mb: { xs: 2, md: 2.5 },
+                                        color: theme.palette.text.primary,
+                                        fontWeight: 500,
+                                        textAlign: 'left',
                                     }}
                                 >
-                                    View My Projects
-                                </Button>
-                            </Link>
+                                    Software Engineer at Mojang Studios
+                                </Typography>
 
-                            <Link href="/experience">
-                                <Button
-                                    variant="outlined"
-                                    size="large"
+                                <Typography
+                                    fontFamily={FONTS.NECTO_MONO}
+                                    variant={isMobile ? "body1" : "h6"}
                                     sx={{
-                                        borderColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.primaryGreen.main,
-                                        fontFamily: FONTS.A_ART,
-                                        px: 4,
-                                        py: 1.5,
-                                        fontSize: '1.1rem',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            borderColor: theme.palette.softGreen.main,
-                                            color: theme.palette.softGreen.main,
-                                            backgroundColor: 'rgba(168, 214, 126, 0.1)',
-                                            transform: EFFECTS.HOVER_SCALE,
-                                        }
+                                        mb: { xs: 2.5, md: 3 },
+                                        color: theme.palette.textSecondary.main,
+                                        fontSize: { xs: '1rem', md: '1.125rem' },
+                                        textAlign: 'left',
                                     }}
                                 >
-                                    My Experience
-                                </Button>
-                            </Link>
-                        </Stack>
+                                    Developing cool new features for Minecraft.
+                                    Passionate about clean code, collaboration, gaming, and woodworking.
+                                </Typography>
 
-                        {/* Quick Links */}
-                        <Stack
-                            direction={isMobile ? "column" : "row"}
-                            spacing={isMobile ? 0.5 : 1.5}
-                            sx={{
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Button
-                                startIcon={<FaEnvelope />}
-                                onClick={onClickUrl(LINKS.EMAIL)}
-                                size="small"
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    fontFamily: FONTS.TRAP_BLACK,
-                                    fontSize: '0.875rem',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
-                                        transform: 'translateY(-2px)',
-                                    }
-                                }}
-                            >
-                                Email Me
-                            </Button>
+                                {/* CTA Buttons */}
+                                <Stack
+                                    direction={isMobile ? "column" : "row"}
+                                    spacing={1.5}
+                                    sx={{
+                                        justifyContent: 'flex-start',
+                                        alignItems: isMobile ? 'stretch' : 'center',
+                                    }}
+                                >
+                                    <Link href="/projects">
+                                        <Button
+                                            variant="contained"
+                                            size="medium"
+                                            sx={{
+                                                backgroundColor: theme.palette.primaryGreen.main,
+                                                color: theme.palette.background.default,
+                                                fontFamily: FONTS.ANTON,
+                                                px: 3,
+                                                py: 1,
+                                                fontSize: '1rem',
+                                                transition: EFFECTS.TRANSITION,
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.softGreen.main,
+                                                    transform: EFFECTS.HOVER_SCALE,
+                                                    boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+                                                }
+                                            }}
+                                        >
+                                            View My Projects
+                                        </Button>
+                                    </Link>
 
-                            <Button
-                                startIcon={<FaFile />}
-                                onClick={onClickUrl(LINKS.RESUME)}
-                                size="small"
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    fontFamily: FONTS.TRAP_BLACK,
-                                    fontSize: '0.875rem',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
-                                        transform: 'translateY(-2px)',
-                                    }
-                                }}
-                            >
-                                Resume
-                            </Button>
+                                    <Link href="/experience">
+                                        <Button
+                                            variant="outlined"
+                                            size="medium"
+                                            sx={{
+                                                borderColor: theme.palette.primaryGreen.main,
+                                                color: theme.palette.primaryGreen.main,
+                                                fontFamily: FONTS.ANTON,
+                                                px: 3,
+                                                py: 1,
+                                                fontSize: '1rem',
+                                                transition: EFFECTS.TRANSITION,
+                                                '&:hover': {
+                                                    borderColor: theme.palette.softGreen.main,
+                                                    color: theme.palette.softGreen.main,
+                                                    backgroundColor: 'rgba(168, 214, 126, 0.1)',
+                                                    transform: EFFECTS.HOVER_SCALE,
+                                                }
+                                            }}
+                                        >
+                                            My Experience
+                                        </Button>
+                                    </Link>
 
-                            <Button
-                                startIcon={<FaGamepad />}
-                                onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)}
-                                size="small"
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    fontFamily: FONTS.TRAP_BLACK,
-                                    fontSize: '0.875rem',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
-                                        transform: 'translateY(-2px)',
-                                    }
-                                }}
-                            >
-                                Minecraft Credits
-                            </Button>
-                        </Stack>
+                                    <Button
+                                        startIcon={<FaEnvelope />}
+                                        onClick={onClickUrl(LINKS.EMAIL)}
+                                        size="small"
+                                        variant="text"
+                                        sx={{
+                                            color: theme.palette.textSecondary.main,
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            px: 2,
+                                            py: 0.75,
+                                            fontSize: '0.875rem',
+                                            minWidth: '110px',
+                                            whiteSpace: 'nowrap',
+                                            transition: EFFECTS.TRANSITION,
+                                            '&:hover': {
+                                                color: theme.palette.primaryGreen.main,
+                                                backgroundColor: 'rgba(168, 214, 126, 0.08)',
+                                            }
+                                        }}
+                                    >
+                                        Email Me
+                                    </Button>
+
+                                    <Button
+                                        startIcon={<FaFile />}
+                                        onClick={onClickUrl(LINKS.RESUME)}
+                                        size="small"
+                                        variant="text"
+                                        sx={{
+                                            color: theme.palette.textSecondary.main,
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            px: 2,
+                                            py: 0.75,
+                                            fontSize: '0.875rem',
+                                            minWidth: '110px',
+                                            whiteSpace: 'nowrap',
+                                            transition: EFFECTS.TRANSITION,
+                                            '&:hover': {
+                                                color: theme.palette.primaryGreen.main,
+                                                backgroundColor: 'rgba(168, 214, 126, 0.08)',
+                                            }
+                                        }}
+                                    >
+                                        Resume
+                                    </Button>
+
+                                    <Button
+                                        startIcon={<FaGamepad />}
+                                        onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)}
+                                        size="small"
+                                        variant="text"
+                                        sx={{
+                                            color: theme.palette.textSecondary.main,
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            px: 2,
+                                            py: 0.75,
+                                            fontSize: '0.875rem',
+                                            minWidth: '160px',
+                                            whiteSpace: 'nowrap',
+                                            transition: EFFECTS.TRANSITION,
+                                            '&:hover': {
+                                                color: theme.palette.primaryGreen.main,
+                                                backgroundColor: 'rgba(168, 214, 126, 0.08)',
+                                            }
+                                        }}
+                                    >
+                                        Minecraft Credits
+                                    </Button>
+                                </Stack>
+                            </Box>
+                        </Box>
                     </Box>
                 </Grid>
 

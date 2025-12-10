@@ -54,22 +54,22 @@ const JourneyCard = ({
                 }}>
                 <CardContent>
                     <Typography
-                        fontFamily={FONTS.A_ART}
-                        variant={isMobile ? "h5" : "h4"}
+                        fontFamily={FONTS.ANTON}
+                        variant={isMobile ? "h4" : "h3"}
                         gutterBottom
                         sx={{ color: theme.palette.primaryGreen.main }}
                     >
                         {milestoneLocation}
                     </Typography>
                     <Typography
-                        fontFamily={FONTS.TRAP_BLACK}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant={isMobile ? "body1" : "h6"}
                         sx={{ color: theme.palette.text.primary, fontWeight: 500 }}
                     >
                         {milestoneTitle}
                     </Typography>
                     <Typography
-                        fontFamily={FONTS.TRAP_BLACK}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant="body2"
                         sx={{ color: theme.palette.textSecondary.main, mb: 2 }}
                     >
@@ -78,7 +78,7 @@ const JourneyCard = ({
                     <br />
                     <br />
                     <Typography
-                        fontFamily={FONTS.TRAP_BLACK}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant="body1"
                         sx={{
                             color: theme.palette.textSecondary.main,
@@ -100,15 +100,15 @@ const JourneyModal = (props: JourneyCardModal) => {
         <Modal open={open || false} onClose={handleClose}>
             <Box sx={modalStyle}>
                 <Typography
-                    fontFamily={FONTS.A_ART}
-                    variant="h4"
+                    fontFamily={FONTS.ANTON}
+                    variant="h3"
                     gutterBottom
                     sx={{ color: theme.palette.primaryGreen.main }}
                 >
                     {milestoneLocation}
                 </Typography>
                 <Typography
-                    fontFamily={FONTS.TRAP_BLACK}
+                    fontFamily={FONTS.NECTO_MONO}
                     variant="h6"
                     gutterBottom
                     sx={{ color: theme.palette.text.primary, fontWeight: 500 }}
@@ -116,7 +116,7 @@ const JourneyModal = (props: JourneyCardModal) => {
                     {milestoneTitle}
                 </Typography>
                 <Typography
-                    fontFamily={FONTS.TRAP_BLACK}
+                    fontFamily={FONTS.NECTO_MONO}
                     variant="body2"
                     gutterBottom
                     sx={{ color: theme.palette.textSecondary.main, mb: 3 }}
@@ -146,7 +146,7 @@ const JourneyDescriptionList = ({
                     <ListSubheader
                         disableSticky
                         sx={{
-                            fontFamily: FONTS.A_ART,
+                            fontFamily: FONTS.ANTON,
                             fontSize: '1.25rem',
                             color: theme.palette.primaryGreen.main,
                             paddingLeft: 2,
@@ -166,7 +166,7 @@ const JourneyDescriptionList = ({
                                 slotProps={{
                                     primary: {
                                         sx: {
-                                            fontFamily: FONTS.TRAP_BLACK,
+                                            fontFamily: FONTS.NECTO_MONO,
                                             color: theme.palette.textSecondary.main,
                                             lineHeight: 1.7,
                                         }

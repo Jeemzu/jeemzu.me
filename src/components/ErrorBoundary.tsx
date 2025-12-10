@@ -31,7 +31,7 @@ class ErrorBoundary extends React.Component<
                     mt: 4,
                     color: '#bdeb92ff'
                 }}>
-                    <Typography variant="h4" fontFamily={FONTS.A_ART} sx={{ mb: 2 }}>
+                    <Typography variant="h3" fontFamily={FONTS.ANTON} sx={{ mb: 2 }}>
                         Oops! Something went wrong
                     </Typography>
                     <Button
@@ -39,7 +39,8 @@ class ErrorBoundary extends React.Component<
                         sx={{
                             backgroundColor: '#bdeb92ff',
                             color: '#121212',
-                            fontFamily: FONTS.A_ART
+                            fontFamily: FONTS.ANTON,
+                            fontSize: '1.1rem'
                         }}
                     >
                         Reload Page

@@ -27,7 +27,7 @@ const MobileAboutMe = ({ open, handleClose }: { open: boolean; handleClose: () =
         <Modal open={open || false} onClose={handleClose}>
             <Grid container sx={modalStyle}>
                 <Grid size={12}>
-                    <Typography fontFamily={FONTS.TRAP_BLACK} variant="body1" gutterBottom>
+                    <Typography fontFamily={FONTS.NECTO_MONO} variant="body1" gutterBottom>
                         Thanks for asking!
                         <br />
                         I'm James Friedenberg - developer, gamer, woodworker, home cook, disc golfer, and most importantly, boyfriend and cat dad.
@@ -86,33 +86,35 @@ const HighlightCard = ({
                     },
                 }}
             >
-                <CardContent sx={{ p: { xs: 4, md: 5 }, textAlign: 'left' }}>
+                <CardContent sx={{ p: { xs: 4, md: 5 }, textAlign: 'left', position: 'relative' }}>
                     <Box
                         sx={{
                             display: 'flex',
-                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
                             mb: 3,
                         }}
                     >
-                        <Box
-                            sx={{
-                                color: theme.palette.primaryGreen.main,
-                                mr: 2,
-                                fontSize: '2.5rem',
-                            }}
-                        >
-                            {icon}
-                        </Box>
                         <Typography
-                            fontFamily={FONTS.A_ART}
-                            variant="h4"
+                            fontFamily={FONTS.ANTON}
+                            variant="h3"
                             sx={{ color: theme.palette.primaryGreen.main }}
                         >
                             {title}
                         </Typography>
+                        <Box
+                            sx={{
+                                color: theme.palette.primaryGreen.main,
+                                fontSize: '2.5rem',
+                                lineHeight: 1,
+                            }}
+                        >
+                            {icon}
+                        </Box>
                     </Box>
+
                     <Typography
-                        fontFamily={FONTS.TRAP_BLACK}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant="body1"
                         sx={{
                             color: theme.palette.textSecondary.main,
@@ -228,8 +230,8 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
                         </Grid>
                     </Grid>
                     <Grid size={12}>
-                        <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.A_ART, width: 'auto' }}>
-                            <Typography fontFamily={FONTS.A_ART} variant="h6">
+                        <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.ANTON, width: 'auto' }}>
+                            <Typography fontFamily={FONTS.ANTON} variant="h5">
                                 Who are you again?
                             </Typography>
                         </Button>

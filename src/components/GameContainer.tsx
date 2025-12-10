@@ -161,8 +161,8 @@ const GameContainer = ({
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="h5" sx={{ fontFamily: FONTS.A_ART }}>{gameTitle}</Typography>
-                    <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.TRAP_BLACK }}>
+                    <Typography variant="h4" sx={{ fontFamily: FONTS.ANTON }}>{gameTitle}</Typography>
+                    <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
                         Score: {currentScore}
                     </Typography>
                 </Box>
@@ -221,14 +221,14 @@ const GameContainer = ({
                             gap: 2,
                         }}
                     >
-                        <Typography variant="h3" sx={{ color: 'white', fontFamily: FONTS.A_ART }}>
+                        <Typography variant="h2" sx={{ color: 'white', fontFamily: FONTS.ANTON }}>
                             Game Over!
                         </Typography>
-                        <Typography variant="h5" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.TRAP_BLACK }}>
+                        <Typography variant="h5" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
                             Score: {currentScore}
                         </Typography>
                         {highScore > 0 && (
-                            <Typography variant="h6" sx={{ color: 'white', fontFamily: FONTS.TRAP_BLACK }}>
+                            <Typography variant="h6" sx={{ color: 'white', fontFamily: FONTS.NECTO_MONO }}>
                                 High Score: {highScore}
                             </Typography>
                         )}
@@ -239,7 +239,8 @@ const GameContainer = ({
                             sx={{
                                 bgcolor: 'primaryGreen.main',
                                 color: 'darkBackground.main',
-                                fontFamily: FONTS.A_ART,
+                                fontFamily: FONTS.ANTON,
+                                fontSize: '1.1rem',
                                 px: 4,
                                 py: 1.5,
                                 mt: 2,
@@ -269,7 +270,7 @@ const GameContainer = ({
                             justifyContent: 'center',
                         }}
                     >
-                        <Typography variant="h3" sx={{ color: 'white', fontFamily: FONTS.A_ART }}>
+                        <Typography variant="h3" sx={{ color: 'white', fontFamily: FONTS.ANTON }}>
                             PAUSED
                         </Typography>
                     </Box>

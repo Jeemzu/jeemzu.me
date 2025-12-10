@@ -26,8 +26,8 @@ const Navigation = () => {
                 <Button
                     sx={{
                         color: isActive ? theme.palette.text.primary : theme.palette.textSecondary.main,
-                        fontFamily: FONTS.A_ART,
-                        fontSize: mobile ? '1.2rem' : '1rem',
+                        fontFamily: FONTS.ANTON,
+                        fontSize: mobile ? '1.4rem' : '1.1rem',
                         px: 2,
                         borderBottom: isActive ? `2px solid ${theme.palette.primaryGreen.main}` : 'none',
                         borderRadius: 0,
@@ -126,8 +126,8 @@ const Navigation = () => {
                         <Button
                             sx={{
                                 color: theme.palette.primaryGreen.main,
-                                fontFamily: FONTS.A_ART,
-                                fontSize: '1.5rem',
+                                fontFamily: FONTS.ANTON,
+                                fontSize: '1.75rem',
                                 fontWeight: 600,
                                 transition: 'all 0.2s ease-in-out',
                                 '&:hover': {

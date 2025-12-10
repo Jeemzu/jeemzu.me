@@ -22,8 +22,8 @@ const Footer = () => {
                         {/* Left Section - Branding */}
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'left' } }}>
                             <Typography
-                                variant="h6"
-                                fontFamily={FONTS.A_ART}
+                                variant="h5"
+                                fontFamily={FONTS.ANTON}
                                 sx={{
                                     color: theme.palette.primaryGreen.main,
                                     mb: 0.5,
@@ -33,7 +33,7 @@ const Footer = () => {
                             </Typography>
                             <Typography
                                 variant="caption"
-                                fontFamily={FONTS.TRAP_BLACK}
+                                fontFamily={FONTS.NECTO_MONO}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
                                     lineHeight: 1.5,
@@ -47,8 +47,8 @@ const Footer = () => {
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: 'center' }}>
                             <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
                                 <Typography
-                                    variant="caption"
-                                    fontFamily={FONTS.A_ART}
+                                    variant="body2"
+                                    fontFamily={FONTS.ANTON}
                                     sx={{
                                         color: theme.palette.primaryGreen.main,
                                         mb: 0.5,
@@ -107,7 +107,7 @@ const Footer = () => {
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'right' } }}>
                             <Typography
                                 variant="caption"
-                                fontFamily={FONTS.TRAP_BLACK}
+                                fontFamily={FONTS.NECTO_MONO}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
                                     display: 'block',
@@ -118,7 +118,7 @@ const Footer = () => {
                             </Typography>
                             <Typography
                                 variant="caption"
-                                fontFamily={FONTS.TRAP_BLACK}
+                                fontFamily={FONTS.NECTO_MONO}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
                                     opacity: 0.7,
@@ -134,7 +134,7 @@ const Footer = () => {
                             <Divider sx={{ borderColor: `${theme.palette.primaryGreen.main}22`, mt: 1.5 }} />
                             <Typography
                                 variant="caption"
-                                fontFamily={FONTS.TRAP_BLACK}
+                                fontFamily={FONTS.NECTO_MONO}
                                 sx={{
                                     color: theme.palette.textSecondary.main,
                                     opacity: 0.6,

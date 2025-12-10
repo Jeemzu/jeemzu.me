@@ -86,9 +86,9 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                 }}
             >
                 <Typography
-                    fontFamily={FONTS.A_ART}
+                    fontFamily={FONTS.ANTON}
                     sx={{
-                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                        fontSize: { xs: '1rem', sm: '1.15rem' },
                         color: theme.palette.primaryGreen.main,
                         mb: 1,
                         textTransform: 'uppercase',
@@ -98,9 +98,9 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                     Featured Game
                 </Typography>
                 <Typography
-                    fontFamily={FONTS.A_ART}
+                    fontFamily={FONTS.ANTON}
                     sx={{
-                        fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4.5rem' },
+                        fontSize: { xs: '3rem', sm: '4rem', md: '5rem' },
                         color: theme.palette.text.primary,
                         mb: 2,
                         textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
@@ -109,7 +109,7 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                     {game.title}
                 </Typography>
                 <Typography
-                    fontFamily={FONTS.TRAP_BLACK}
+                    fontFamily={FONTS.NECTO_MONO}
                     sx={{
                         fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
                         color: theme.palette.textSecondary.main,
@@ -129,8 +129,8 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                         sx={{
                             backgroundColor: theme.palette.primaryGreen.main,
                             color: theme.palette.darkBackground.main,
-                            fontFamily: FONTS.A_ART,
-                            fontSize: { xs: '1rem', sm: '1.2rem' },
+                            fontFamily: FONTS.ANTON,
+                            fontSize: { xs: '1.15rem', sm: '1.35rem' },
                             fontWeight: 600,
                             px: { xs: 3, sm: 4 },
                             py: { xs: 1.5, sm: 2 },

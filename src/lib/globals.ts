@@ -7,6 +7,8 @@ export const FONTS = {
     PALACE: 'Palace',
     PIXER: 'Pixer',
     TOP_SHOW: 'TopShow',
+    ANTON: 'Anton-Regular',
+    NECTO_MONO: 'NectoMono-Regular',
 } as const;
 
 // Personal Links

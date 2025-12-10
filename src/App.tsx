@@ -8,7 +8,6 @@ import PageTransition from './components/PageTransition';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/ErrorBoundary';
-import bg from './assets/images/bg.png';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -34,7 +33,7 @@ const LoadingSpinner = () => (
     />
     <Typography
       variant="h6"
-      fontFamily={FONTS.A_ART}
+      fontFamily={FONTS.ANTON}
       sx={{
         color: '#bdeb92ff',
         textAlign: 'center'
@@ -77,15 +76,15 @@ function Custom404() {
         }}
       />
       <Typography
-        variant="h4"
-        fontFamily={FONTS.A_ART}
+        variant="h3"
+        fontFamily={FONTS.ANTON}
         sx={{ mb: 2 }}
       >
         *Visible Confusion*
       </Typography>
       <Typography
         variant="h6"
-        fontFamily={FONTS.TRAP_BLACK}
+        fontFamily={FONTS.NECTO_MONO}
         sx={{ mb: 3 }}
       >
         (404, this page doesn't exist...)
@@ -96,7 +95,8 @@ function Custom404() {
         sx={{
           backgroundColor: '#bdeb92ff',
           color: '#121212',
-          fontFamily: FONTS.A_ART,
+          fontFamily: FONTS.ANTON,
+          fontSize: '1.25rem',
           '&:hover': {
             backgroundColor: '#a8d67eff'
           }
@@ -139,11 +139,10 @@ function App() {
         flexDirection: 'column',
         minHeight: '100vh',
         minWidth: '100vw',
-        backgroundImage: `url(${bg})`,
         backgroundRepeat: 'repeat',
         backgroundAttachment: 'fixed',
         backgroundSize: 'auto',
-        backgroundColor: '#121212',
+        backgroundColor: '#090c0c',
       }}>
         {/* Navigation */}
         <Navigation />

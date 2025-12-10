@@ -42,8 +42,8 @@ const HomeHeaderTooltip = styled(({ className, ...props }: TooltipProps) => (
         backgroundColor: theme.palette.darkBackground.main,
         color: theme.palette.primaryGreen.main,
         boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)",
-        fontSize: 16,
-        fontFamily: FONTS.A_ART,
+        fontSize: 18,
+        fontFamily: FONTS.ANTON,
         textAlign: 'center',
         padding: '8px 16px',
         textWrap: 'nowrap',
@@ -108,7 +108,7 @@ const Home = () => {
             {/* Header Section */}
             <Grid size={12}>
                 <Typography
-                    fontFamily={FONTS.A_ART}
+                    fontFamily={FONTS.ANTON}
                     variant={isMobile ? "h4" : "h2"}
                     sx={{
                         textAlign: 'center',
@@ -123,14 +123,14 @@ const Home = () => {
                 </Typography>
 
                 <Typography
-                    fontFamily={FONTS.A_ART}
+                    fontFamily={FONTS.ANTON}
                     sx={{
                         textAlign: 'center',
                         letterSpacing: 2,
                         position: 'relative',
                         transform: `${isMobile ? 'translateY(-50%)' : 'translateY(-80%)'}`,
                     }}
-                    variant={isMobile ? "h6" : "h5"}
+                    variant={isMobile ? "h5" : "h4"}
                 >
                     I work at Mojang Studios developing cool new stuff for Minecraft! <br />
                 </Typography>

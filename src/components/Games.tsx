@@ -111,14 +111,14 @@ const GameCard = ({
                 </Box>
                 <CardContent sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Typography
-                        fontFamily={FONTS.A_ART}
-                        variant="h5"
+                        fontFamily={FONTS.ANTON}
+                        variant="h4"
                         sx={{ color: theme.palette.primaryGreen.main }}
                     >
                         {title}
                     </Typography>
                     <Typography
-                        fontFamily={FONTS.TRAP_BLACK}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant="body1"
                         sx={{
                             color: theme.palette.textSecondary.main,
@@ -135,7 +135,7 @@ const GameCard = ({
                         sx={{
                             backgroundColor: theme.palette.primaryGreen.main,
                             color: theme.palette.darkBackground.main,
-                            fontFamily: FONTS.A_ART,
+                            fontFamily: FONTS.ANTON,
                             fontWeight: 600,
                             py: 1.5,
                             transition: 'all 0.2s ease-in-out',

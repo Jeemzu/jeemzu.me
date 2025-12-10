@@ -23,6 +23,16 @@
   src: local('Trap-Black'), url(./assets/fonts/Trap-Black.otf) format('opentype');
 }
 
+@font-face {
+  font-family: 'Anton-Regular';
+  src: local('Anton-Regular'), url(./assets/fonts/Anton-Regular.ttf) format('truetype');
+}
+
+@font-face {
+  font-family: 'NectoMono-Regular';
+  src: local('NectoMono-Regular'), url(./assets/fonts/NectoMono-Regular.otf) format('opentype');
+}
+
 :root {
   font-family: "Palace", Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
