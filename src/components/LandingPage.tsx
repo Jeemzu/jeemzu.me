@@ -5,8 +5,7 @@ import { EFFECTS, FONTS, LINKS } from "../lib/globals";
 import { Link } from "wouter";
 import AboutMe from "./AboutMe";
 import meAndCourtneyImg from '../assets/images/meandcourtney.png';
-import beansImg from '../assets/images/beans.png';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
 const LandingPage = () => {
     const theme = useTheme();
@@ -14,23 +13,6 @@ const LandingPage = () => {
     const isWideScreen = useMediaQuery('(min-width:1400px)');
     const [openImage, setOpenImage] = useState<string | null>(null);
     const heroRef = useRef<HTMLDivElement>(null);
-    const [heroHeight, setHeroHeight] = useState(0);
-
-    useEffect(() => {
-        if (heroRef.current && isWideScreen) {
-            setHeroHeight(heroRef.current.offsetHeight);
-
-            const resizeObserver = new ResizeObserver(() => {
-                if (heroRef.current) {
-                    setHeroHeight(heroRef.current.offsetHeight);
-                }
-            });
-
-            resizeObserver.observe(heroRef.current);
-
-            return () => resizeObserver.disconnect();
-        }
-    }, [isWideScreen]);
 
     return (
         <Container maxWidth="xl" sx={{ position: 'relative' }}>
