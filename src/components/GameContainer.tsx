@@ -61,6 +61,8 @@ const GameContainer = ({
             let musicSrc = '';
             if (gameTitle === 'Snake') {
                 musicSrc = '/src/assets/sounds/snake_music.mp3';
+            } else if (gameTitle === 'zAim') {
+                musicSrc = '/src/assets/sounds/zaim_music.mp3';
             }
             // Add more game music paths here as needed
 

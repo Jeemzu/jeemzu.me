@@ -53,9 +53,18 @@ export class ZAimScene extends Phaser.Scene {
     private cellWidth: number = 0;
     private cellHeight: number = 0;
     private targetColor: number = GREEN_COLOR;
+    private hitSound?: Phaser.Sound.BaseSound;
+    private bgMusic?: Phaser.Sound.BaseSound;
 
     constructor() {
         super({ key: 'ZAimScene' });
+    }
+
+    preload() {
+        // Load the hit sound
+        this.load.audio('zaimHit', '/src/assets/sounds/zaim_hit.mp3');
+        // Load the background music
+        this.load.audio('zaimMusic', '/src/assets/sounds/zaim_music.mp3');
     }
 
     init(data: { difficulty?: Difficulty }) {
@@ -68,6 +77,23 @@ export class ZAimScene extends Phaser.Scene {
         // Get settings from registry
         const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
         this.targetColor = parseInt(primaryColorHex.replace('#', '0x'));
+
+        // Get volume setting
+        const volume = this.registry.get('volume') || 0.5;
+
+        // Initialize sounds only if they don't exist
+        if (!this.hitSound) {
+            this.hitSound = this.sound.add('zaimHit', { volume: volume * 0.6 });
+        } else {
+            (this.hitSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.6);
+        }
+        if (!this.bgMusic) {
+            this.bgMusic = this.sound.add('zaimMusic', { volume: volume * 0.3, loop: true });
+            // Start background music only on first create
+            this.bgMusic.play();
+        } else {
+            (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.3);
+        }
 
         // Reset game state
         this.gridCells = [];
@@ -222,6 +248,9 @@ export class ZAimScene extends Phaser.Scene {
             cell.rect.setAlpha(1);
             cell.rect.setFillStyle(WHITE_COLOR, 0.3);
             cell.rect.setStrokeStyle(2, WHITE_COLOR, 0.5);
+
+            // Play hit sound
+            this.hitSound?.play();
 
             // Create +10 hit marker text
             const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
