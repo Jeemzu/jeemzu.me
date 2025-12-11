@@ -2,20 +2,22 @@ import { useState } from 'react';
 import GameContainer from '../../components/GameContainer';
 import ComingSoonModal from '../../components/ComingSoonModal';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
+import { createZAimGameConfig } from '../../games/ZAimGame';
 import { type GameDataProps } from "../GameTypes";
 
 // Import game assets
-import websiteThumbnail from '../../assets/images/website.png';
-import snake1Gif from '../../assets/images/1.gif';
-import pong2Gif from '../../assets/images/2.gif';
-import tetris3Gif from '../../assets/images/3.gif';
-import breakout4Gif from '../../assets/images/4.gif';
+import comingsoonpng from '../../assets/images/comingsoon.png';
+import comingsoongif from '../../assets/images/comingsoon.gif';
+import snakepng from '../../assets/images/snake.png';
+import snakegif from '../../assets/images/snake.gif';
+import zaimpng from '../../assets/images/zaim.png';
+import zaimgif from '../../assets/images/zaim.gif';
 
 // Game launcher hook - we'll use this to manage game state
 export const useGameLauncher = () => {
     const [currentGame, setCurrentGame] = useState<{
         title: string;
-        config: ReturnType<typeof createSnakeGameConfig>;
+        config: ReturnType<typeof createSnakeGameConfig> | ReturnType<typeof createZAimGameConfig>;
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
 
@@ -23,6 +25,13 @@ export const useGameLauncher = () => {
         setCurrentGame({
             title: 'Snake',
             config: createSnakeGameConfig(),
+        });
+    };
+
+    const launchZAim = () => {
+        setCurrentGame({
+            title: 'zAim',
+            config: createZAimGameConfig(),
         });
     };
 
@@ -55,30 +64,40 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, showComingSoon, GameModal, ComingSoonGameModal };
+    return { launchSnake, launchZAim, showComingSoon, GameModal, ComingSoonGameModal };
 };
 
 // Create game data with launcher functions
 export const createGameData = (launchers: {
     launchSnake: () => void;
+    launchZAim: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
         {
-            id: 'snake',
-            title: 'Snake',
-            description: 'Classic snake game - eat the food and grow longer without hitting yourself!',
-            thumbnail: websiteThumbnail,
-            gameplayGif: snake1Gif,
+            id: 'zaim',
+            title: 'zAim',
+            description: 'Test your reflexes! Click targets before they disappear in this FPS aim trainer.',
+            thumbnail: zaimpng,
+            gameplayGif: zaimgif,
             genre: 'Arcade',
             featured: true,
+            onPlay: launchers.launchZAim,
+        },
+        {
+            id: 'snake',
+            title: 'Snake',
+            description: 'Classic Snake - eat the food and grow longer without hitting yourself!',
+            thumbnail: snakepng,
+            gameplayGif: snakegif,
+            genre: 'Arcade',
             onPlay: launchers.launchSnake,
         },
         {
             id: 'pong',
             title: 'Pong',
             description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-            thumbnail: websiteThumbnail,
-            gameplayGif: pong2Gif,
+            thumbnail: comingsoonpng,
+            gameplayGif: comingsoongif,
             genre: 'Arcade',
             onPlay: () => launchers.showComingSoon('Pong'),
         },
@@ -86,8 +105,8 @@ export const createGameData = (launchers: {
             id: 'tetris',
             title: 'Tetris',
             description: 'Stack falling blocks to clear lines. How high can you score?',
-            thumbnail: websiteThumbnail,
-            gameplayGif: tetris3Gif,
+            thumbnail: comingsoonpng,
+            gameplayGif: comingsoongif,
             genre: 'Puzzle',
             onPlay: () => launchers.showComingSoon('Tetris'),
         },
@@ -95,8 +114,8 @@ export const createGameData = (launchers: {
             id: 'breakout',
             title: 'Breakout',
             description: 'Break all the bricks with your paddle and ball!',
-            thumbnail: websiteThumbnail,
-            gameplayGif: breakout4Gif,
+            thumbnail: comingsoonpng,
+            gameplayGif: comingsoongif,
             genre: 'Arcade',
             onPlay: () => launchers.showComingSoon('Breakout'),
         },
@@ -105,9 +124,9 @@ export const gameData: GameDataProps[] = [
     {
         id: 'snake',
         title: 'Snake',
-        description: 'Classic snake game - eat the food and grow longer without hitting yourself!',
-        thumbnail: websiteThumbnail,
-        gameplayGif: snake1Gif,
+        description: 'Classic Snake - eat the food and grow longer without hitting yourself!',
+        thumbnail: snakepng,
+        gameplayGif: snakegif,
         genre: 'Arcade',
         featured: true,
         onPlay: () => console.log('Use GamesPage with launcher'),
@@ -116,8 +135,8 @@ export const gameData: GameDataProps[] = [
         id: 'pong',
         title: 'Pong',
         description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-        thumbnail: websiteThumbnail,
-        gameplayGif: pong2Gif,
+        thumbnail: comingsoonpng,
+        gameplayGif: comingsoongif,
         genre: 'Arcade',
         onPlay: () => console.log('Launching Pong game...'),
     },
@@ -125,8 +144,8 @@ export const gameData: GameDataProps[] = [
         id: 'tetris',
         title: 'Tetris',
         description: 'Stack falling blocks to clear lines. How high can you score?',
-        thumbnail: websiteThumbnail,
-        gameplayGif: tetris3Gif,
+        thumbnail: comingsoonpng,
+        gameplayGif: comingsoongif,
         genre: 'Puzzle',
         onPlay: () => console.log('Launching Tetris game...'),
     },
@@ -134,8 +153,8 @@ export const gameData: GameDataProps[] = [
         id: 'breakout',
         title: 'Breakout',
         description: 'Break all the bricks with your paddle and ball!',
-        thumbnail: websiteThumbnail,
-        gameplayGif: breakout4Gif,
+        thumbnail: comingsoonpng,
+        gameplayGif: comingsoongif,
         genre: 'Arcade',
         onPlay: () => console.log('Launching Breakout game...'),
     },

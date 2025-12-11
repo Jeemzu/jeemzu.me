@@ -19,12 +19,45 @@ export class SnakeScene extends Phaser.Scene {
     private graphics!: Phaser.GameObjects.Graphics;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private isGameOver: boolean = false;
+    private eatSound?: Phaser.Sound.BaseSound;
+    private loseSound?: Phaser.Sound.BaseSound;
+    private bgMusic?: Phaser.Sound.BaseSound;
+    private snakeHeadColor: number = 0x4ade80;
+    private snakeBodyColor: number = 0x22c55e;
 
     constructor() {
         super({ key: 'SnakeScene' });
     }
 
+    preload() {
+        // Load the eat sound
+        this.load.audio('eat', '/src/assets/sounds/snake_eat.mp3');
+        // Load the lose sound
+        this.load.audio('lose', '/src/assets/sounds/snake_lose.wav');
+        // Load the background music
+        this.load.audio('bgMusic', '/src/assets/sounds/snake_music.mp3');
+    }
+
     create() {
+        // Get color settings from registry
+        const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
+        const baseColor = parseInt(primaryColorHex.replace('#', '0x'));
+
+        // Calculate lighter shade for head (add brightness)
+        const r = Math.min(255, ((baseColor >> 16) & 0xFF) + 40);
+        const g = Math.min(255, ((baseColor >> 8) & 0xFF) + 40);
+        const b = Math.min(255, (baseColor & 0xFF) + 40);
+        this.snakeHeadColor = (r << 16) | (g << 8) | b;
+
+        // Calculate darker shade for body (reduce brightness)
+        const r2 = Math.max(0, ((baseColor >> 16) & 0xFF) - 40);
+        const g2 = Math.max(0, ((baseColor >> 8) & 0xFF) - 40);
+        const b2 = Math.max(0, (baseColor & 0xFF) - 40);
+        this.snakeBodyColor = (r2 << 16) | (g2 << 8) | b2;
+
+        // Get volume setting
+        const volume = this.registry.get('volume') || 0.5;
+
         // Reset all game state
         this.isGameOver = false;
         this.score = 0;
@@ -32,6 +65,25 @@ export class SnakeScene extends Phaser.Scene {
         this.moveDelay = 150;
         this.direction = { x: 1, y: 0 };
         this.nextDirection = { x: 1, y: 0 };
+
+        // Initialize sounds only if they don't exist
+        if (!this.eatSound) {
+            this.eatSound = this.sound.add('eat', { volume: volume * 0.5 });
+        } else {
+            (this.eatSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.5);
+        }
+        if (!this.loseSound) {
+            this.loseSound = this.sound.add('lose', { volume: volume * 0.6 });
+        } else {
+            (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.6);
+        }
+        if (!this.bgMusic) {
+            this.bgMusic = this.sound.add('bgMusic', { volume: volume * 0.3, loop: true });
+            // Start background music only on first create
+            this.bgMusic.play();
+        } else {
+            (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.3);
+        }
 
         this.graphics = this.add.graphics();
 
@@ -162,6 +214,8 @@ export class SnakeScene extends Phaser.Scene {
         if (this.food && newHead.x === this.food.x && newHead.y === this.food.y) {
             this.score += 10;
             this.game.events.emit('scoreUpdate', this.score);
+            // Play eat sound
+            this.eatSound?.play();
             this.placeFood();
             // Speed up slightly
             this.moveDelay = Math.max(50, this.moveDelay - 2);
@@ -211,13 +265,13 @@ export class SnakeScene extends Phaser.Scene {
 
         // Draw snake - need to set fill style before each rect
         this.snake.forEach((segment, index) => {
-            this.graphics.lineStyle(0, 0x4ade80); // Reset line style for fills
+            this.graphics.lineStyle(0, this.snakeHeadColor); // Reset line style for fills
             if (index === 0) {
-                // Head - brighter green
-                this.graphics.fillStyle(0x4ade80, 1);
+                // Head - brighter color
+                this.graphics.fillStyle(this.snakeHeadColor, 1);
             } else {
-                // Body - theme green
-                this.graphics.fillStyle(0x22c55e, 1);
+                // Body - darker color
+                this.graphics.fillStyle(this.snakeBodyColor, 1);
             }
             this.graphics.fillRect(
                 segment.x * CELL_SIZE + 1,
@@ -241,6 +295,8 @@ export class SnakeScene extends Phaser.Scene {
 
     private gameOver() {
         this.isGameOver = true;
+        // Play lose sound
+        this.loseSound?.play();
         this.game.events.emit('gameOver', this.score);
     }
 }

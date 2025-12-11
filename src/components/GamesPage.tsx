@@ -6,10 +6,10 @@ import { type GameGenre } from "../lib/GameTypes";
 
 const GamesPage = () => {
     // Set up game launcher
-    const { launchSnake, showComingSoon, GameModal, ComingSoonGameModal } = useGameLauncher();
+    const { launchSnake, launchZAim, showComingSoon, GameModal, ComingSoonGameModal } = useGameLauncher();
 
     // Create game data with launcher functions
-    const gameData = createGameData({ launchSnake, showComingSoon });
+    const gameData = createGameData({ launchSnake, launchZAim, showComingSoon });
 
     // Get featured game
     const featuredGame = gameData.find(game => game.featured) || gameData[0];
