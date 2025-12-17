@@ -60,9 +60,9 @@ const GameContainer = ({
             // Determine which music to play based on game
             let musicSrc = '';
             if (gameTitle === 'Snake') {
-                musicSrc = '/src/assets/sounds/snake_music.mp3';
+                musicSrc = '/sounds/snake_music.mp3';
             } else if (gameTitle === 'zAim') {
-                musicSrc = '/src/assets/sounds/zaim_music.mp3';
+                musicSrc = '/sounds/zaim_music.mp3';
             }
             // Add more game music paths here as needed
 

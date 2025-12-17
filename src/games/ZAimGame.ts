@@ -62,9 +62,9 @@ export class ZAimScene extends Phaser.Scene {
 
     preload() {
         // Load the hit sound
-        this.load.audio('zaimHit', '/src/assets/sounds/zaim_hit.mp3');
+        this.load.audio('zaimHit', '/sounds/zaim_hit.mp3');
         // Load the background music
-        this.load.audio('zaimMusic', '/src/assets/sounds/zaim_music.mp3');
+        this.load.audio('zaimMusic', '/sounds/zaim_music.mp3');
     }
 
     init(data: { difficulty?: Difficulty }) {

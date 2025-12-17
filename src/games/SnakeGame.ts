@@ -31,11 +31,11 @@ export class SnakeScene extends Phaser.Scene {
 
     preload() {
         // Load the eat sound
-        this.load.audio('eat', '/src/assets/sounds/snake_eat.mp3');
+        this.load.audio('eat', '/sounds/snake_eat.mp3');
         // Load the lose sound
-        this.load.audio('lose', '/src/assets/sounds/snake_lose.wav');
+        this.load.audio('lose', '/sounds/snake_lose.mp3');
         // Load the background music
-        this.load.audio('bgMusic', '/src/assets/sounds/snake_music.mp3');
+        this.load.audio('bgMusic', '/sounds/snake_music.mp3');
     }
 
     create() {
