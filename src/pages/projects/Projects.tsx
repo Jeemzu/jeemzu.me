@@ -1,8 +1,8 @@
 import { Typography, Card, CardContent, CardMedia, useTheme, Box } from "@mui/material";
-import { projectData, type ProjectDataProps } from "../lib/data/ProjectData";
-import { onClickUrl } from "../utils/openInNewTab";
-import { ANIMATIONS, EFFECTS, FONTS } from "../lib/globals";
-import { useScrollAnimation } from "../utils/useScrollAnimation";
+import { projectData, type ProjectDataProps } from "../../lib/data/ProjectData";
+import { onClickUrl } from "../../utils/openInNewTab";
+import { ANIMATIONS, EFFECTS, FONTS } from "../../lib/globals";
+import { useScrollAnimation } from "../../utils/useScrollAnimation";
 
 const ProjectCard = ({
     onClick,

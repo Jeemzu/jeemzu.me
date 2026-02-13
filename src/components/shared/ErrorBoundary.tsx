@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container, Typography, Button } from '@mui/material';
-import { FONTS } from '../lib/globals';
+import { FONTS } from '../../lib/globals';
 
 interface ErrorBoundaryState {
     hasError: boolean;

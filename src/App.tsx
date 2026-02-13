@@ -2,12 +2,12 @@ import { Button, CircularProgress, Grid, Box, Typography, Container } from '@mui
 import './App.css'
 import { lazy, Suspense, type JSX } from 'react';
 import { Route, Router, Switch } from "wouter";
-import Footer from './components/Footer';
-import Navigation from './components/Navigation';
-import PageTransition from './components/PageTransition';
+import Footer from './components/shared/Footer';
+import Navigation from './components/shared/Navigation';
+import PageTransition from './components/shared/PageTransition';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -108,10 +108,10 @@ function Custom404() {
   )
 }
 
-const LandingPage = LC(lazy(() => import("./components/LandingPage")));
-const ProjectsPage = LC(lazy(() => import("./components/ProjectsPage")));
-const GamesPage = LC(lazy(() => import("./components/GamesPage")));
-const ExperiencePage = LC(lazy(() => import("./components/ExperiencePage")));
+const LandingPage = LC(lazy(() => import("./pages/landing/LandingPage")));
+const ProjectsPage = LC(lazy(() => import("./pages/projects/ProjectsPage")));
+const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")));
+const ExperiencePage = LC(lazy(() => import("./pages/experience/ExperiencePage")));
 
 export function Routes() {
   return (

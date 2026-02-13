@@ -1,8 +1,8 @@
 import { Container, Typography, useTheme } from "@mui/material";
-import { FONTS } from "../lib/globals";
-import MyJourney from "./MyJourney";
+import { FONTS } from "../../lib/globals";
+import Projects from "./Projects";
 
-const ExperiencePage = () => {
+const ProjectsPage = () => {
     const theme = useTheme();
 
     return (
@@ -16,7 +16,7 @@ const ExperiencePage = () => {
                     color: theme.palette.primaryGreen.main,
                 }}
             >
-                My Journey
+                My Projects
             </Typography>
             <Typography
                 fontFamily={FONTS.NECTO_MONO}
@@ -29,11 +29,11 @@ const ExperiencePage = () => {
                     mx: 'auto',
                 }}
             >
-                My professional path and experiences in software engineering
+                A showcase of my recent work and side projects
             </Typography>
-            <MyJourney />
+            <Projects />
         </Container>
     );
 };
 
-export default ExperiencePage;
+export default ProjectsPage;

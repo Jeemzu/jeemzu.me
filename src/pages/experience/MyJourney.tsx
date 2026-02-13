@@ -1,10 +1,10 @@
 import { Typography, Grid, Card, Modal, Box, List, ListItem, ListItemText, ListItemIcon, ListSubheader, CardContent, useMediaQuery, useTheme } from "@mui/material";
 import { useState } from "react";
 import { FaCaretRight } from "react-icons/fa6";
-import type { JourneyCardModal, JourneyCardProps } from "../lib/MyJourneyTypes";
-import { cardData, modalStyle } from "../lib/data/JourneyData";
-import { ANIMATIONS, EFFECTS, FONTS } from "../lib/globals";
-import { useScrollAnimation } from "../utils/useScrollAnimation";
+import type { JourneyCardModal, JourneyCardProps } from "../../lib/MyJourneyTypes";
+import { cardData, modalStyle } from "../../lib/data/JourneyData";
+import { ANIMATIONS, EFFECTS, FONTS } from "../../lib/globals";
+import { useScrollAnimation } from "../../utils/useScrollAnimation";
 
 const JourneyCard = ({
     onClick,

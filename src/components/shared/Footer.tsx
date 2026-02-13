@@ -1,8 +1,8 @@
 import { Container, Grid, Typography, useTheme, Box, IconButton, Divider, Stack } from "@mui/material"
 import React from "react"
-import { EFFECTS, FONTS, LINKS } from "../lib/globals"
+import { EFFECTS, FONTS, LINKS } from "../../lib/globals"
 import { FaGithub, FaLinkedin, FaEnvelope } from "react-icons/fa6"
-import { onClickUrl } from "../utils/openInNewTab"
+import { onClickUrl } from "../../utils/openInNewTab"
 
 const Footer = () => {
     const theme = useTheme();

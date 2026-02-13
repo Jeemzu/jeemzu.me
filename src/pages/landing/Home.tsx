@@ -1,13 +1,13 @@
 import { Grid, Stack, styled, Tooltip, tooltipClasses, Typography, Zoom, type TooltipProps, useTheme, Skeleton, useMediaQuery, Button } from "@mui/material";
 import { FaCode, FaEnvelope, FaFile, FaGamepad, FaGithub, FaLinkedin, FaPerson, FaRoad } from "react-icons/fa6";
 import { useRef, Suspense, lazy } from "react";
-import { onClickUrl } from "../utils/openInNewTab";
+import { onClickUrl } from "../../utils/openInNewTab";
 import React from "react";
-import { FONTS, LAYOUT, LINKS } from "../lib/globals";
+import { FONTS, LAYOUT, LINKS } from "../../lib/globals";
 
 const AboutMe = lazy(() => import("./AboutMe"));
-const MyJourney = lazy(() => import("./MyJourney"));
-const Projects = lazy(() => import("./Projects"));
+const MyJourney = lazy(() => import("../experience/MyJourney"));
+const Projects = lazy(() => import("../projects/Projects"));
 
 // Section Loading Component
 const SectionSkeleton = () => (

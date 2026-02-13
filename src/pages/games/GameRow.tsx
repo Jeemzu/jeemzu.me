@@ -1,6 +1,6 @@
 import { Box, Typography, useTheme, IconButton } from "@mui/material";
-import { type GameDataProps } from "../lib/GameTypes";
-import { FONTS } from "../lib/globals";
+import { type GameDataProps } from "../../lib/GameTypes";
+import { FONTS } from "../../lib/globals";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useRef, useState } from "react";
 import GameCard from "./GameCard.tsx";

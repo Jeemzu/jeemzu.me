@@ -1,10 +1,10 @@
 import { Button, Card, CardContent, Grid, Modal, Typography, useMediaQuery, type SxProps, useTheme, Box } from "@mui/material";
 import { useState } from "react";
-import { ANIMATIONS, EFFECTS, FONTS } from "../lib/globals";
+import { ANIMATIONS, EFFECTS, FONTS } from "../../lib/globals";
 import { FaHeart, FaUsers, FaBrain } from "react-icons/fa6";
-import meAndCourtneyImg from '../assets/images/meandcourtney.png';
-import beansImg from '../assets/images/beans.png';
-import { useScrollAnimation } from "../utils/useScrollAnimation";
+import meAndCourtneyImg from '../../assets/images/meandcourtney.png';
+import beansImg from '../../assets/images/beans.png';
+import { useScrollAnimation } from "../../utils/useScrollAnimation";
 
 const modalStyle: SxProps = {
     position: 'fixed',

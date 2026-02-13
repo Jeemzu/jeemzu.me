@@ -1,8 +1,8 @@
 import { Container, IconButton, useTheme } from "@mui/material";
-import Home from "./Home";
+import Home from "../../pages/landing/Home";
 import { FaCircleArrowUp } from "react-icons/fa6";
 import { useEffect, useState } from "react";
-import { EFFECTS } from "../lib/globals";
+import { EFFECTS } from "../../lib/globals";
 
 const MainContent = () => {
     const theme = useTheme();

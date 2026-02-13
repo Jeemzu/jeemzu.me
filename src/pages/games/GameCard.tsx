@@ -1,6 +1,6 @@
 import { Typography, Card, CardContent, CardMedia, useTheme, Box, Button } from "@mui/material";
-import { type GameDataProps } from "../lib/GameTypes";
-import { EFFECTS, FONTS } from "../lib/globals";
+import { type GameDataProps } from "../../lib/GameTypes";
+import { EFFECTS, FONTS } from "../../lib/globals";
 import { useState, useEffect, useRef } from "react";
 import { FaPlay } from "react-icons/fa";
 

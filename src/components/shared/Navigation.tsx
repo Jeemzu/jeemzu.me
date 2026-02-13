@@ -1,9 +1,9 @@
 import { AppBar, Toolbar, Button, Stack, useTheme, useMediaQuery, IconButton, Drawer, Box } from "@mui/material";
 import { Link, useLocation } from "wouter";
-import { FONTS, LINKS } from "../lib/globals";
+import { FONTS, LINKS } from "../../lib/globals";
 import { FaGithub, FaLinkedin, FaBars, FaTimes } from "react-icons/fa";
 import { useState } from "react";
-import { onClickUrl } from "../utils/openInNewTab";
+import { onClickUrl } from "../../utils/openInNewTab";
 
 const Navigation = () => {
     const theme = useTheme();

@@ -1,6 +1,6 @@
 import { Box, Typography, Button, useTheme } from "@mui/material";
-import { type GameDataProps } from "../lib/GameTypes";
-import { FONTS } from "../lib/globals";
+import { type GameDataProps } from "../../lib/GameTypes";
+import { FONTS } from "../../lib/globals";
 import { FaPlay } from "react-icons/fa";
 
 interface GameHeroBannerProps {

@@ -1,8 +1,8 @@
 import { Typography, Card, CardContent, CardMedia, useTheme, Box, Button } from "@mui/material";
-import { gameData } from "../lib/data/GameData";
-import { type GameDataProps } from "../lib/GameTypes";
-import { ANIMATIONS, EFFECTS, FONTS } from "../lib/globals";
-import { useScrollAnimation } from "../utils/useScrollAnimation";
+import { gameData } from "../../lib/data/GameData";
+import { type GameDataProps } from "../../lib/GameTypes";
+import { ANIMATIONS, EFFECTS, FONTS } from "../../lib/globals";
+import { useScrollAnimation } from "../../utils/useScrollAnimation";
 import { useState, useEffect, useRef } from "react";
 import { FaPlay } from "react-icons/fa";
 

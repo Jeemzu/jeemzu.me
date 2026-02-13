@@ -1,11 +1,11 @@
 import { Grid, Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal, IconButton } from "@mui/material";
 import { FaEnvelope, FaFile, FaGamepad, FaPaw } from "react-icons/fa6";
-import { onClickUrl } from "../utils/openInNewTab";
-import { EFFECTS, FONTS, LINKS } from "../lib/globals";
+import { onClickUrl } from "../../utils/openInNewTab";
+import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
 import AboutMe from "./AboutMe";
-import meAndCourtneyImg from '../assets/images/meandcourtney.png';
-import beansImg from '../assets/images/beans.png';
+import meAndCourtneyImg from '../../assets/images/meandcourtney.png';
+import beansImg from '../../assets/images/beans.png';
 import { useState, useRef } from "react";
 
 const LandingPage = () => {

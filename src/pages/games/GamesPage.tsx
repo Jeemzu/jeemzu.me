@@ -1,8 +1,8 @@
 import { Container } from "@mui/material";
 import GameHeroBanner from "./GameHeroBanner";
 import GameRow from "./GameRow";
-import { createGameData, useGameLauncher } from "../lib/data/GameData";
-import { type GameGenre } from "../lib/GameTypes";
+import { createGameData, useGameLauncher } from "../../lib/data/GameData";
+import { type GameGenre } from "../../lib/GameTypes";
 
 const GamesPage = () => {
     // Set up game launcher
