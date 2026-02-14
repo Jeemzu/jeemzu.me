@@ -47,6 +47,7 @@ export class ZAimScene extends Phaser.Scene {
     private difficulty: Difficulty = 'medium';
     private lastSpawnTime: number = 0;
     private gameTime: number = 0;
+    private elapsedTime: number = 0;
     private gameDuration: number = 60000; // 60 seconds
     private isGameOver: boolean = false;
     private crosshair!: Phaser.GameObjects.Arc;
@@ -100,6 +101,7 @@ export class ZAimScene extends Phaser.Scene {
         this.activeTargets = [];
         this.score = 0;
         this.gameTime = 0;
+        this.elapsedTime = 0;
         this.lastSpawnTime = 0;
         this.isGameOver = false;
 
@@ -166,12 +168,23 @@ export class ZAimScene extends Phaser.Scene {
 
         // Emit initial score
         this.game.events.emit('scoreUpdate', this.score);
+
+        // Listen for volume changes from the UI
+        this.events.on('volumeChange', (newVolume: number) => {
+            if (this.hitSound) {
+                (this.hitSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
+            }
+            if (this.bgMusic) {
+                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
+            }
+        });
     }
 
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         if (this.isGameOver) return;
 
         this.gameTime += delta;
+        this.elapsedTime += delta;
 
         // Check if game time is up
         if (this.gameTime >= this.gameDuration) {
@@ -181,15 +194,15 @@ export class ZAimScene extends Phaser.Scene {
 
         const settings = DIFFICULTY_SETTINGS[this.difficulty];
 
-        // Spawn new targets
-        if (time - this.lastSpawnTime >= settings.spawnInterval && this.activeTargets.length < settings.maxTargets) {
-            this.spawnTarget(time);
-            this.lastSpawnTime = time;
+        // Spawn new targets (using internal elapsed time)
+        if (this.elapsedTime - this.lastSpawnTime >= settings.spawnInterval && this.activeTargets.length < settings.maxTargets) {
+            this.spawnTarget(this.elapsedTime);
+            this.lastSpawnTime = this.elapsedTime;
         }
 
-        // Update active targets - check for expiration
+        // Update active targets - check for expiration (using internal elapsed time)
         this.activeTargets = this.activeTargets.filter(target => {
-            const elapsed = time - target.spawnTime;
+            const elapsed = this.elapsedTime - target.spawnTime;
 
             if (elapsed >= target.duration) {
                 // Target expired - instantly reset to white

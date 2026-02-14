@@ -1,54 +1,62 @@
 # Copilot Instructions for Jeemzu.com
 
 ## Project Overview
-This is a personal portfolio website built as a single-page application using React + TypeScript + Vite. It's designed for deployment on Netlify with custom fonts and Material-UI theming.
+Personal portfolio + browser games site. React 19 + TypeScript + Vite, deployed on Netlify.
+Four routes: `/` (landing), `/projects`, `/games`, `/experience`.
 
-## Architecture & Key Patterns
+## Architecture
 
-### Component Structure
-- **Multi-page portfolio**: Uses Wouter for client-side routing with proper route-based navigation
-- **Page components**: `LandingPage.tsx`, `ProjectsPage.tsx`, `ExperiencePage.tsx` are page-level wrappers
-- **Reusable components**: `AboutMe`, `Projects`, `MyJourney` are presentation components used within pages
-- **Lazy loading**: Components are wrapped with `LC()` helper function for code splitting (see `App.tsx`)
-- **Material-UI + Custom Theme**: Extended MUI palette with custom colors (`primaryGreen`, `darkBackground`, `whiteHover`) defined in `src/themes.ts`
-- **Navigation**: Sticky `Navigation.tsx` component with responsive mobile drawer
+### Routing & Page Structure
+- **Wouter** for client-side routing (not React Router) — see `src/App.tsx`
+- Pages are lazy-loaded via the `LC()` wrapper: `const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")))`
+- Each page dir (`src/pages/{landing,projects,games,experience}/`) has a `*Page.tsx` entry + child presentation components
+- `PageTransition` wraps `<Switch>` for fade/slide transitions between routes
+- 404 uses a custom `Custom404` component inline in `App.tsx`
+
+### Games System (Phaser-based)
+- **Game engine**: Games use [Phaser 3](https://phaser.io/) rendered inside a React `GameContainer` modal (`src/components/GameContainer.tsx`)
+- **Game files**: Each game in `src/games/` exports a `create*GameConfig()` function returning a `Phaser.Types.Core.GameConfig`
+- **Game data**: `src/lib/data/GameData.tsx` defines `createGameData()` (with launcher callbacks) and `useGameLauncher()` hook managing modal state
+- **Genre system**: Games are tagged with a `GameGenre` type (`'Classics' | 'Arcade' | 'Action' | 'Strategy'`), defined in `src/lib/GameTypes.ts`. `GamesPage` groups games by genre into scrollable `GameRow` components
+- **Game cards**: Hover shows animated GIF preview after 500ms delay (thumbnail → gif pattern in `GameCard.tsx`)
+- **Sounds**: Game audio files served from `public/sounds/`, loaded in Phaser scenes via `this.load.audio()`
+- **High scores**: Stored in `localStorage` (`highScore_{gameTitle}`). `src/utils/gameApi.ts` has a backend API service (not yet connected)
+- **Adding a new game**: Create `src/games/NewGame.ts` with Phaser scene + `createNewGameConfig()`, add launcher in `useGameLauncher()`, add entry to `createGameData()` array with genre/assets, add thumbnail+gif to `src/assets/images/`
 
 ### State Management
-- **Local state**: Components use standard React hooks for local UI state (no global state currently needed)
+- **Zustand** for navigation state (`src/stores/navigationStore.ts`)
+- **React hooks** for all other local UI state — no global state library beyond Zustand
 
-### Styling Conventions
-- **MUI sx prop**: Primary styling method, avoid external CSS files when possible
-- **Custom fonts**: Defined in `FONTS` constant in `src/lib/globals.ts`, loaded via font files in `src/assets/fonts/`
-- **Color system**: Use theme palette colors (`theme.palette.primaryGreen.main`, etc.) rather than hardcoded hex values
-- **Responsive design**: Use MUI's `useMediaQuery` hook for breakpoint-specific behavior
+### Styling & Theming
+- **MUI `sx` prop** is the primary styling method — avoid CSS modules/files
+- **Custom MUI palette** in `src/themes.ts`: `primaryGreen`, `softGreen`, `darkBackground`, `cardBackground`, `textSecondary`. Use `theme.palette.primaryGreen.main` not hardcoded hex
+- **Custom fonts**: `FONTS` constant in `src/lib/globals.ts` (Anton, Palace, Pixer, NectoMono, etc.), files in `src/assets/fonts/`
+- **Responsive**: Use MUI `useMediaQuery` for breakpoint checks (e.g., `useMediaQuery('(max-width:900px)')`)
+- **Scroll animations**: `useScrollAnimation()` hook (IntersectionObserver) with `ANIMATIONS` constants from globals
 
-### Data & Content Organization
-- **Static data**: Project and journey data stored as typed objects in `src/lib/data/` directory
-- **Assets**: Images and fonts organized in `src/assets/` subdirectories
-- **Type definitions**: Shared types in `src/lib/` (e.g., `MyJourneyTypes.ts`)
+### Constants & Conventions
+- **All magic values** go in `src/lib/globals.ts` (`FONTS`, `LINKS`, `LAYOUT`, `SPACING`, `EFFECTS`, `ANIMATIONS`)
+- **Type definitions** in `src/lib/` — `GameTypes.ts`, `MyJourneyTypes.ts`
+- **Static content data** in `src/lib/data/` — `GameData.tsx`, `ProjectData.ts`, `JourneyData.ts`
+- **External links**: Use `onClickUrl()` from `src/utils/openInNewTab.ts`
+- **CSS vars** exported from `src/themes.ts` as `CSS_VARS` for non-MUI contexts
 
-### Key Utilities & Conventions
-- **Global constants**: Centralized in `src/lib/globals.ts` (fonts, links, layout values, effects)
-- **External links**: Use `onClickUrl()` utility from `src/utils/openInNewTab.ts` for external navigation
-- **Journey roadmap**: Timeline cards use 2-column staggered layout with connecting lines for visual flow
+## Development
+```bash
+npm run dev      # Vite dev server with HMR
+npm run build    # tsc -b && vite build
+npm run lint     # ESLint (flat config)
+npm run preview  # Preview production build
+```
+- Husky + lint-staged for pre-commit hooks
+- No test framework currently configured
 
-## Development Workflow
-- **Dev server**: `npm run dev` (Vite with HMR)
-- **Build**: `npm run build` (TypeScript check + Vite build)
-- **Lint**: `npm run lint` (ESLint with flat config)
+## Deployment
+- **Netlify**: `public/_redirects` handles SPA fallback, `public/_headers` sets security headers
+- Static assets: `public/` for sounds/redirects, `src/assets/` for images/fonts (bundled by Vite)
 
-## Deployment Specifics
-- **Netlify deployment**: `public/_headers` and `public/_redirects` files configure security headers and SPA routing
-- **Static assets**: PDFs and images served from `public/` and `src/assets/`
-
-## Component Patterns
-- **Error boundaries**: Wrap lazy components with `ErrorBoundary` component
-- **Loading states**: Use custom `LoadingSpinner` component matching brand colors
-- **Interactive cards**: Use hover effects with `EFFECTS` constants and rotation props
-- **Sliders**: Projects section uses `react-slick` with custom arrow components
-
-## When Adding Features
-- Add new constants to `src/lib/globals.ts` rather than hardcoding values
-- Use TypeScript interfaces for data structures in `src/lib/` directory  
-- Follow MUI theming patterns and extend palette when needed
-- Maintain lazy loading pattern for new page-level components
+## Key Patterns
+- **Lazy loading**: Always wrap new page components with `LC()` + `ErrorBoundary`
+- **Card hover effect**: Use `EFFECTS.HOVER_SCALE` / `EFFECTS.CARD_SHADOW_HOVER` from globals
+- **Game modal pattern**: `GameContainer` receives a Phaser config + handles start menu, pause, volume, difficulty, color options
+- **Projects carousel**: Uses `react-slick` with custom arrow components

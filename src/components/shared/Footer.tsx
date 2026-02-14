@@ -1,11 +1,13 @@
-import { Container, Grid, Typography, useTheme, Box, IconButton, Divider, Stack } from "@mui/material"
-import React from "react"
+import { Container, Grid, Typography, useTheme, Box, IconButton, Divider, Stack, Modal } from "@mui/material"
+import React, { useState } from "react"
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals"
-import { FaGithub, FaLinkedin, FaEnvelope } from "react-icons/fa6"
+import { FaGithub, FaLinkedin, FaEnvelope, FaPaw } from "react-icons/fa6"
 import { onClickUrl } from "../../utils/openInNewTab"
+import beansImg from '../../assets/images/beans.png'
 
 const Footer = () => {
     const theme = useTheme();
+    const [openImage, setOpenImage] = useState(false);
 
     return (
         <React.Fragment>
@@ -99,6 +101,20 @@ const Footer = () => {
                                     >
                                         <FaEnvelope size={20} />
                                     </IconButton>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setOpenImage(true)}
+                                        sx={{
+                                            color: theme.palette.textSecondary.main,
+                                            transition: EFFECTS.TRANSITION,
+                                            '&:hover': {
+                                                color: theme.palette.primaryGreen.main,
+                                                transform: 'translateY(-2px)',
+                                            }
+                                        }}
+                                    >
+                                        <FaPaw size={20} />
+                                    </IconButton>
                                 </Stack>
                             </Stack>
                         </Grid>
@@ -150,6 +166,38 @@ const Footer = () => {
                     </Grid>
                 </Container>
             </Box>
+
+            {/* Cats Image Modal */}
+            <Modal
+                open={openImage}
+                onClose={() => setOpenImage(false)}
+                slotProps={{
+                    backdrop: {
+                        sx: { backgroundColor: 'rgba(0, 0, 0, 0.9)' }
+                    }
+                }}
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                }}
+                onClick={() => setOpenImage(false)}
+            >
+                <Box sx={{ outline: 'none' }}>
+                    <img
+                        src={beansImg}
+                        alt="Our Cats"
+                        style={{
+                            maxWidth: '60vw',
+                            maxHeight: '60vh',
+                            objectFit: 'contain',
+                            borderRadius: '8px',
+                            boxShadow: '0 8px 40px rgba(0, 0, 0, 0.8)',
+                        }}
+                    />
+                </Box>
+            </Modal>
         </React.Fragment>
     )
 }

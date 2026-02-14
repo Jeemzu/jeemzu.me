@@ -1,11 +1,10 @@
-import { Grid, Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal, IconButton } from "@mui/material";
-import { FaEnvelope, FaFile, FaGamepad, FaPaw } from "react-icons/fa6";
+import { Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal } from "@mui/material";
+import { FaDice, FaEnvelope, FaFile, FaGamepad } from "react-icons/fa6";
 import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
 import AboutMe from "./AboutMe";
 import meAndCourtneyImg from '../../assets/images/meandcourtney.png';
-import beansImg from '../../assets/images/beans.png';
 import { useState, useRef } from "react";
 
 const LandingPage = () => {
@@ -16,34 +15,33 @@ const LandingPage = () => {
     const heroRef = useRef<HTMLDivElement>(null);
 
     return (
-        <Container maxWidth="xl" sx={{ position: 'relative' }}>
-            <Grid container spacing={3} sx={{ minHeight: '75vh', alignItems: 'center', py: { xs: 4, md: 6 }, position: 'relative' }}>
-                {/* Hero Section */}
-                <Grid size={12}>
-                    {/* Name - Centered above everything */}
-                    <Typography
-                        fontFamily={FONTS.ANTON}
-                        variant={isMobile ? "h3" : "h1"}
-                        sx={{
-                            textAlign: 'center',
-                            mb: { xs: 3, md: 5 },
-                            color: theme.palette.primaryGreen.main,
-                        }}
-                    >
-                        James Friedenberg
-                    </Typography>
+        <Container maxWidth="xl" sx={{ position: 'relative', py: { xs: 4, md: 6 } }}>
+            {/* Name - Centered above everything */}
+            <Typography
+                fontFamily={FONTS.ANTON}
+                variant={isMobile ? "h3" : "h1"}
+                sx={{
+                    textAlign: 'center',
+                    mb: { xs: 3, md: 5 },
+                    color: theme.palette.primaryGreen.main,
+                }}
+            >
+                James Friedenberg
+            </Typography>
 
-                    {/* Two-column layout */}
-                    <Box ref={heroRef} sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: { xs: 1, md: 2 } }}>
-                        {/* Left side - Image */}
-                        <Box
-                            sx={{
-                                flex: isMobile ? 'none' : '0 0 40%',
-                                display: 'flex',
-                                justifyContent: isMobile ? 'center' : 'flex-start',
-                                order: isMobile ? 2 : 1,
-                            }}
-                        >
+            {/* Hero Section - Two-column layout */}
+            <Box ref={heroRef} sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
+                {/* Left side - Image */}
+                <Box
+                    sx={{
+                        flex: isMobile ? 'none' : '2 1 0',
+                        minWidth: 0,
+                        display: 'flex',
+                        justifyContent: isMobile ? 'center' : 'flex-start',
+                        order: isMobile ? 2 : 1,
+                        width: isMobile ? '100%' : 'auto',
+                    }}
+                >
                             <Box
                                 onClick={() => setOpenImage(meAndCourtneyImg)}
                                 sx={{
@@ -74,13 +72,14 @@ const LandingPage = () => {
                         </Box>
 
                         {/* Right side - Content */}
-                        <Box sx={{ flex: isMobile ? 'none' : '0 0 60%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', order: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}>
+                        <Box sx={{ flex: isMobile ? 'none' : '3 1 0', minWidth: 0, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', order: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}>
                             <Box sx={{
                                 backgroundColor: theme.palette.cardBackground.main,
                                 borderRadius: 2,
                                 p: { xs: 3, md: 3 },
                                 boxShadow: EFFECTS.CARD_SHADOW,
                                 height: "280px",
+                                width: '100%',
                             }}>
                                 <Typography
                                     fontFamily={FONTS.NECTO_MONO}
@@ -111,11 +110,12 @@ const LandingPage = () => {
 
                                 {/* CTA Buttons */}
                                 <Stack
-                                    direction={isMobile ? "column" : "row"}
-                                    spacing={1.5}
+                                    direction="row"
                                     sx={{
                                         justifyContent: 'flex-start',
-                                        alignItems: isMobile ? 'stretch' : 'center',
+                                        alignItems: 'center',
+                                        flexWrap: 'nowrap',
+                                        gap: 1.5,
                                     }}
                                     paddingTop={3}
                                 >
@@ -130,6 +130,7 @@ const LandingPage = () => {
                                                 px: 3,
                                                 py: 1,
                                                 fontSize: '1rem',
+                                                whiteSpace: 'nowrap',
                                                 transition: EFFECTS.TRANSITION,
                                                 '&:hover': {
                                                     backgroundColor: theme.palette.softGreen.main,
@@ -138,27 +139,27 @@ const LandingPage = () => {
                                                 }
                                             }}
                                         >
-                                            View My Projects
+                                            My Projects
                                         </Button>
                                     </Link>
 
                                     <Link href="/experience">
                                         <Button
-                                            variant="outlined"
+                                            variant="contained"
                                             size="medium"
                                             sx={{
-                                                borderColor: theme.palette.primaryGreen.main,
-                                                color: theme.palette.primaryGreen.main,
+                                                backgroundColor: theme.palette.primaryGreen.main,
+                                                color: theme.palette.background.default,
                                                 fontFamily: FONTS.ANTON,
                                                 px: 3,
                                                 py: 1,
                                                 fontSize: '1rem',
+                                                whiteSpace: 'nowrap',
                                                 transition: EFFECTS.TRANSITION,
                                                 '&:hover': {
-                                                    borderColor: theme.palette.softGreen.main,
-                                                    color: theme.palette.softGreen.main,
-                                                    backgroundColor: 'rgba(168, 214, 126, 0.1)',
+                                                    backgroundColor: theme.palette.softGreen.main,
                                                     transform: EFFECTS.HOVER_SCALE,
+                                                    boxShadow: EFFECTS.CARD_SHADOW_HOVER,
                                                 }
                                             }}
                                         >
@@ -166,18 +167,42 @@ const LandingPage = () => {
                                         </Button>
                                     </Link>
 
+                                    <Link href="/games">
+                                        <Button
+                                            variant="contained"
+                                            size="medium"
+                                            startIcon={<FaDice />}
+                                            sx={{
+                                                backgroundColor: theme.palette.primaryGreen.main,
+                                                color: theme.palette.background.default,
+                                                fontFamily: FONTS.ANTON,
+                                                px: 3,
+                                                py: 1,
+                                                fontSize: '1rem',
+                                                whiteSpace: 'nowrap',
+                                                transition: EFFECTS.TRANSITION,
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.softGreen.main,
+                                                    transform: EFFECTS.HOVER_SCALE,
+                                                    boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+                                                }
+                                            }}
+                                        >
+                                            Games
+                                        </Button>
+                                    </Link>
+
                                     <Button
-                                        startIcon={<FaEnvelope />}
+                                        startIcon={<FaEnvelope size={16} />}
                                         onClick={onClickUrl(LINKS.EMAIL)}
-                                        size="small"
+                                        size="medium"
                                         variant="text"
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             fontFamily: FONTS.NECTO_MONO,
-                                            px: 2,
+                                            px: 1.5,
                                             py: 0.75,
                                             fontSize: '0.875rem',
-                                            minWidth: '110px',
                                             whiteSpace: 'nowrap',
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
@@ -186,21 +211,20 @@ const LandingPage = () => {
                                             }
                                         }}
                                     >
-                                        Email Me
+                                        Email
                                     </Button>
 
                                     <Button
-                                        startIcon={<FaFile />}
+                                        startIcon={<FaFile size={16} />}
                                         onClick={onClickUrl(LINKS.RESUME)}
-                                        size="small"
+                                        size="medium"
                                         variant="text"
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             fontFamily: FONTS.NECTO_MONO,
-                                            px: 2,
+                                            px: 1.5,
                                             py: 0.75,
                                             fontSize: '0.875rem',
-                                            minWidth: '110px',
                                             whiteSpace: 'nowrap',
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
@@ -213,17 +237,16 @@ const LandingPage = () => {
                                     </Button>
 
                                     <Button
-                                        startIcon={<FaGamepad />}
+                                        startIcon={<FaGamepad size={16} />}
                                         onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)}
-                                        size="small"
+                                        size="medium"
                                         variant="text"
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             fontFamily: FONTS.NECTO_MONO,
-                                            px: 2,
+                                            px: 1.5,
                                             py: 0.75,
                                             fontSize: '0.875rem',
-                                            minWidth: '160px',
                                             whiteSpace: 'nowrap',
                                             transition: EFFECTS.TRANSITION,
                                             '&:hover': {
@@ -232,35 +255,17 @@ const LandingPage = () => {
                                             }
                                         }}
                                     >
-                                        Minecraft Credits
+                                        MC Credits
                                     </Button>
-
-                                    <IconButton
-                                        onClick={() => setOpenImage(beansImg)}
-                                        size="small"
-                                        sx={{
-                                            color: theme.palette.textSecondary.main,
-                                            ml: 1,
-                                            transition: EFFECTS.TRANSITION,
-                                            '&:hover': {
-                                                color: theme.palette.primaryGreen.main,
-                                                backgroundColor: 'rgba(168, 214, 126, 0.08)',
-                                            }
-                                        }}
-                                    >
-                                        <FaPaw size={16} />
-                                    </IconButton>
                                 </Stack>
                             </Box>
                         </Box>
                     </Box>
-                </Grid>
 
                 {/* About Me Section - Pass hideImages prop on wide screens */}
-                <Grid size={12}>
+                <Box sx={{ mt: { xs: 3, md: 4 } }}>
                     <AboutMe hideImages={isWideScreen} />
-                </Grid>
-            </Grid>
+                </Box>
 
             {/* Image Modal */}
             <Modal

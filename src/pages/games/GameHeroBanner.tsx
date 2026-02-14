@@ -14,65 +14,73 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
         <Box
             sx={{
                 position: 'relative',
-                width: '100%',
+                width: '100vw',
                 height: { xs: '300px', sm: '400px', md: '500px' },
                 overflow: 'hidden',
-                borderRadius: 2,
-                mb: 6,
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                backgroundColor: '#000',
             }}
         >
-            {/* Black background for left side */}
+            {/* Centered gameplay image */}
+            <Box
+                component="img"
+                src={game.gameplayGif}
+                alt={`${game.title} gameplay`}
+                sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    height: '100%',
+                    maxWidth: { xs: '100%', md: '70%', lg: '60%' },
+                    width: 'auto',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                }}
+            />
+
+            {/* Left black gradient fade */}
             <Box
                 sx={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: '33.33%',
+                    width: '40%',
                     height: '100%',
-                    backgroundColor: '#000',
-                    zIndex: 0,
+                    background: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0) 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
                 }}
             />
 
-            {/* Background Images - right 2/3rds */}
+            {/* Right black gradient fade */}
             <Box
                 sx={{
                     position: 'absolute',
                     top: 0,
-                    left: '33.33%',
                     right: 0,
+                    width: '40%',
                     height: '100%',
-                    overflow: 'hidden',
+                    background: 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 40%, rgba(0,0,0,0) 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
                 }}
-            >
-                {/* Gameplay GIF - always shown */}
-                <Box
-                    component="img"
-                    src={game.gameplayGif}
-                    alt={`${game.title} gameplay`}
-                    sx={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'left center',
-                    }}
-                />
-                {/* Gradient fade on the left edge of the image */}
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '250px',
-                        height: '100%',
-                        background: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0) 100%)',
-                        pointerEvents: 'none',
-                    }}
-                />
-            </Box>
+            />
 
-            {/* Content - Left 1/3rd */}
+            {/* Bottom gradient for text readability */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '60%',
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                }}
+            />
+
+            {/* Content overlay - centered */}
             <Box
                 sx={{
                     position: 'relative',
@@ -80,9 +88,11 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    justifyContent: 'center',
-                    width: { xs: '100%', md: '33.33%' },
-                    p: { xs: 3, sm: 4, md: 6 },
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    pb: { xs: 3, sm: 4, md: 6 },
+                    px: { xs: 3, sm: 4 },
                 }}
             >
                 <Typography

@@ -112,6 +112,19 @@ export class SnakeScene extends Phaser.Scene {
 
         // Emit initial score
         this.game.events.emit('scoreUpdate', this.score);
+
+        // Listen for volume changes from the UI
+        this.events.on('volumeChange', (newVolume: number) => {
+            if (this.eatSound) {
+                (this.eatSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.5);
+            }
+            if (this.loseSound) {
+                (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
+            }
+            if (this.bgMusic) {
+                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
+            }
+        });
     }
 
     update(time: number) {

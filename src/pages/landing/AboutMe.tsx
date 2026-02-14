@@ -139,107 +139,100 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
     const handleClose = () => setOpen(false);
 
     return (
-        <Grid container spacing={hideImages ? 2 : 3}>
+        <Box>
             {!isMobile ? (
                 <>
                     {/* Highlight Cards */}
-                    <Grid container spacing={hideImages ? 2.5 : 3}>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <HighlightCard
-                                icon={<FaUsers />}
-                                title="What I Offer"
-                                content="I've found communication and collaboration to be my greatest strengths and I love working on teams where people feel free to share their ideas and contribute openly. I strive to be a reliable teammate above all else, so I show up every day with focus, curiosity, and the drive to keep growing."
-                                index={0}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <HighlightCard
-                                icon={<FaBrain />}
-                                title="What I've Learned"
-                                content="I didn't always love software development. I struggled for a while to connect with programming because I couldn't stay focused for long stretches at a desk. Thankfully, I worked with my doctor to get diagnosed and treated for ADHD which has enabled me to thrive in my career."
-                                index={1}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <HighlightCard
-                                icon={<FaHeart />}
-                                title="What I Love"
-                                content="I've been a gamer my whole life (and always will be). When I'm not gaming or coding, I love woodworking, cooking, or playing disc golf with friends. And of course, my life wouldn't be complete without my amazing girlfriend Courtney and our three cats, Zeus, Midna, and Willow."
-                                index={2}
-                            />
-                        </Grid>
-                    </Grid>
+                    <Box sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+                        gap: hideImages ? 2.5 : 3,
+                    }}>
+                        <HighlightCard
+                            icon={<FaUsers />}
+                            title="What I Offer"
+                            content="I've found communication and collaboration to be my greatest strengths and I love working on teams where people feel free to share their ideas and contribute openly. I strive to be a reliable teammate above all else, so I show up every day with focus, curiosity, and the drive to keep growing."
+                            index={0}
+                        />
+                        <HighlightCard
+                            icon={<FaBrain />}
+                            title="What I've Learned"
+                            content="I didn't always love software development. I struggled for a while to connect with programming because I couldn't stay focused for long stretches at a desk. Thankfully, I worked with my doctor to get diagnosed and treated for ADHD which has enabled me to thrive in my career."
+                            index={1}
+                        />
+                        <HighlightCard
+                            icon={<FaHeart />}
+                            title="What I Love"
+                            content="I've been a gamer my whole life (and always will be). When I'm not gaming or coding, I love woodworking, cooking, or playing disc golf with friends. And of course, my life wouldn't be complete without my amazing girlfriend Courtney and our three cats, Zeus, Midna, and Willow."
+                            index={2}
+                        />
+                    </Box>
 
                     {/* Images - Only show if not hidden */}
                     {!hideImages && (
-                        <Grid container spacing={2} sx={{ mt: 2 }}>
-                            <Grid size={6}>
-                                <Box
-                                    sx={{
-                                        borderRadius: 2,
-                                        overflow: 'hidden',
-                                        boxShadow: EFFECTS.CARD_SHADOW,
+                        <Box sx={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: 2,
+                            mt: 2,
+                        }}>
+                            <Box
+                                sx={{
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                    boxShadow: EFFECTS.CARD_SHADOW,
+                                }}
+                            >
+                                <img
+                                    alt="James and Courtney"
+                                    src={meAndCourtneyImg}
+                                    style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        display: 'block',
                                     }}
-                                >
-                                    <img
-                                        alt="James and Courtney"
-                                        src={meAndCourtneyImg}
-                                        style={{
-                                            width: '100%',
-                                            height: 'auto',
-                                            display: 'block',
-                                        }}
-                                    />
-                                </Box>
-                            </Grid>
-                            <Grid size={6}>
-                                <Box
-                                    sx={{
-                                        borderRadius: 2,
-                                        overflow: 'hidden',
-                                        boxShadow: EFFECTS.CARD_SHADOW,
+                                />
+                            </Box>
+                            <Box
+                                sx={{
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                    boxShadow: EFFECTS.CARD_SHADOW,
+                                }}
+                            >
+                                <img
+                                    alt="Our Cats"
+                                    src={beansImg}
+                                    style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        display: 'block',
                                     }}
-                                >
-                                    <img
-                                        alt="Our Cats"
-                                        src={beansImg}
-                                        style={{
-                                            width: '100%',
-                                            height: 'auto',
-                                            display: 'block',
-                                        }}
-                                    />
-                                </Box>
-                            </Grid>
-                        </Grid>
+                                />
+                            </Box>
+                        </Box>
                     )}
                 </>
             ) : (
-                <Grid container>
-                    <Grid container>
-                        <Grid size={12}>
-                            <img alt="James and Courtney" src={meAndCourtneyImg} style={{
-                                width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%) scale(1.2)',
-                            }} />
-                        </Grid>
+                <Box>
+                    <Box>
+                        <img alt="James and Courtney" src={meAndCourtneyImg} style={{
+                            width: '100%', height: 'auto', maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 90%)', transform: 'rotate(-8deg) translateY(-10%) scale(1.2)',
+                        }} />
 
-                        <Grid size={12}>
-                            <img alt="Our Cats" src={beansImg} style={{
-                                width: '100%', height: 'auto',
-                            }} />
-                        </Grid>
-                    </Grid>
-                    <Grid size={12}>
-                        <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.ANTON, width: 'auto' }}>
-                            <Typography fontFamily={FONTS.ANTON} variant="h5">
-                                Who are you again?
-                            </Typography>
-                        </Button>
-                    </Grid>
+                        <img alt="Our Cats" src={beansImg} style={{
+                            width: '100%', height: 'auto',
+                        }} />
+                    </Box>
+                    <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.ANTON, width: 'auto' }}>
+                        <Typography fontFamily={FONTS.ANTON} variant="h5">
+                            Who are you again?
+                        </Typography>
+                    </Button>
                     <MobileAboutMe open={open} handleClose={handleClose} />
-                </Grid>
+                </Box>
             )}
-        </Grid>
+        </Box>
     );
 }
 

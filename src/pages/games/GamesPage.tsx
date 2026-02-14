@@ -6,10 +6,10 @@ import { type GameGenre } from "../../lib/GameTypes";
 
 const GamesPage = () => {
     // Set up game launcher
-    const { launchSnake, launchZAim, showComingSoon, GameModal, ComingSoonGameModal } = useGameLauncher();
+    const { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, showComingSoon, GameModal, ComingSoonGameModal } = useGameLauncher();
 
     // Create game data with launcher functions
-    const gameData = createGameData({ launchSnake, launchZAim, showComingSoon });
+    const gameData = createGameData({ launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, showComingSoon });
 
     // Get featured game
     const featuredGame = gameData.find(game => game.featured) || gameData[0];
@@ -23,22 +23,16 @@ const GamesPage = () => {
         return acc;
     }, {} as Record<GameGenre, typeof gameData>);
 
-    // Get recently added games (for demo, just reverse the order)
-    const recentlyAdded = [...gameData].reverse();
-
     return (
         <>
-            <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
-                {/* Hero Banner */}
-                <GameHeroBanner game={featuredGame} />
+            {/* Hero Banner - full width outside container */}
+            <GameHeroBanner game={featuredGame} />
 
+            <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
                 {/* Game Rows by Genre */}
                 {Object.entries(gamesByGenre).map(([genre, games]) => (
                     <GameRow key={genre} title={`${genre} Games`} games={games} />
                 ))}
-
-                {/* Recently Added Row */}
-                <GameRow title="Recently Added" games={recentlyAdded} />
 
                 {/* All Games Row */}
                 <GameRow title="All Games" games={gameData} />

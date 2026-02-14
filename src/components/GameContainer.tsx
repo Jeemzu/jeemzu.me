@@ -13,6 +13,9 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeDownIcon from '@mui/icons-material/VolumeDown';
+import VolumeMuteIcon from '@mui/icons-material/VolumeMute';
 import Phaser from 'phaser';
 import { FONTS } from '../lib/globals';
 
@@ -22,6 +25,7 @@ interface GameContainerProps {
     gameTitle: string;
     gameConfig: Omit<Phaser.Types.Core.GameConfig, 'parent'>;
     onScoreUpdate?: (score: number) => void;
+    showColorOption?: boolean;
 }
 
 type MenuState = 'start' | 'options' | 'playing';
@@ -32,6 +36,7 @@ const GameContainer = ({
     gameTitle,
     gameConfig,
     onScoreUpdate,
+    showColorOption = false,
 }: GameContainerProps) => {
     const gameRef = useRef<Phaser.Game | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -161,8 +166,14 @@ const GameContainer = ({
             if (scene) {
                 if (isPaused) {
                     scene.scene.resume();
+                    scene.tweens.resumeAll();
+                    scene.time.paused = false;
+                    scene.sound.resumeAll();
                 } else {
                     scene.scene.pause();
+                    scene.tweens.pauseAll();
+                    scene.time.paused = true;
+                    scene.sound.pauseAll();
                 }
                 setIsPaused(!isPaused);
             }
@@ -221,7 +232,18 @@ const GameContainer = ({
     };
 
     const handleVolumeChange = (_event: Event, newValue: number | number[]) => {
-        setVolume(newValue as number);
+        const newVolume = newValue as number;
+        setVolume(newVolume);
+
+        // Update volume in running game immediately
+        if (gameRef.current) {
+            const scene = gameRef.current.scene.scenes[0];
+            if (scene && scene.registry) {
+                scene.registry.set('volume', newVolume);
+                // Emit a custom event so the scene can react to volume changes
+                scene.events.emit('volumeChange', newVolume);
+            }
+        }
     };
 
     const handleDifficultyToggle = () => {
@@ -273,10 +295,51 @@ const GameContainer = ({
                         Score: {currentScore}
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {menuState === 'playing' && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+                            <IconButton
+                                onClick={() => setVolume(v => {
+                                    const newVal = Math.max(0, v === 0 ? 0.5 : 0);
+                                    // Trigger volume update in game
+                                    if (gameRef.current) {
+                                        const scene = gameRef.current.scene.scenes[0];
+                                        if (scene && scene.registry) {
+                                            scene.registry.set('volume', newVal);
+                                            scene.events.emit('volumeChange', newVal);
+                                        }
+                                    }
+                                    return newVal;
+                                })}
+                                sx={{ color: 'white', p: 0.5 }}
+                            >
+                                {volume === 0 ? <VolumeMuteIcon fontSize="small" /> :
+                                 volume < 0.5 ? <VolumeDownIcon fontSize="small" /> :
+                                 <VolumeUpIcon fontSize="small" />}
+                            </IconButton>
+                            <Slider
+                                value={volume}
+                                onChange={handleVolumeChange}
+                                min={0}
+                                max={1}
+                                step={0.05}
+                                sx={{
+                                    width: { xs: 60, sm: 100 },
+                                    color: 'primaryGreen.main',
+                                    '& .MuiSlider-thumb': {
+                                        width: 14,
+                                        height: 14,
+                                    },
+                                    '& .MuiSlider-rail': {
+                                        opacity: 0.3,
+                                    },
+                                }}
+                            />
+                        </Box>
+                    )}
                     <IconButton
                         onClick={handlePauseResume}
-                        disabled={gameOver}
+                        disabled={gameOver || menuState !== 'playing'}
                         sx={{ color: 'white' }}
                     >
                         {isPaused ? <PlayArrowIcon /> : <PauseIcon />}
@@ -437,32 +500,34 @@ const GameContainer = ({
                         </Box>
 
                         {/* Color Selector */}
-                        <Box sx={{ width: '100%' }}>
-                            <Typography variant="h6" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'white', mb: 2 }}>
-                                Primary Color
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-                                {colorOptions.map((color) => (
-                                    <Box
-                                        key={color.value}
-                                        onClick={() => setPrimaryColor(color.value)}
-                                        sx={{
-                                            width: 60,
-                                            height: 60,
-                                            bgcolor: color.value,
-                                            borderRadius: 1,
-                                            cursor: 'pointer',
-                                            border: primaryColor === color.value ? '4px solid white' : '2px solid rgba(255,255,255,0.3)',
-                                            transition: 'all 0.2s',
-                                            '&:hover': {
-                                                transform: 'scale(1.1)',
-                                                border: '3px solid white',
-                                            },
-                                        }}
-                                    />
-                                ))}
+                        {showColorOption && (
+                            <Box sx={{ width: '100%' }}>
+                                <Typography variant="h6" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'white', mb: 2 }}>
+                                    Primary Color
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                    {colorOptions.map((color) => (
+                                        <Box
+                                            key={color.value}
+                                            onClick={() => setPrimaryColor(color.value)}
+                                            sx={{
+                                                width: 60,
+                                                height: 60,
+                                                bgcolor: color.value,
+                                                borderRadius: 1,
+                                                cursor: 'pointer',
+                                                border: primaryColor === color.value ? '4px solid white' : '2px solid rgba(255,255,255,0.3)',
+                                                transition: 'all 0.2s',
+                                                '&:hover': {
+                                                    transform: 'scale(1.1)',
+                                                    border: '3px solid white',
+                                                },
+                                            }}
+                                        />
+                                    ))}
+                                </Box>
                             </Box>
-                        </Box>
+                        )}
 
                         {/* Back Button */}
                         <Button
