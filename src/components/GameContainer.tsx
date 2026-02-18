@@ -314,8 +314,8 @@ const GameContainer = ({
                                 sx={{ color: 'white', p: 0.5 }}
                             >
                                 {volume === 0 ? <VolumeMuteIcon fontSize="small" /> :
-                                 volume < 0.5 ? <VolumeDownIcon fontSize="small" /> :
-                                 <VolumeUpIcon fontSize="small" />}
+                                    volume < 0.5 ? <VolumeDownIcon fontSize="small" /> :
+                                        <VolumeUpIcon fontSize="small" />}
                             </IconButton>
                             <Slider
                                 value={volume}
