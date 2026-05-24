@@ -8,7 +8,7 @@ const ProjectsPage = () => {
     return (
         <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
             <Typography
-                fontFamily={FONTS.ANTON}
+                fontFamily={FONTS.POIRET_ONE}
                 variant="h1"
                 sx={{
                     textAlign: 'center',

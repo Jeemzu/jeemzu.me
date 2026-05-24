@@ -17,7 +17,7 @@ const LandingPage = () => {
         <Container maxWidth="xl" sx={{ position: 'relative', py: { xs: 3, md: 4 } }}>
             {/* Name - Centered above everything */}
             <Typography
-                fontFamily={FONTS.ANTON}
+                fontFamily={FONTS.POIRET_ONE}
                 variant={isMobile ? "h3" : "h1"}
                 sx={{
                     textAlign: 'center',
@@ -85,7 +85,7 @@ const LandingPage = () => {
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
-                                        fontFamily: FONTS.ANTON,
+                                        fontFamily: FONTS.NECTO_MONO,
                                         px: 3,
                                         py: 1,
                                         fontSize: '1rem',
@@ -109,7 +109,7 @@ const LandingPage = () => {
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
-                                        fontFamily: FONTS.ANTON,
+                                        fontFamily: FONTS.NECTO_MONO,
                                         px: 3,
                                         py: 1,
                                         fontSize: '1rem',
@@ -134,7 +134,7 @@ const LandingPage = () => {
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
-                                        fontFamily: FONTS.ANTON,
+                                        fontFamily: FONTS.NECTO_MONO,
                                         px: 3,
                                         py: 1,
                                         fontSize: '1rem',

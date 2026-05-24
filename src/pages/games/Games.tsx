@@ -111,7 +111,7 @@ const GameCard = ({
                 </Box>
                 <CardContent sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Typography
-                        fontFamily={FONTS.ANTON}
+                        fontFamily={FONTS.POIRET_ONE}
                         variant="h4"
                         sx={{ color: theme.palette.primaryGreen.main }}
                     >
@@ -135,7 +135,7 @@ const GameCard = ({
                         sx={{
                             backgroundColor: theme.palette.primaryGreen.main,
                             color: theme.palette.darkBackground.main,
-                            fontFamily: FONTS.ANTON,
+                            fontFamily: FONTS.POIRET_ONE,
                             fontWeight: 600,
                             py: 1.5,
                             transition: 'all 0.2s ease-in-out',

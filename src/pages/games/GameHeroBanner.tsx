@@ -96,19 +96,7 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                 }}
             >
                 <Typography
-                    fontFamily={FONTS.ANTON}
-                    sx={{
-                        fontSize: { xs: '1rem', sm: '1.15rem' },
-                        color: theme.palette.primaryGreen.main,
-                        mb: 1,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                    }}
-                >
-                    Featured Game
-                </Typography>
-                <Typography
-                    fontFamily={FONTS.ANTON}
+                    fontFamily={FONTS.NECTO_MONO}
                     sx={{
                         fontSize: { xs: '3rem', sm: '4rem', md: '5rem' },
                         color: theme.palette.text.primary,
@@ -139,7 +127,7 @@ const GameHeroBanner = ({ game }: GameHeroBannerProps) => {
                         sx={{
                             backgroundColor: theme.palette.primaryGreen.main,
                             color: theme.palette.darkBackground.main,
-                            fontFamily: FONTS.ANTON,
+                            fontFamily: FONTS.NECTO_MONO,
                             fontSize: { xs: '1.15rem', sm: '1.35rem' },
                             fontWeight: 600,
                             px: { xs: 3, sm: 4 },

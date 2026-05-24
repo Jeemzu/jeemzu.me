@@ -33,6 +33,11 @@
   src: local('NectoMono-Regular'), url(./assets/fonts/NectoMono-Regular.otf) format('opentype');
 }
 
+@font-face {
+  font-family: 'PoiretOne-Regular';
+  src: local('PoiretOne-Regular'), url(./assets/fonts/PoiretOne-Regular.ttf) format('truetype');
+}
+
 :root {
   font-family: "Palace", Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

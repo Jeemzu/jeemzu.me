@@ -60,7 +60,7 @@ const ProjectCard = ({
                 </Box>
                 <CardContent sx={{ flexGrow: 1, p: 3 }}>
                     <Typography
-                        fontFamily={FONTS.ANTON}
+                        fontFamily={FONTS.NECTO_MONO}
                         variant="h4"
                         gutterBottom
                         sx={{ color: theme.palette.primaryGreen.main }}

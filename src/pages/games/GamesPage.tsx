@@ -18,7 +18,7 @@ const GamesPage = () => {
             {/* Hero Banner - full width outside container */}
             <GameHeroBanner game={featuredGame} />
 
-            <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>\
+            <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
                 {/* All Games Row */}
                 <GameRow title="All Games" games={gameData} />
             </Container>

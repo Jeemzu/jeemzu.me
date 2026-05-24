@@ -96,7 +96,7 @@ const HighlightCard = ({
                         }}
                     >
                         <Typography
-                            fontFamily={FONTS.ANTON}
+                            fontFamily={FONTS.NECTO_MONO}
                             variant="h3"
                             sx={{ color: theme.palette.primaryGreen.main }}
                         >
@@ -224,8 +224,8 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
                             width: '100%', height: 'auto',
                         }} />
                     </Box>
-                    <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.ANTON, width: 'auto' }}>
-                        <Typography fontFamily={FONTS.ANTON} variant="h5">
+                    <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.POIRET_ONE, width: 'auto' }}>
+                        <Typography fontFamily={FONTS.POIRET_ONE} variant="h5">
                             Who are you again?
                         </Typography>
                     </Button>

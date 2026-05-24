@@ -43,7 +43,7 @@ const ComingSoonModal = ({ open, onClose, gameTitle }: ComingSoonModalProps) => 
                     <CloseIcon />
                 </IconButton>
 
-                <Typography variant="h4" sx={{ color: 'white', fontFamily: FONTS.ANTON, textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ color: 'white', fontFamily: FONTS.POIRET_ONE, textAlign: 'center' }}>
                     {gameTitle}
                 </Typography>
 
@@ -75,7 +75,7 @@ const ComingSoonModal = ({ open, onClose, gameTitle }: ComingSoonModalProps) => 
                     sx={{
                         bgcolor: 'primaryGreen.main',
                         color: 'darkBackground.main',
-                        fontFamily: FONTS.ANTON,
+                        fontFamily: FONTS.POIRET_ONE,
                         fontSize: '1.1rem',
                         px: 4,
                         py: 1.5,

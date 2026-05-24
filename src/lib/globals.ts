@@ -9,6 +9,7 @@ export const FONTS = {
     TOP_SHOW: 'TopShow',
     ANTON: 'Anton-Regular',
     NECTO_MONO: 'NectoMono-Regular',
+    POIRET_ONE: 'PoiretOne-Regular',
 } as const;
 
 // Personal Links

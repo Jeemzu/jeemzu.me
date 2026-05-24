@@ -47,7 +47,7 @@ const GameRow = ({ title, games }: GameRowProps) => {
         <Box sx={{ mb: 5 }}>
             {/* Row Title */}
             <Typography
-                fontFamily={FONTS.ANTON}
+                fontFamily={FONTS.POIRET_ONE}
                 variant="h3"
                 sx={{
                     color: theme.palette.text.primary,

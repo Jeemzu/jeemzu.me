@@ -25,7 +25,7 @@ const Footer = () => {
                         <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'left' } }}>
                             <Typography
                                 variant="h5"
-                                fontFamily={FONTS.ANTON}
+                                fontFamily={FONTS.NECTO_MONO}
                                 sx={{
                                     color: theme.palette.primaryGreen.main,
                                     mb: 0.5,
@@ -50,7 +50,7 @@ const Footer = () => {
                             <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
                                 <Typography
                                     variant="body2"
-                                    fontFamily={FONTS.ANTON}
+                                    fontFamily={FONTS.NECTO_MONO}
                                     sx={{
                                         color: theme.palette.primaryGreen.main,
                                         mb: 0.5,

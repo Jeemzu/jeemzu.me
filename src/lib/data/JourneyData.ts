@@ -26,12 +26,13 @@ export const cardData: JourneyCardModal[] = [
         milestoneBullets: {
             "Minecraft Live Events": [
                 "Helped launch Minecraft's Live Events platform for the 2022 Mob Vote by pioneering the game's first automated multiplayer performance testing.",
-                "Designed and engineered the prototypes for several gameplay systems in the 2023 Minecraft Legends Live Event. We had over 3 million players enjoying the experience I helped design!",
-                "Provide ongoing Live Event support to third-party studios by advising on the use of Minecraft Scripting APIs and dev tools."
+                "Designed and engineered the prototypes for several gameplay systems in the 2023 Minecraft Legends Live Event, launching an experience that was enjoyed by over 3 million players!",
+                "Provide ongoing Live Event support to third-party studios.",
             ],
             "Developer Tooling": [
-                "Engineered a React application that improves workflow efficiency and reduces manual setup errors for both internal Mojang teams and external partners.",
-                "Develop new features for Minecraft Creator Tools, which is used by beginners and experienced Creators alike to create and manage their own Minecraft content."
+                "Rebuilt Live Events Management internal tooling as a React web application, integrating it into the Auger website to enable distribution to third - party creators and streamline the live events deployment process.",
+                "Transitioned to the MCTools platform team and modernized the TypeScript codebase to current standards; expanded content validators to reduce manual review workload for the Minecraft Vanilla team and external creators.",
+                "Built a telemetry framework using Application Insights with custom event logging and real - time issue detection, and developed a localization framework enabling MCTools in 20 + languages."
             ],
             "Teamwork and Collaboration": [
                 "I've only been part of 2 teams during my time at Mojang, but my work has spanned multiple disciplines such as gameplay design, UI/UX, and performance testing.",

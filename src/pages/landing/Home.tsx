@@ -43,7 +43,7 @@ const HomeHeaderTooltip = styled(({ className, ...props }: TooltipProps) => (
         color: theme.palette.primaryGreen.main,
         boxShadow: "0px 0px 10px rgba(0, 0, 0, 0.5)",
         fontSize: 18,
-        fontFamily: FONTS.ANTON,
+        fontFamily: FONTS.POIRET_ONE,
         textAlign: 'center',
         padding: '8px 16px',
         textWrap: 'nowrap',
@@ -108,7 +108,7 @@ const Home = () => {
             {/* Header Section */}
             <Grid size={12}>
                 <Typography
-                    fontFamily={FONTS.ANTON}
+                    fontFamily={FONTS.POIRET_ONE}
                     variant={isMobile ? "h4" : "h2"}
                     sx={{
                         textAlign: 'center',
@@ -123,7 +123,7 @@ const Home = () => {
                 </Typography>
 
                 <Typography
-                    fontFamily={FONTS.ANTON}
+                    fontFamily={FONTS.POIRET_ONE}
                     sx={{
                         textAlign: 'center',
                         letterSpacing: 2,
