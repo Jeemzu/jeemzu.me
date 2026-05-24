@@ -25,7 +25,6 @@ export class PongScene extends Phaser.Scene {
     private playerHitSound?: Phaser.Sound.BaseSound;
     private aiHitSound?: Phaser.Sound.BaseSound;
     private scoreSound?: Phaser.Sound.BaseSound;
-    private bgMusic?: Phaser.Sound.BaseSound;
     private playerScoreText!: Phaser.GameObjects.Text;
     private aiScoreText!: Phaser.GameObjects.Text;
     private serveText!: Phaser.GameObjects.Text;
@@ -40,7 +39,6 @@ export class PongScene extends Phaser.Scene {
         this.load.audio('pongPlayerHit', '/sounds/pong_player_hit.mp3');
         this.load.audio('pongAiHit', '/sounds/pong_ai_hit.mp3');
         this.load.audio('pongScore', '/sounds/pong_score.mp3');
-        this.load.audio('pongMusic', '/sounds/pong_music.mp3');
     }
 
     create() {
@@ -65,13 +63,6 @@ export class PongScene extends Phaser.Scene {
                 this.scoreSound = this.sound.add('pongScore', { volume: volume * 0.6 });
             }
         } catch { /* audio not available */ }
-        try {
-            if (!this.bgMusic && this.cache.audio.exists('pongMusic')) {
-                this.bgMusic = this.sound.add('pongMusic', { volume: volume * 0.3, loop: true });
-                this.bgMusic.play();
-            }
-        } catch { /* audio not available */ }
-
         // Reset state
         this.playerScore = 0;
         this.aiScore = 0;
@@ -156,9 +147,6 @@ export class PongScene extends Phaser.Scene {
             }
             if (this.scoreSound) {
                 (this.scoreSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
-            }
-            if (this.bgMusic) {
-                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
             }
         });
 

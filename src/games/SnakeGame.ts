@@ -21,7 +21,6 @@ export class SnakeScene extends Phaser.Scene {
     private isGameOver: boolean = false;
     private eatSound?: Phaser.Sound.BaseSound;
     private loseSound?: Phaser.Sound.BaseSound;
-    private bgMusic?: Phaser.Sound.BaseSound;
     private snakeHeadColor: number = 0x4ade80;
     private snakeBodyColor: number = 0x22c55e;
 
@@ -34,8 +33,6 @@ export class SnakeScene extends Phaser.Scene {
         this.load.audio('eat', '/sounds/snake_eat.mp3');
         // Load the lose sound
         this.load.audio('lose', '/sounds/snake_lose.mp3');
-        // Load the background music
-        this.load.audio('bgMusic', '/sounds/snake_music.mp3');
     }
 
     create() {
@@ -77,14 +74,6 @@ export class SnakeScene extends Phaser.Scene {
         } else {
             (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.6);
         }
-        if (!this.bgMusic) {
-            this.bgMusic = this.sound.add('bgMusic', { volume: volume * 0.3, loop: true });
-            // Start background music only on first create
-            this.bgMusic.play();
-        } else {
-            (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.3);
-        }
-
         this.graphics = this.add.graphics();
 
         // Initialize snake in the middle
@@ -120,9 +109,6 @@ export class SnakeScene extends Phaser.Scene {
             }
             if (this.loseSound) {
                 (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
-            }
-            if (this.bgMusic) {
-                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
             }
         });
     }
@@ -312,6 +298,7 @@ export class SnakeScene extends Phaser.Scene {
         this.loseSound?.play();
         this.game.events.emit('gameOver', this.score);
     }
+
 }
 
 export const createSnakeGameConfig = (): Omit<Phaser.Types.Core.GameConfig, 'parent'> => {

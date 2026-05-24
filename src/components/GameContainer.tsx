@@ -40,7 +40,6 @@ const GameContainer = ({
 }: GameContainerProps) => {
     const gameRef = useRef<Phaser.Game | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const menuMusicRef = useRef<HTMLAudioElement | null>(null);
     const [isPaused, setIsPaused] = useState(false);
     const [currentScore, setCurrentScore] = useState(0);
     const [gameOver, setGameOver] = useState(false);
@@ -58,44 +57,6 @@ const GameContainer = ({
             setHighScore(parseInt(storedScore, 10));
         }
     }, [gameTitle]);
-
-    // Handle menu music based on game title
-    useEffect(() => {
-        if (open && menuState !== 'playing') {
-            // Determine which music to play based on game
-            let musicSrc = '';
-            if (gameTitle === 'Snake') {
-                musicSrc = '/sounds/snake_music.mp3';
-            } else if (gameTitle === 'zAim') {
-                musicSrc = '/sounds/zaim_music.mp3';
-            }
-            // Add more game music paths here as needed
-
-            if (musicSrc && !menuMusicRef.current) {
-                const audio = new Audio(musicSrc);
-                audio.loop = true;
-                audio.volume = volume * 0.3;
-                audio.play().catch(e => console.log('Audio autoplay prevented:', e));
-                menuMusicRef.current = audio;
-            } else if (menuMusicRef.current) {
-                menuMusicRef.current.volume = volume * 0.3;
-            }
-        }
-
-        // Stop menu music when game starts playing
-        if (menuState === 'playing' && menuMusicRef.current) {
-            menuMusicRef.current.pause();
-            menuMusicRef.current = null;
-        }
-
-        // Cleanup menu music when modal closes
-        return () => {
-            if (!open && menuMusicRef.current) {
-                menuMusicRef.current.pause();
-                menuMusicRef.current = null;
-            }
-        };
-    }, [open, menuState, gameTitle, volume]);
 
     // Reset containerReady and menu state when dialog closes
     useEffect(() => {

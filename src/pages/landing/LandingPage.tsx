@@ -4,7 +4,6 @@ import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
 import AboutMe from "./AboutMe";
-import meAndCourtneyImg from '../../assets/images/meandcourtney.png';
 import { useState, useRef } from "react";
 
 const LandingPage = () => {
@@ -15,14 +14,14 @@ const LandingPage = () => {
     const heroRef = useRef<HTMLDivElement>(null);
 
     return (
-        <Container maxWidth="xl" sx={{ position: 'relative', py: { xs: 4, md: 6 } }}>
+        <Container maxWidth="xl" sx={{ position: 'relative', py: { xs: 3, md: 4 } }}>
             {/* Name - Centered above everything */}
             <Typography
                 fontFamily={FONTS.ANTON}
                 variant={isMobile ? "h3" : "h1"}
                 sx={{
                     textAlign: 'center',
-                    mb: { xs: 3, md: 5 },
+                    mb: { xs: 2, md: 3 },
                     color: theme.palette.primaryGreen.main,
                 }}
             >
@@ -31,61 +30,21 @@ const LandingPage = () => {
 
             {/* Hero Section - Two-column layout */}
             <Box ref={heroRef} sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
-                {/* Left side - Image */}
-                <Box
-                    sx={{
-                        flex: isMobile ? 'none' : '2 1 0',
-                        minWidth: 0,
-                        display: 'flex',
-                        justifyContent: isMobile ? 'center' : 'flex-start',
-                        order: isMobile ? 2 : 1,
-                        width: isMobile ? '100%' : 'auto',
-                    }}
-                >
-                    <Box
-                        onClick={() => setOpenImage(meAndCourtneyImg)}
-                        sx={{
-                            width: "100%",
-                            height: "280px",
-                            borderRadius: '12px',
-                            overflow: 'hidden',
-                            boxShadow: EFFECTS.CARD_SHADOW,
-                            transition: EFFECTS.TRANSITION,
-                            cursor: 'pointer',
-                            '&:hover': {
-                                transform: 'scale(1.01)',
-                                boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                            }
-                        }}
-                    >
-                        <img
-                            alt="Me and Courtney"
-                            src={meAndCourtneyImg}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                display: 'block',
-                            }}
-                        />
-                    </Box>
-                </Box>
-
-                {/* Right side - Content */}
                 <Box sx={{ flex: isMobile ? 'none' : '3 1 0', minWidth: 0, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', order: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}>
                     <Box sx={{
                         backgroundColor: theme.palette.cardBackground.main,
                         borderRadius: 2,
                         p: { xs: 3, md: 3 },
+                        pb: { xs: 1.5, md: 1.5 },
                         boxShadow: EFFECTS.CARD_SHADOW,
-                        height: "280px",
+                        height: "200px",
                         width: '100%',
                     }}>
                         <Typography
                             fontFamily={FONTS.NECTO_MONO}
                             variant={isMobile ? "h6" : "h4"}
                             sx={{
-                                mb: { xs: 2, md: 2.5 },
+                                mb: { xs: 1.5, md: 2 },
                                 color: theme.palette.text.primary,
                                 fontWeight: 500,
                                 textAlign: 'left',
@@ -98,7 +57,7 @@ const LandingPage = () => {
                             fontFamily={FONTS.NECTO_MONO}
                             variant={isMobile ? "body1" : "h6"}
                             sx={{
-                                mb: { xs: 2.5, md: 3 },
+                                mb: { xs: 1.5, md: 2 },
                                 color: theme.palette.textSecondary.main,
                                 fontSize: { xs: '1rem', md: '1.125rem' },
                                 textAlign: 'left',
@@ -117,7 +76,7 @@ const LandingPage = () => {
                                 flexWrap: 'nowrap',
                                 gap: 1.5,
                             }}
-                            paddingTop={3}
+                            paddingTop={1.5}
                         >
                             <Link href="/projects">
                                 <Button

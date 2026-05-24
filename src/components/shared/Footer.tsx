@@ -130,7 +130,7 @@ const Footer = () => {
                                     mb: 0.25,
                                 }}
                             >
-                                © 2025 James Friedenberg
+                                © 2026 James Friedenberg
                             </Typography>
                             <Typography
                                 variant="caption"

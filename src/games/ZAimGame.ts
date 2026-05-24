@@ -55,7 +55,6 @@ export class ZAimScene extends Phaser.Scene {
     private cellHeight: number = 0;
     private targetColor: number = GREEN_COLOR;
     private hitSound?: Phaser.Sound.BaseSound;
-    private bgMusic?: Phaser.Sound.BaseSound;
 
     constructor() {
         super({ key: 'ZAimScene' });
@@ -64,8 +63,6 @@ export class ZAimScene extends Phaser.Scene {
     preload() {
         // Load the hit sound
         this.load.audio('zaimHit', '/sounds/zaim_hit.mp3');
-        // Load the background music
-        this.load.audio('zaimMusic', '/sounds/zaim_music.mp3');
     }
 
     init(data: { difficulty?: Difficulty }) {
@@ -88,14 +85,6 @@ export class ZAimScene extends Phaser.Scene {
         } else {
             (this.hitSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.6);
         }
-        if (!this.bgMusic) {
-            this.bgMusic = this.sound.add('zaimMusic', { volume: volume * 0.3, loop: true });
-            // Start background music only on first create
-            this.bgMusic.play();
-        } else {
-            (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.3);
-        }
-
         // Reset game state
         this.gridCells = [];
         this.activeTargets = [];
@@ -173,9 +162,6 @@ export class ZAimScene extends Phaser.Scene {
         this.events.on('volumeChange', (newVolume: number) => {
             if (this.hitSound) {
                 (this.hitSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
-            }
-            if (this.bgMusic) {
-                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
             }
         });
     }

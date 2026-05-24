@@ -103,7 +103,6 @@ export class TetrisScene extends Phaser.Scene {
     private dasRepeatRate: number = 50; // ms between repeats
     private dasActive: boolean = false;
     private softDropping: boolean = false;
-    private bgMusic?: Phaser.Sound.BaseSound;
     private lineClearSound?: Phaser.Sound.BaseSound;
     private dropSound?: Phaser.Sound.BaseSound;
     private levelText!: Phaser.GameObjects.Text;
@@ -114,7 +113,6 @@ export class TetrisScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.audio('tetrisMusic', '/sounds/tetris_music.mp3');
         this.load.audio('tetrisClear', '/sounds/tetris_clear.mp3');
         this.load.audio('tetrisDrop', '/sounds/tetris_drop.mp3');
     }
@@ -124,10 +122,7 @@ export class TetrisScene extends Phaser.Scene {
 
         // Initialize sounds gracefully
         try {
-            if (!this.bgMusic && this.cache.audio.exists('tetrisMusic')) {
-                this.bgMusic = this.sound.add('tetrisMusic', { volume: volume * 0.3, loop: true });
-                this.bgMusic.play();
-            }
+
         } catch { /* audio not available */ }
         try {
             if (!this.lineClearSound && this.cache.audio.exists('tetrisClear')) {
@@ -211,9 +206,6 @@ export class TetrisScene extends Phaser.Scene {
 
         // Volume change listener
         this.events.on('volumeChange', (newVolume: number) => {
-            if (this.bgMusic) {
-                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
-            }
             if (this.lineClearSound) {
                 (this.lineClearSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.5);
             }

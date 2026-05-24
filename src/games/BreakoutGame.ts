@@ -50,7 +50,6 @@ export class BreakoutScene extends Phaser.Scene {
     private breakSounds: Phaser.Sound.BaseSound[] = [];
     private wallHitSound?: Phaser.Sound.BaseSound;
     private loseSound?: Phaser.Sound.BaseSound;
-    private bgMusic?: Phaser.Sound.BaseSound;
     private livesText!: Phaser.GameObjects.Text;
     private serveText!: Phaser.GameObjects.Text;
 
@@ -64,7 +63,6 @@ export class BreakoutScene extends Phaser.Scene {
         }
         this.load.audio('breakoutWallHit', '/sounds/breakout_wall_hit.mp3');
         this.load.audio('breakoutLose', '/sounds/breakout_lose.mp3');
-        this.load.audio('breakoutMusic', '/sounds/breakout_music.mp3');
     }
 
     create() {
@@ -98,13 +96,6 @@ export class BreakoutScene extends Phaser.Scene {
                 this.loseSound = this.sound.add('breakoutLose', { volume: volume * 0.6 });
             }
         } catch { /* audio not available */ }
-        try {
-            if (!this.bgMusic && this.cache.audio.exists('breakoutMusic')) {
-                this.bgMusic = this.sound.add('breakoutMusic', { volume: volume * 0.3, loop: true });
-                this.bgMusic.play();
-            }
-        } catch { /* audio not available */ }
-
         // Reset state
         this.score = 0;
         this.lives = 3;
@@ -188,9 +179,6 @@ export class BreakoutScene extends Phaser.Scene {
             }
             if (this.loseSound) {
                 (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
-            }
-            if (this.bgMusic) {
-                (this.bgMusic as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.3);
             }
         });
     }
