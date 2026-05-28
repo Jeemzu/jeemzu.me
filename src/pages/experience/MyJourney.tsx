@@ -54,7 +54,7 @@ const JourneyCard = ({
                 }}>
                 <CardContent>
                     <Typography
-                        fontFamily={FONTS.NECTO_MONO}
+                        fontFamily={FONTS.ANTON}
                         variant={isMobile ? "h4" : "h3"}
                         gutterBottom
                         sx={{ color: theme.palette.primaryGreen.main }}
@@ -100,7 +100,7 @@ const JourneyModal = (props: JourneyCardModal) => {
         <Modal open={open || false} onClose={handleClose}>
             <Box sx={modalStyle}>
                 <Typography
-                    fontFamily={FONTS.NECTO_MONO}
+                    fontFamily={FONTS.ANTON}
                     variant="h3"
                     gutterBottom
                     sx={{ color: theme.palette.primaryGreen.main }}
@@ -146,7 +146,7 @@ const JourneyDescriptionList = ({
                     <ListSubheader
                         disableSticky
                         sx={{
-                            fontFamily: FONTS.NECTO_MONO,
+                            fontFamily: FONTS.ANTON,
                             fontSize: '1.25rem',
                             color: theme.palette.primaryGreen.main,
                             paddingLeft: 2,
