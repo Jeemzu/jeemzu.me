@@ -6,7 +6,7 @@
 import { type GameHighScore, type UserGameData } from "../lib/GameTypes";
 
 // TODO: Replace with your actual API endpoint
-const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
  * Save a high score to the database
