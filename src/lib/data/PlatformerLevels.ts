@@ -53,12 +53,12 @@ export const PLATFORMER_LEVELS: PlatformerLevel[] = [
         data: {
             objects: [
                 { type: 'spike', id: 'l3-1', worldX: 450 },
-                { type: 'pit',   id: 'l3-2', worldX: 950,  width: 96  },  // 96 px — comfortable
+                { type: 'pit', id: 'l3-2', worldX: 950, width: 96 },  // 96 px — comfortable
                 { type: 'spike', id: 'l3-3', worldX: 1450 },
                 { type: 'spike', id: 'l3-4', worldX: 1550 },  // pair
-                { type: 'pit',   id: 'l3-5', worldX: 2050, width: 112 },  // 112 px — needs good timing
+                { type: 'pit', id: 'l3-5', worldX: 2050, width: 112 },  // 112 px — needs good timing
                 { type: 'spike', id: 'l3-6', worldX: 2600 },
-                { type: 'pit',   id: 'l3-7', worldX: 3100, width: 128 },  // 128 px — tight timing
+                { type: 'pit', id: 'l3-7', worldX: 3100, width: 128 },  // 128 px — tight timing
                 { type: 'spike', id: 'l3-8', worldX: 3550 },
             ],
         },
@@ -68,21 +68,21 @@ export const PLATFORMER_LEVELS: PlatformerLevel[] = [
         name: 'High Ground',
         data: {
             objects: [
-                { type: 'spike',    id: 'l4-1',  worldX: 400 },
+                { type: 'spike', id: 'l4-1', worldX: 400 },
                 // Platform bridge over first pit — rise needed = 44+16 = 60 px (75 % of max 80)
-                { type: 'platform', id: 'l4-2',  worldX: 852,  worldY: 44, width: 272, height: 16 },
-                { type: 'pit',      id: 'l4-3',  worldX: 900,  width: 160 },
-                { type: 'spike',    id: 'l4-4',  worldX: 1500 },
-                { type: 'spike',    id: 'l4-5',  worldX: 1600 },  // pair
+                { type: 'platform', id: 'l4-2', worldX: 852, worldY: 44, width: 272, height: 16 },
+                { type: 'pit', id: 'l4-3', worldX: 900, width: 160 },
+                { type: 'spike', id: 'l4-4', worldX: 1500 },
+                { type: 'spike', id: 'l4-5', worldX: 1600 },  // pair
                 // Platform bridge over second pit
-                { type: 'platform', id: 'l4-6',  worldX: 2148, worldY: 44, width: 288, height: 16 },
-                { type: 'pit',      id: 'l4-7',  worldX: 2200, width: 192 },
-                { type: 'spike',    id: 'l4-8',  worldX: 2850 },
+                { type: 'platform', id: 'l4-6', worldX: 2148, worldY: 44, width: 288, height: 16 },
+                { type: 'pit', id: 'l4-7', worldX: 2200, width: 192 },
+                { type: 'spike', id: 'l4-8', worldX: 2850 },
                 // Platform bridge over third pit
-                { type: 'platform', id: 'l4-9',  worldX: 3348, worldY: 44, width: 256, height: 16 },
-                { type: 'pit',      id: 'l4-10', worldX: 3400, width: 160 },
-                { type: 'spike',    id: 'l4-11', worldX: 3850 },
-                { type: 'spike',    id: 'l4-12', worldX: 3950 },  // pair
+                { type: 'platform', id: 'l4-9', worldX: 3348, worldY: 44, width: 256, height: 16 },
+                { type: 'pit', id: 'l4-10', worldX: 3400, width: 160 },
+                { type: 'spike', id: 'l4-11', worldX: 3850 },
+                { type: 'spike', id: 'l4-12', worldX: 3950 },  // pair
             ],
         },
     },
@@ -91,24 +91,24 @@ export const PLATFORMER_LEVELS: PlatformerLevel[] = [
         name: 'The Final Rush',
         data: {
             objects: [
-                { type: 'spike',    id: 'l5-1',  worldX: 300 },
-                { type: 'spike',    id: 'l5-2',  worldX: 700 },
-                { type: 'spike',    id: 'l5-3',  worldX: 800 },   // pair
-                { type: 'pit',      id: 'l5-4',  worldX: 1250, width: 96  },  // 96 px — jump-over
-                { type: 'spike',    id: 'l5-5',  worldX: 1700 },
+                { type: 'spike', id: 'l5-1', worldX: 300 },
+                { type: 'spike', id: 'l5-2', worldX: 700 },
+                { type: 'spike', id: 'l5-3', worldX: 800 },   // pair
+                { type: 'pit', id: 'l5-4', worldX: 1250, width: 96 },  // 96 px — jump-over
+                { type: 'spike', id: 'l5-5', worldX: 1700 },
                 // Platform bridge over wide pit (224 px > 140 px max jump — platform required)
-                { type: 'platform', id: 'l5-6',  worldX: 2068, worldY: 44, width: 288, height: 16 },
-                { type: 'pit',      id: 'l5-7',  worldX: 2100, width: 224 },
-                { type: 'spike',    id: 'l5-8',  worldX: 2700 },
-                { type: 'spike',    id: 'l5-9',  worldX: 2800 },  // pair
-                { type: 'pit',      id: 'l5-10', worldX: 3300, width: 112 },  // 112 px — jump-over, tight
-                { type: 'spike',    id: 'l5-11', worldX: 3750 },
-                { type: 'spike',    id: 'l5-12', worldX: 3850 },  // pair
+                { type: 'platform', id: 'l5-6', worldX: 2068, worldY: 44, width: 288, height: 16 },
+                { type: 'pit', id: 'l5-7', worldX: 2100, width: 224 },
+                { type: 'spike', id: 'l5-8', worldX: 2700 },
+                { type: 'spike', id: 'l5-9', worldX: 2800 },  // pair
+                { type: 'pit', id: 'l5-10', worldX: 3300, width: 112 },  // 112 px — jump-over, tight
+                { type: 'spike', id: 'l5-11', worldX: 3750 },
+                { type: 'spike', id: 'l5-12', worldX: 3850 },  // pair
                 // Platform bridge over final pit (256 px > 140 px — platform required)
                 { type: 'platform', id: 'l5-13', worldX: 4348, worldY: 44, width: 320, height: 16 },
-                { type: 'pit',      id: 'l5-14', worldX: 4400, width: 256 },
-                { type: 'spike',    id: 'l5-15', worldX: 4950 },
-                { type: 'pit',      id: 'l5-16', worldX: 5450, width: 128 },  // 128 px — tight ending jump
+                { type: 'pit', id: 'l5-14', worldX: 4400, width: 256 },
+                { type: 'spike', id: 'l5-15', worldX: 4950 },
+                { type: 'pit', id: 'l5-16', worldX: 5450, width: 128 },  // 128 px — tight ending jump
             ],
         },
     },
