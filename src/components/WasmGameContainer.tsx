@@ -6,6 +6,7 @@ import {
     Box,
     Typography,
     CircularProgress,
+    Button,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { FONTS } from '../lib/globals';
@@ -21,7 +22,7 @@ interface WasmModuleFactory {
     (opts: { canvas: HTMLCanvasElement }): Promise<WasmModule>;
 }
 
-type WasmGameState = 0 | 1 | 2; // WAITING | PLAYING | DEAD — mirrors C++ enum class State
+type WasmGameState = 0 | 1 | 2 | 3; // WAITING | PLAYING | DEAD | COMPLETED — mirrors C++ enum class State
 
 interface WasmGameContainerProps {
     open: boolean;
@@ -35,6 +36,10 @@ interface WasmGameContainerProps {
     canvasHeight?: number;
     /** If provided, loads this level into the C++ game via the level_* API */
     levelData?: LevelData;
+    /** Called once when the C++ game reaches the COMPLETED state (state === 3) */
+    onLevelComplete?: () => void;
+    /** Human-readable level label shown in the completion overlay, e.g. "Level 1 — First Steps" */
+    levelLabel?: string;
 }
 
 // ─── State overlay label text ─────────────────────────────────────────────────
@@ -43,6 +48,7 @@ const STATE_LABELS: Record<WasmGameState, string> = {
     0: 'Press SPACE or click to start',
     1: '',                              // playing — no overlay needed
     2: 'Press SPACE or click to restart',
+    3: '',                              // completed — full overlay rendered separately
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -56,11 +62,14 @@ const WasmGameContainer = ({
     canvasWidth = 800,
     canvasHeight = 400,
     levelData,
+    onLevelComplete,
+    levelLabel,
 }: WasmGameContainerProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const moduleRef = useRef<WasmModule | null>(null);
     const scriptRef = useRef<HTMLScriptElement | null>(null);
     const pollRef = useRef<number | null>(null);
+    const completionFiredRef = useRef(false);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -79,6 +88,19 @@ const WasmGameContainer = ({
             setGameState(getState() as WasmGameState);
         }, 100);
     }, []);
+
+    // ── Reset completion guard when dialog opens ──────────────────────────
+    useEffect(() => {
+        if (open) completionFiredRef.current = false;
+    }, [open]);
+
+    // ── Fire onLevelComplete exactly once when COMPLETED state is reached ──
+    useEffect(() => {
+        if (gameState === 3 && !completionFiredRef.current) {
+            completionFiredRef.current = true;
+            onLevelComplete?.();
+        }
+    }, [gameState, onLevelComplete]);
 
     // ── Load WASM module when dialog opens ────────────────────────────────
     useEffect(() => {
@@ -238,8 +260,8 @@ const WasmGameContainer = ({
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {/* Live score */}
-                    {gameState === 1 && (
+                    {/* Live score (playing) or final score (completed) */}
+                    {(gameState === 1 || gameState === 3) && (
                         <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#ffd740', fontSize: '0.9rem' }}>
                             {score.toString().padStart(5, '0')}
                         </Typography>
@@ -292,8 +314,68 @@ const WasmGameContainer = ({
                     </Box>
                 )}
 
+                {/* Level Complete overlay */}
+                {!loading && !error && gameState === 3 && (
+                    <Box sx={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 1.5,
+                        bgcolor: 'rgba(0,0,0,0.55)',
+                    }}>
+                        <Typography sx={{
+                            fontFamily: FONTS.ANTON,
+                            color: '#ffd740',
+                            fontSize: '2rem',
+                            letterSpacing: 3,
+                            textTransform: 'uppercase',
+                        }}>
+                            Level Complete!
+                        </Typography>
+                        {levelLabel && (
+                            <Typography sx={{
+                                fontFamily: FONTS.NECTO_MONO,
+                                color: 'rgba(255,255,255,0.5)',
+                                fontSize: '0.68rem',
+                                letterSpacing: 2,
+                                textTransform: 'uppercase',
+                            }}>
+                                {levelLabel}
+                            </Typography>
+                        )}
+                        <Typography sx={{
+                            fontFamily: FONTS.NECTO_MONO,
+                            color: 'rgba(255,215,64,0.85)',
+                            fontSize: '1rem',
+                            letterSpacing: 2,
+                            mt: 0.5,
+                        }}>
+                            {score.toString().padStart(5, '0')}
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            onClick={onClose}
+                            sx={{
+                                mt: 1,
+                                fontFamily: FONTS.NECTO_MONO,
+                                fontSize: '0.7rem',
+                                letterSpacing: 2,
+                                color: '#ffd740',
+                                borderColor: 'rgba(255,215,64,0.5)',
+                                textTransform: 'uppercase',
+                                '&:hover': {
+                                    borderColor: '#ffd740',
+                                    bgcolor: 'rgba(255,215,64,0.08)',
+                                },
+                            }}
+                        >
+                            Back to Level Select
+                        </Button>
+                    </Box>
+                )}
+
                 {/* State overlay label (WAITING / DEAD) — sits over the canvas dark overlay drawn by C++ */}
-                {!loading && !error && gameState !== 1 && (
+                {!loading && !error && gameState !== 1 && gameState !== 3 && (
                     <Box sx={{
                         position: 'absolute', bottom: 32, left: 0, right: 0,
                         display: 'flex', justifyContent: 'center',

@@ -5,7 +5,7 @@ import { createGameData, useGameLauncher } from "../../lib/data/GameData";
 
 const GamesPage = () => {
     // Set up game launcher
-    const { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal } = useGameLauncher();
+    const { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal } = useGameLauncher();
 
     // Create game data with launcher functions
     const gameData = createGameData({ launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon });
@@ -27,6 +27,7 @@ const GamesPage = () => {
             {GameModal}
             {ComingSoonGameModal}
             {RPGModal}
+            {LevelSelectModal}
             {WasmModal}
         </>
     );

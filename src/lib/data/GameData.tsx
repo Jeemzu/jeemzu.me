@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import GameContainer from '../../components/GameContainer';
 import WasmGameContainer from '../../components/WasmGameContainer';
+import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
 import ComingSoonModal from '../../components/ComingSoonModal';
 import RPGContainer from '../../games/rpg/components/RPGContainer';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
@@ -9,6 +10,7 @@ import { createPongGameConfig } from '../../games/PongGame';
 import { createBreakoutGameConfig } from '../../games/BreakoutGame';
 import { createTetrisGameConfig } from '../../games/TetrisGame';
 import { type GameDataProps } from "../GameTypes";
+import { type PlatformerLevel, markLevelCompleted } from './PlatformerLevels';
 
 // Import game assets
 import snakepng from '../../assets/images/snake.png';
@@ -33,6 +35,7 @@ export const useGameLauncher = () => {
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
     const [rpgOpen, setRpgOpen] = useState(false);
     const [platformerOpen, setPlatformerOpen] = useState(false);
+    const [selectedLevel, setSelectedLevel] = useState<PlatformerLevel | null>(null);
 
     const launchSnake = () => {
         setCurrentGame({
@@ -78,6 +81,7 @@ export const useGameLauncher = () => {
     };
 
     const launchPlatformer = () => {
+        setSelectedLevel(null);
         setPlatformerOpen(true);
     };
 
@@ -118,16 +122,27 @@ export const useGameLauncher = () => {
         />
     );
 
-    const WasmModal = (
-        <WasmGameContainer
-            open={platformerOpen}
+    const LevelSelectModal = (
+        <PlatformerLevelSelect
+            open={platformerOpen && !selectedLevel}
             onClose={() => setPlatformerOpen(false)}
-            gameTitle="Platform Rush"
-            wasmName="platformer"
+            onSelectLevel={(level) => setSelectedLevel(level)}
         />
     );
 
-    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal };
+    const WasmModal = selectedLevel ? (
+        <WasmGameContainer
+            open={platformerOpen && !!selectedLevel}
+            onClose={() => setSelectedLevel(null)}
+            gameTitle="Platform Rush"
+            wasmName="platformer"
+            levelData={selectedLevel.data}
+            levelLabel={`Level ${selectedLevel.number} — ${selectedLevel.name}`}
+            onLevelComplete={() => markLevelCompleted(selectedLevel.number)}
+        />
+    ) : null;
+
+    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions

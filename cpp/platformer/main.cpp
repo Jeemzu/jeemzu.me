@@ -7,31 +7,28 @@
 #include <cstdio>
 #include <cstring>
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 static constexpr int SW = 800;
 static constexpr int SH = 400;
 static constexpr int GROUND_Y = 320;
 static constexpr int PW = 32;
 static constexpr int PH = 32;
-static constexpr float GRAVITY = 0.55f;
-static constexpr float JUMP_VEL = -13.5f;
-static constexpr float BASE_SPEED = 2.5f;
-static constexpr float MAX_SPEED = 7.0f;
-static constexpr float SPEED_RATE = 0.0015f;
+static constexpr float GRAVITY = 0.4f;
+static constexpr float JUMP_VEL = -8.0f;
+static constexpr float BASE_SPEED = 3.5f;
+static constexpr float MAX_SPEED = 3.5f;  // unused — no acceleration
+static constexpr float SPEED_RATE = 0.0f; // unused — no acceleration
 
 static constexpr float MIN_GAP = PW * 2.0f;
 static constexpr float MAX_GAP = PW * 7.0f;
 static constexpr int SPIKE_W = 32;
 static constexpr int SPIKE_H = 40;
 
-// ─── Structs ──────────────────────────────────────────────────────────────────
-
 enum class State
 {
     WAITING,
     PLAYING,
-    DEAD
+    DEAD,
+    COMPLETED
 };
 
 struct Player
@@ -91,13 +88,12 @@ struct Game
     std::vector<Platform> platforms;
     std::vector<Star> stars;
 
-    // Level mode
     bool level_mode = false;
     std::vector<LevelObj> pending_objs;
     size_t pending_idx = 0;
     float scroll_x = 0.0f;
+    float level_finish_x = -1.0f; // scroll_x at which the level is considered complete
 
-    // Random mode
     float speed = BASE_SPEED;
     float score = 0.0f;
     float gap_remain = (float)SW * 0.6f;
@@ -126,7 +122,7 @@ struct Game
         gap_remain = (float)SW * 0.6f;
         scroll_x = 0.0f;
         pending_idx = 0;
-        // Preserve level_mode and pending_objs so the player replays the same level.
+        // Preserve level_mode, pending_objs, and level_finish_x so the player replays the same level.
         state = State::WAITING;
     }
 
@@ -139,6 +135,8 @@ struct Game
             return;
         case State::DEAD:
             reset();
+            return;
+        case State::COMPLETED:
             return;
         case State::PLAYING:
             if (player.ground)
@@ -213,6 +211,11 @@ extern "C"
                   [](const LevelObj &a, const LevelObj &b)
                   { return a.worldX < b.worldX; });
         G->pending_idx = 0;
+        // Compute finish line: scroll past the last obstacle + clearance distance
+        float last_x = 0.0f;
+        for (const auto &obj : G->pending_objs)
+            last_x = std::max(last_x, obj.worldX);
+        G->level_finish_x = last_x + 900.0f;
     }
 }
 
@@ -477,7 +480,11 @@ static void loop()
         }
 
         G->score += spd;
-        G->speed = std::min(BASE_SPEED + G->score * SPEED_RATE, MAX_SPEED);
+        // Speed is constant — no acceleration
+
+        // Level completion: player scrolled past the finish line
+        if (G->level_mode && G->level_finish_x > 0.0f && G->scroll_x >= G->level_finish_x)
+            G->state = State::COMPLETED;
     }
 
     float star_spd = (G->state == State::PLAYING) ? G->speed * 0.25f : BASE_SPEED * 0.25f;

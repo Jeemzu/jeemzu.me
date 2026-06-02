@@ -17,8 +17,8 @@ const SPIKE_H = 40;
 const PW = 32;
 const PH = 32;
 const WORLD_W = 5120; // 160 tiles — max level length
-// Max jump height ≈ JUMP_VEL² / (2 × GRAVITY) = 13.5²/1.1 ≈ 165px
-const MAX_JUMP_H = 165;
+// Max jump height ≈ JUMP_VEL² / (2 × GRAVITY) = 8.0²/0.8 ≈ 80px
+const MAX_JUMP_H = 80;
 
 type Tool = 'spike' | 'pit' | 'platform' | 'eraser';
 
