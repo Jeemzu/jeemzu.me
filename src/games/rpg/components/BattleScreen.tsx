@@ -63,7 +63,7 @@ export default function BattleScreen({ state, actions }: BattleScreenProps) {
             game.destroy(true);
             gameRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Listen for animation events from Phaser
@@ -102,7 +102,7 @@ export default function BattleScreen({ state, actions }: BattleScreenProps) {
             game.events.off('animationComplete', onAnimComplete);
             game.events.off('enemyAnimComplete', onEnemyAnimComplete);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.battle.enemyState?.currentHP, state.character.currentHP, state.battle.phase]);
 
     function handleVictory() {
@@ -413,7 +413,7 @@ export default function BattleScreen({ state, actions }: BattleScreenProps) {
                 damageResult: result,
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state, actions]);
 
     return (
