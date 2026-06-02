@@ -112,6 +112,7 @@ const LandingPage = LC(lazy(() => import("./pages/landing/LandingPage")));
 const ProjectsPage = LC(lazy(() => import("./pages/projects/ProjectsPage")));
 const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")));
 const ExperiencePage = LC(lazy(() => import("./pages/experience/ExperiencePage")));
+const LevelEditorPage = LC(lazy(() => import("./pages/editor/LevelEditorPage")));
 
 export function Routes() {
   return (
@@ -122,6 +123,7 @@ export function Routes() {
           <Route path="/projects" component={ProjectsPage} />
           <Route path="/games" component={GamesPage} />
           <Route path="/experience" component={ExperiencePage} />
+          <Route path="/editor" component={LevelEditorPage} />
           <Route>
             <Custom404 />
           </Route>

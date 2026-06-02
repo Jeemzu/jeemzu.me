@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:wasm": "powershell -File cpp/build-all.ps1",
+    "build:all": "npm run build:wasm && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

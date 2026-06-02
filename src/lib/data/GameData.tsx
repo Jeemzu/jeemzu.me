@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import GameContainer from '../../components/GameContainer';
+import WasmGameContainer from '../../components/WasmGameContainer';
 import ComingSoonModal from '../../components/ComingSoonModal';
 import RPGContainer from '../../games/rpg/components/RPGContainer';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
@@ -31,6 +32,7 @@ export const useGameLauncher = () => {
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
     const [rpgOpen, setRpgOpen] = useState(false);
+    const [platformerOpen, setPlatformerOpen] = useState(false);
 
     const launchSnake = () => {
         setCurrentGame({
@@ -75,6 +77,10 @@ export const useGameLauncher = () => {
         setRpgOpen(true);
     };
 
+    const launchPlatformer = () => {
+        setPlatformerOpen(true);
+    };
+
     const showComingSoon = (gameTitle: string) => {
         setComingSoonGame(gameTitle);
     };
@@ -112,7 +118,16 @@ export const useGameLauncher = () => {
         />
     );
 
-    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, showComingSoon, GameModal, ComingSoonGameModal, RPGModal };
+    const WasmModal = (
+        <WasmGameContainer
+            open={platformerOpen}
+            onClose={() => setPlatformerOpen(false)}
+            gameTitle="Platform Rush"
+            wasmName="platformer"
+        />
+    );
+
+    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal };
 };
 
 // Create game data with launcher functions
@@ -123,6 +138,7 @@ export const createGameData = (launchers: {
     launchBreakout: () => void;
     launchTetris: () => void;
     launchRPG: () => void;
+    launchPlatformer: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
         {
@@ -180,6 +196,15 @@ export const createGameData = (launchers: {
             gameplayGif: tetrisgif,
             genre: 'Classics',
             onPlay: launchers.launchTetris,
+        },
+        {
+            id: 'platformer',
+            title: 'Platform Rush',
+            description: 'A side-scrolling platformer written in C++ and compiled to WebAssembly. Dodge the spikes — every gap is always jumpable.',
+            thumbnail: progenitorsThumbnail,
+            gameplayGif: progenitorsThumbnail,
+            genre: 'Native',
+            onPlay: launchers.launchPlatformer,
         },
     ];// Default export for backward compatibility - empty onPlay handlers
 export const gameData: GameDataProps[] = [

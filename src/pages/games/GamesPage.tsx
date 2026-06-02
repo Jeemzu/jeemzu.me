@@ -5,10 +5,10 @@ import { createGameData, useGameLauncher } from "../../lib/data/GameData";
 
 const GamesPage = () => {
     // Set up game launcher
-    const { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, showComingSoon, GameModal, ComingSoonGameModal, RPGModal } = useGameLauncher();
+    const { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal } = useGameLauncher();
 
     // Create game data with launcher functions
-    const gameData = createGameData({ launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, showComingSoon });
+    const gameData = createGameData({ launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon });
 
     // Get featured game
     const featuredGame = gameData.find(game => game.featured) || gameData[0];
@@ -27,6 +27,7 @@ const GamesPage = () => {
             {GameModal}
             {ComingSoonGameModal}
             {RPGModal}
+            {WasmModal}
         </>
     );
 };

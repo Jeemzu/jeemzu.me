@@ -15,6 +15,8 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/c_cpp_properties.json
+!.vscode/tasks.json
 .idea
 .DS_Store
 *.suo
@@ -22,3 +24,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# C++ native build artifacts
+cpp/**/*.exe
+cpp/**/*.o
+cpp/**/*.obj
+
+# Generated WASM (commit .js/.wasm if you want Netlify to serve them without a build step)
+# public/wasm/*.js
+# public/wasm/*.wasm
