@@ -1,4 +1,4 @@
-export type GameGenre = 'Classics' | 'Arcade' | 'Action' | 'Strategy';
+export type GameGenre = 'Classics' | 'Arcade' | 'Action' | 'Strategy' | 'RPG';
 
 export type GameDataProps = {
     id: string;

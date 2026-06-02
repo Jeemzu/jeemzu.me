@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import GameContainer from '../../components/GameContainer';
 import ComingSoonModal from '../../components/ComingSoonModal';
+import RPGContainer from '../../games/rpg/components/RPGContainer';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
 import { createZAimGameConfig } from '../../games/ZAimGame';
 import { createPongGameConfig } from '../../games/PongGame';
@@ -19,6 +20,7 @@ import breakoutpng from '../../assets/images/breakout.png';
 import breakoutgif from '../../assets/images/breakout.gif';
 import tetrispng from '../../assets/images/tetris.png';
 import tetrisgif from '../../assets/images/tetris.gif';
+import progenitorsThumbnail from '../../assets/images/progenitors-thumbnail.svg';
 
 // Game launcher hook - we'll use this to manage game state
 export const useGameLauncher = () => {
@@ -28,6 +30,7 @@ export const useGameLauncher = () => {
         showColorOption?: boolean;
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
+    const [rpgOpen, setRpgOpen] = useState(false);
 
     const launchSnake = () => {
         setCurrentGame({
@@ -68,6 +71,10 @@ export const useGameLauncher = () => {
         });
     };
 
+    const launchRPG = () => {
+        setRpgOpen(true);
+    };
+
     const showComingSoon = (gameTitle: string) => {
         setComingSoonGame(gameTitle);
     };
@@ -98,7 +105,14 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, showComingSoon, GameModal, ComingSoonGameModal };
+    const RPGModal = (
+        <RPGContainer
+            open={rpgOpen}
+            onClose={() => setRpgOpen(false)}
+        />
+    );
+
+    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, showComingSoon, GameModal, ComingSoonGameModal, RPGModal };
 };
 
 // Create game data with launcher functions
@@ -108,8 +122,19 @@ export const createGameData = (launchers: {
     launchPong: () => void;
     launchBreakout: () => void;
     launchTetris: () => void;
+    launchRPG: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
+        {
+            id: 'progenitors',
+            title: 'The Progenitors',
+            description: 'A turn-based RPG. Choose your class, master Spirit Aura, and descend into the Undercroft. Progress saved locally.',
+            thumbnail: progenitorsThumbnail,
+            gameplayGif: progenitorsThumbnail,
+            genre: 'RPG',
+            featured: true,
+            onPlay: launchers.launchRPG,
+        },
         {
             id: 'zaim',
             title: 'zAim',
@@ -117,7 +142,7 @@ export const createGameData = (launchers: {
             thumbnail: zaimpng,
             gameplayGif: zaimgif,
             genre: 'Arcade',
-            featured: true,
+            featured: false,
             onPlay: launchers.launchZAim,
         },
         {
