@@ -7,14 +7,14 @@
 #include <cstdio>
 #include <cstring>
 
-static constexpr int SW = 800;
-static constexpr int SH = 400;
-static constexpr int GROUND_Y = 320;
+static constexpr int SW = 960;
+static constexpr int SH = 720;
+static constexpr int GROUND_Y = 640;
 static constexpr int PW = 32;
 static constexpr int PH = 32;
-static constexpr float RISE_GRAVITY = 0.28f; // gravity while ascending (slower decel)
-static constexpr float FALL_GRAVITY = 0.82f; // gravity while descending (faster fall)
-static constexpr float JUMP_VEL = -7.0f;
+static constexpr float RISE_GRAVITY = 0.38f; // gravity while ascending (slower decel)
+static constexpr float FALL_GRAVITY = 0.65f; // gravity while descending (faster fall)
+static constexpr float JUMP_VEL = -8.0f;
 static constexpr float BASE_SPEED = 2.0f;
 
 static constexpr float MIN_GAP = PW * 2.0f;
@@ -36,6 +36,7 @@ struct Player
     float y = GROUND_Y - PH;
     float vy = 0.0f;
     bool ground = true;
+    float jump_angle = 0.0f; // degrees, 0 = upright, accumulates during jump
 };
 
 struct Spike
@@ -43,6 +44,7 @@ struct Spike
     float x;
     float w = SPIKE_W;
     float h = SPIKE_H;
+    float base_y = (float)GROUND_Y; // y-coordinate of spike base (top of surface)
 };
 struct Pit
 {
@@ -149,7 +151,7 @@ struct Game
 
 static Game *G = nullptr;
 
-// ─── Exported C API ───────────────────────────────────────────────────────────
+// Exported C API
 
 extern "C"
 {
@@ -170,11 +172,15 @@ extern "C"
         G->level_mode = true;
     }
 
-    EMSCRIPTEN_KEEPALIVE void level_add_spike(float worldX)
+    EMSCRIPTEN_KEEPALIVE void level_add_spike(float worldX, float wy)
     {
         if (!G)
             return;
-        G->pending_objs.push_back({ObjType::SPIKE, worldX});
+        LevelObj o;
+        o.type = ObjType::SPIKE;
+        o.worldX = worldX;
+        o.wy = wy;
+        G->pending_objs.push_back(o);
     }
 
     EMSCRIPTEN_KEEPALIVE void level_add_pit(float worldX, float width)
@@ -231,17 +237,17 @@ extern "C"
 static void draw_spike(SDL_Renderer *r, const Spike &s)
 {
     float tip_x = s.x + s.w * 0.5f;
-    float tip_y = (float)GROUND_Y - s.h;
+    float tip_y = s.base_y - s.h;
     SDL_SetRenderDrawColor(r, 215, 55, 55, 255);
-    for (float y = tip_y; y <= (float)GROUND_Y; y += 1.0f)
+    for (float y = tip_y; y <= s.base_y; y += 1.0f)
     {
         float t = (y - tip_y) / s.h;
         float half_w = t * s.w * 0.5f;
         SDL_RenderDrawLine(r, (int)(tip_x - half_w), (int)y, (int)(tip_x + half_w), (int)y);
     }
     SDL_SetRenderDrawColor(r, 140, 25, 25, 255);
-    SDL_RenderDrawLine(r, (int)s.x, GROUND_Y, (int)tip_x, (int)tip_y);
-    SDL_RenderDrawLine(r, (int)(s.x + s.w), GROUND_Y, (int)tip_x, (int)tip_y);
+    SDL_RenderDrawLine(r, (int)s.x, (int)s.base_y, (int)tip_x, (int)tip_y);
+    SDL_RenderDrawLine(r, (int)(s.x + s.w), (int)s.base_y, (int)tip_x, (int)tip_y);
 }
 
 static void draw_digit(SDL_Renderer *r, int d, int x, int y, int w, int h)
@@ -313,10 +319,10 @@ static bool collides(const Player &p, const Spike &s)
     for (int row = 0; row < PH; row += 2)
     {
         int test_y = (int)p.y + row;
-        float tip_y = (float)GROUND_Y - s.h;
+        float tip_y = s.base_y - s.h;
         if ((float)test_y < tip_y)
             continue;
-        if (test_y >= GROUND_Y)
+        if ((float)test_y >= s.base_y)
             break;
         float frac = ((float)test_y - tip_y) / s.h;
         float half_w = frac * s.w * 0.5f - 4.0f;
@@ -358,6 +364,10 @@ static void loop()
         G->player.vy += (G->player.vy < 0.0f ? RISE_GRAVITY : FALL_GRAVITY);
         G->player.y += G->player.vy;
 
+        // Accumulate rotation while airborne
+        if (!G->player.ground)
+            G->player.jump_angle += 4.9f; // ~37 frames per jump → ~180°
+
         for (auto &s : G->spikes)
             s.x -= spd;
         for (auto &p : G->pits)
@@ -379,6 +389,7 @@ static void loop()
                 {
                     Spike s;
                     s.x = (float)SW + 4;
+                    s.base_y = (float)GROUND_Y - obj.wy;
                     G->spikes.push_back(s);
                     break;
                 }
@@ -441,6 +452,7 @@ static void loop()
                 G->player.y = plat.y - (float)PH;
                 G->player.vy = 0.0f;
                 G->player.ground = true;
+                G->player.jump_angle = 0.0f; // snap upright on landing
                 on_platform = true;
                 break;
             }
@@ -473,7 +485,27 @@ static void loop()
                     G->player.y = floor_y;
                     G->player.vy = 0.0f;
                     G->player.ground = true;
+                    G->player.jump_angle = 0.0f; // snap upright on landing
                 }
+            }
+        }
+
+        // Platform left-wall collision — player running into the face of a platform is fatal
+        for (const auto &plat : G->platforms)
+        {
+            // Horizontal overlap: player right edge past platform left edge
+            bool x_hit = G->player.x + (float)PW > plat.x &&
+                         G->player.x < plat.x + plat.w;
+            // Vertical overlap: player box overlaps platform box (not just the surface)
+            bool y_hit = G->player.y + (float)PH > plat.y &&
+                         G->player.y < plat.y + plat.h;
+            // Only fatal when approaching from the left (platform left edge inside player)
+            // and the player is not currently sitting on top of this platform
+            bool on_top = G->player.y + (float)PH <= plat.y + 2.0f;
+            if (x_hit && y_hit && !on_top && G->player.x + (float)PW > plat.x && G->player.x < plat.x)
+            {
+                G->state = State::DEAD;
+                break;
             }
         }
 
@@ -573,16 +605,68 @@ static void loop()
         draw_spike(r, s);
 
     {
-        int px = (int)G->player.x, py = (int)G->player.y;
+        // Draw player as a rotation-animated cube
+        float cx = G->player.x + PW * 0.5f;
+        float cy = G->player.y + PH * 0.5f;
+        float angle_rad = G->player.jump_angle * (float)M_PI / 180.0f;
+        float ca = std::cos(angle_rad), sa = std::sin(angle_rad);
+        float hw = PW * 0.5f, hh = PH * 0.5f;
+
+        // Compute 4 rotated corners (top-left, top-right, bottom-right, bottom-left)
+        struct Pt
+        {
+            float x, y;
+        };
+        Pt corners[4] = {
+            {cx + (-hw) * ca - (-hh) * sa, cy + (-hw) * sa + (-hh) * ca},
+            {cx + hw * ca - (-hh) * sa, cy + hw * sa + (-hh) * ca},
+            {cx + hw * ca - hh * sa, cy + hw * sa + hh * ca},
+            {cx + (-hw) * ca - hh * sa, cy + (-hw) * sa + hh * ca},
+        };
+
+        // Scanline fill — body
+        float min_y = corners[0].y, max_y = corners[0].y;
+        for (int i = 1; i < 4; i++)
+        {
+            min_y = std::min(min_y, corners[i].y);
+            max_y = std::max(max_y, corners[i].y);
+        }
         SDL_SetRenderDrawColor(r, 255, 195, 0, 255);
-        SDL_Rect pr = {px, py, PW, PH};
-        SDL_RenderFillRect(r, &pr);
+        for (int y = (int)min_y; y <= (int)max_y; y++)
+        {
+            float xl = 1e9f, xr = -1e9f;
+            for (int i = 0; i < 4; i++)
+            {
+                const Pt &a = corners[i], &b = corners[(i + 1) % 4];
+                if ((a.y <= (float)y && b.y > (float)y) || (b.y <= (float)y && a.y > (float)y))
+                {
+                    float t = ((float)y - a.y) / (b.y - a.y);
+                    float x = a.x + t * (b.x - a.x);
+                    xl = std::min(xl, x);
+                    xr = std::max(xr, x);
+                }
+            }
+            if (xl < xr)
+                SDL_RenderDrawLine(r, (int)xl, y, (int)xr, y);
+        }
+
+        // Highlight dot — rotated with the cube, offset toward top-left corner
+        float hx = cx + (-hw * 0.35f) * ca - (-hh * 0.35f) * sa;
+        float hy = cy + (-hw * 0.35f) * sa + (-hh * 0.35f) * ca;
         SDL_SetRenderDrawColor(r, 255, 235, 110, 255);
-        SDL_Rect hi = {px + 5, py + 5, 9, 9};
+        SDL_Rect hi = {(int)(hx - 4), (int)(hy - 4), 8, 8};
         SDL_RenderFillRect(r, &hi);
+
+        // Shadow edge — bottom edge of rotated cube
         SDL_SetRenderDrawColor(r, 200, 140, 0, 255);
-        SDL_Rect sh = {px + 1, py + PH - 5, PW - 2, 4};
-        SDL_RenderFillRect(r, &sh);
+        for (int i = 0; i < 4; i++)
+        {
+            const Pt &a = corners[i], &b = corners[(i + 1) % 4];
+            // Draw only bottom-facing edges (normal points downward)
+            float nx = -(b.y - a.y), ny = b.x - a.x; // outward normal
+            if (ny > 0)
+                SDL_RenderDrawLine(r, (int)a.x, (int)a.y, (int)b.x, (int)b.y);
+        }
     }
 
     draw_score(r, get_score());

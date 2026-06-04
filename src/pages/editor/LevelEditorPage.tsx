@@ -11,26 +11,20 @@ import WasmGameContainer from '../../components/WasmGameContainer';
 import { type LevelFile, type LevelCell, type CellType } from '../../lib/LevelSchema';
 import { FONTS } from '../../lib/globals';
 
-// --- Grid constants (must match cpp/platformer/main.cpp) ---------------------
+// --- Grid constants (must match cpp/platformer/main.cpp)
 
 const TILE = 32;
-const GROUND_Y = 320;
-const SW = 800;
-const SH = 400;
+const GROUND_Y = 640;
+const SW = 960;
+const SH = 720;
 
-const ROWS = Math.ceil(SH / TILE);   // 13  (rows 0-12)
-const GROUND_ROW = GROUND_Y / TILE;       // 10
+const ROWS = Math.ceil(SH / TILE);   // 30  (rows 0-29)
+const GROUND_ROW = GROUND_Y / TILE;       // 20
 
-const MIN_COLS = Math.ceil(SW / TILE);   // 25
+const MIN_COLS = Math.ceil(SW / TILE);   // 40
 const MAX_COLS = 400;
 
-const MAX_JUMP_H_PX = 81;
-const MAX_JUMP_GUIDE_Y = GROUND_Y - MAX_JUMP_H_PX;  // = 239 px
-
-const PLATFORM_ROW_MIN = GROUND_ROW - 2;  // row 8
-const PLATFORM_ROW_MAX = GROUND_ROW - 1;  // row 9
-
-// --- Tool colours -----------------------------------------------------------
+// --- Tool colours
 
 const TOOL_COLORS: Record<CellType, string> = {
     platform: '#3a6ea0',
@@ -48,12 +42,12 @@ const TOOL_HOVER: Record<CellType, string> = {
 
 type Tool = CellType | 'eraser';
 
-// --- Cell map helpers -------------------------------------------------------
+// --- Cell map helpers
 
 type CellKey = `${number},${number}`;
 function key(row: number, col: number): CellKey { return `${row},${col}`; }
 
-// --- Canvas draw ------------------------------------------------------------
+// --- Canvas draw
 
 interface DrawParams {
     cells: Map<CellKey, CellType>;
@@ -66,7 +60,8 @@ interface DrawParams {
 
 function isValidPlacement(tool: Tool, row: number): boolean {
     if (tool === 'eraser') return true;
-    if (tool === 'platform') return row >= PLATFORM_ROW_MIN && row <= PLATFORM_ROW_MAX;
+    if (tool === 'platform') return row >= 1 && row < GROUND_ROW;
+    if (tool === 'spike') return row >= 1 && row <= GROUND_ROW;
     return row === GROUND_ROW;
 }
 
@@ -99,23 +94,34 @@ function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
             ctx.fillRect(sx, (GROUND_ROW + 1) * TILE, TILE, SH - (GROUND_ROW + 1) * TILE);
         }
 
-        for (let r = PLATFORM_ROW_MIN; r <= PLATFORM_ROW_MAX; r++) {
+        for (let r = 1; r < GROUND_ROW; r++) {
             if (p.cells.get(key(r, c)) === 'platform') {
                 ctx.fillStyle = TOOL_COLORS.platform;
                 ctx.fillRect(sx, r * TILE, TILE, TILE);
                 ctx.fillStyle = 'rgba(120,180,255,0.6)';
                 ctx.fillRect(sx, r * TILE, TILE, 2);
             }
+            if (p.cells.get(key(r, c)) === 'spike') {
+                const tipX = sx + TILE / 2;
+                const baseY = (r + 1) * TILE;
+                ctx.fillStyle = TOOL_COLORS.spike;
+                ctx.beginPath();
+                ctx.moveTo(sx + 2, baseY);
+                ctx.lineTo(tipX, r * TILE + 8);
+                ctx.lineTo(sx + TILE - 2, baseY);
+                ctx.closePath();
+                ctx.fill();
+            }
         }
 
         if (p.cells.get(key(GROUND_ROW, c)) === 'spike') {
             const tipX = sx + TILE / 2;
-            const tipY = GROUND_ROW * TILE;
+            const baseY = (GROUND_ROW + 1) * TILE;
             ctx.fillStyle = TOOL_COLORS.spike;
             ctx.beginPath();
-            ctx.moveTo(sx + 2, (GROUND_ROW + 1) * TILE);
-            ctx.lineTo(tipX, tipY + 8);
-            ctx.lineTo(sx + TILE - 2, (GROUND_ROW + 1) * TILE);
+            ctx.moveTo(sx + 2, baseY);
+            ctx.lineTo(tipX, GROUND_ROW * TILE + 8);
+            ctx.lineTo(sx + TILE - 2, baseY);
             ctx.closePath();
             ctx.fill();
         }
@@ -152,24 +158,6 @@ function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, GROUND_ROW * TILE); ctx.lineTo(SW, GROUND_ROW * TILE); ctx.stroke();
 
-    // Max-jump guide
-    ctx.save();
-    ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = 'rgba(255,80,80,0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, MAX_JUMP_GUIDE_Y); ctx.lineTo(SW, MAX_JUMP_GUIDE_Y); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-    ctx.fillStyle = 'rgba(255,80,80,0.35)';
-    ctx.font = '9px monospace';
-    ctx.fillText('max jump', 4, MAX_JUMP_GUIDE_Y - 3);
-
-    // Unreachable zone overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(0, 0, SW, PLATFORM_ROW_MIN * TILE);
-    ctx.fillStyle = 'rgba(255,80,80,0.06)';
-    ctx.fillRect(0, 0, SW, PLATFORM_ROW_MIN * TILE);
-
     // Column ruler
     ctx.fillStyle = '#12121e';
     ctx.fillRect(0, 0, SW, 16);
@@ -188,9 +176,9 @@ function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
     // Player spawn indicator
     const spawnCol = 3;
     if (spawnCol >= startCol && spawnCol < startCol + visibleCols) {
-        const sx = (spawnCol - startCol) * TILE + 8;
+        const sx = (spawnCol - startCol) * TILE;
         ctx.fillStyle = 'rgba(255,195,0,0.35)';
-        ctx.fillRect(sx, GROUND_ROW * TILE - TILE, TILE - 8, TILE);
+        ctx.fillRect(sx, GROUND_ROW * TILE - TILE, TILE, TILE);
         ctx.fillStyle = 'rgba(255,195,0,0.6)';
         ctx.font = '8px monospace';
         ctx.fillText('P', sx + 5, GROUND_ROW * TILE - 10);
@@ -228,7 +216,7 @@ function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
     }
 }
 
-// --- LevelFile builder ------------------------------------------------------
+// --- LevelFile builder
 
 function buildLevelFile(cells: Map<CellKey, CellType>, number: number, name: string, totalCols: number): LevelFile {
     const cellArr: LevelCell[] = [];
@@ -239,7 +227,7 @@ function buildLevelFile(cells: Map<CellKey, CellType>, number: number, name: str
     return { version: 1, number, name, cols: totalCols, cells: cellArr };
 }
 
-// --- Component --------------------------------------------------------------
+// --- Component
 
 const LevelEditorPage = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -370,7 +358,7 @@ const LevelEditorPage = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', bgcolor: '#090c0c', color: '#fff', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 272px)', bgcolor: '#090c0c', color: '#fff' }}>
 
             {/* Toolbar */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, px: 3, py: 2, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
@@ -401,12 +389,12 @@ const LevelEditorPage = () => {
                     size="medium"
                     sx={{ '& .MuiToggleButton-root': { color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)', px: 2, py: 0.75, fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' } }}
                 >
-                    <Tooltip title="Platform — rows 8-9 only" placement="bottom">
+                    <Tooltip title="Platform — any row above ground" placement="bottom">
                         <ToggleButton value="platform" sx={{ '&.Mui-selected': { bgcolor: 'rgba(58,110,160,0.3) !important', color: '#78b4ff !important', borderColor: '#3a6ea0 !important' } }}>
                             <Box sx={{ width: 12, height: 4, bgcolor: '#3a6ea0', mr: 0.75, borderRadius: 0.25 }} />Platform
                         </ToggleButton>
                     </Tooltip>
-                    <Tooltip title="Spike — ground row only" placement="bottom">
+                    <Tooltip title="Spike — ground or any platform row" placement="bottom">
                         <ToggleButton value="spike" sx={{ '&.Mui-selected': { bgcolor: 'rgba(215,55,55,0.25) !important', color: '#ff7777 !important', borderColor: '#d73737 !important' } }}>
                             <Box component="span" sx={{ mr: 0.5 }}>▲</Box>Spike
                         </ToggleButton>
@@ -470,7 +458,7 @@ const LevelEditorPage = () => {
                 </Box>
 
                 {/* Scroll bar */}
-                <Box sx={{ px: 2, pb: 1.5, pt: 1, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ pb: 6, display: 'flex', justifyContent: 'center' }}>
                     <input type="range" min={0} max={Math.max(0, totalCols - MIN_COLS)} value={scrollCol}
                         onChange={e => setScrollCol(Number(e.target.value))}
                         style={{ width: SW, display: 'block', accentColor: '#ffd740', cursor: 'pointer' }} />
@@ -485,11 +473,8 @@ const LevelEditorPage = () => {
                 <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
                     col {scrollCol}–{scrollCol + MIN_COLS - 1} / {totalCols - 1}
                 </Typography>
-                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(255,100,100,0.4)' }}>
-                    rows 0–{PLATFORM_ROW_MIN - 1}: unreachable
-                </Typography>
                 <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(58,110,160,0.7)' }}>
-                    rows {PLATFORM_ROW_MIN}–{PLATFORM_ROW_MAX}: platforms
+                    rows 1–{GROUND_ROW - 1}: platforms
                 </Typography>
                 <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(150,150,200,0.5)' }}>
                     row {GROUND_ROW}: ground

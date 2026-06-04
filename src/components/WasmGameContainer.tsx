@@ -129,7 +129,7 @@ const WasmGameContainer = ({
                 if (levelFile && levelFile.cells.length > 0) {
                     const levelBegin = mod.cwrap('level_begin', null, []) as () => void;
                     const levelEnd = mod.cwrap('level_end', null, []) as () => void;
-                    const addSpike = mod.cwrap('level_add_spike', null, ['number']) as (x: number) => void;
+                    const addSpike = mod.cwrap('level_add_spike', null, ['number', 'number']) as (x: number, wy: number) => void;
                     const addPit = mod.cwrap('level_add_pit', null, ['number', 'number']) as (x: number, w: number) => void;
                     const addPlatform = mod.cwrap('level_add_platform', null, ['number', 'number', 'number', 'number']) as (x: number, wy: number, w: number, h: number) => void;
                     const setFinish = mod.cwrap('level_set_finish', null, ['number']) as (x: number) => void;
@@ -137,7 +137,7 @@ const WasmGameContainer = ({
                     for (const cmd of buildLevelCommands(levelFile)) {
                         switch (cmd.cmd) {
                             case 'begin': levelBegin(); break;
-                            case 'spike': addSpike(cmd.worldX); break;
+                            case 'spike': addSpike(cmd.worldX, cmd.worldY); break;
                             case 'pit': addPit(cmd.worldX, cmd.width); break;
                             case 'platform': addPlatform(cmd.worldX, cmd.worldY, cmd.width, cmd.height); break;
                             case 'end': levelEnd(); break;

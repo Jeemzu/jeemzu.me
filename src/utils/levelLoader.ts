@@ -12,7 +12,7 @@
 import { type LevelFile, type CellType } from '../lib/LevelSchema';
 
 export const TILE = 32;
-export const GROUND_Y = 320;
+export const GROUND_Y = 640;
 
 // ─── worldX / worldY helpers ─────────────────────────────────────────────────
 
@@ -22,8 +22,8 @@ export function colToWorldX(col: number): number {
 
 /**
  * Distance from GROUND_Y to the TOP surface of the platform tile.
- * row 8 → worldY = GROUND_Y - 8*TILE = 320 - 256 = 64 px
- * row 9 → worldY = GROUND_Y - 9*TILE = 320 - 288 = 32 px
+ * row 18 → worldY = GROUND_Y - 18*TILE = 640 - 576 = 64 px
+ * row 19 → worldY = GROUND_Y - 19*TILE = 640 - 608 = 32 px
  */
 export function rowToWorldY(row: number): number {
     return GROUND_Y - row * TILE;
@@ -83,7 +83,7 @@ function mergeContiguous(cols: number[]): ColSpan[] {
  */
 export type LevelCommand =
     | { cmd: 'begin' }
-    | { cmd: 'spike'; worldX: number }
+    | { cmd: 'spike'; worldX: number; worldY: number }
     | { cmd: 'pit'; worldX: number; width: number }
     | { cmd: 'platform'; worldX: number; worldY: number; width: number; height: number }
     | { cmd: 'end' }
@@ -97,10 +97,21 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
     const cmds: LevelCommand[] = [];
     cmds.push({ cmd: 'begin' });
 
-    // ── Spikes (row 10 only) ────────────────────────────────────────────────
-    const spikeCols = colsAtRow(level.cells, 'spike', 10);
-    for (const col of spikeCols) {
-        cmds.push({ cmd: 'spike', worldX: colToWorldX(col) });
+    // colsForType only handles 'pit' | 'platform', so collect spikes manually
+    const spikeRowMap = new Map<number, number[]>();
+    for (const c of level.cells) {
+        if (c.type !== 'spike') continue;
+        const cols = spikeRowMap.get(c.row) ?? [];
+        cols.push(c.col);
+        spikeRowMap.set(c.row, cols);
+    }
+    for (const [row, cols] of spikeRowMap) {
+        // worldY = distance above GROUND_Y to the TOP of the cell the spike sits on.
+        // The spike base is at the bottom of that cell, i.e. one TILE lower.
+        const worldY = rowToWorldY(row + 1); // base_y offset = GROUND_Y - worldY
+        for (const col of cols.sort((a, b) => a - b)) {
+            cmds.push({ cmd: 'spike', worldX: colToWorldX(col), worldY });
+        }
     }
 
     // ── Pits (row 10 — contiguous cols merged into one pit each) ───────────
@@ -131,8 +142,8 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
 
     cmds.push({ cmd: 'end' });
 
-    // ── Finish line (first finish cell found in row 10) ───────────────────
-    const finishCell = level.cells.find(c => c.type === 'finish' && c.row === 10);
+    // ── Finish line (any finish cell — only col matters for worldX) ──────────
+    const finishCell = level.cells.find(c => c.type === 'finish');
     if (finishCell) {
         // Place the finish threshold at the LEFT edge of the finish tile column
         cmds.push({ cmd: 'set_finish', worldX: colToWorldX(finishCell.col) });
