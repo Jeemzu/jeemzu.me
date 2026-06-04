@@ -113,7 +113,7 @@ export class BattleScene extends Phaser.Scene {
 
         // Label
         this.add.text(x, groundY - 130, 'YOU', {
-            fontFamily: 'monospace',
+            fontFamily: 'NectoMono-Regular',
             fontSize: '10px',
             color: '#a8d67e',
         }).setOrigin(0.5);
@@ -137,7 +137,7 @@ export class BattleScene extends Phaser.Scene {
         // Label from registry
         const enemyName: string = this.registry.get('enemyName') ?? 'ENEMY';
         this.add.text(x, groundY - 144, enemyName.toUpperCase(), {
-            fontFamily: 'monospace',
+            fontFamily: 'NectoMono-Regular',
             fontSize: '10px',
             color: '#e05c2a',
         }).setOrigin(0.5);
@@ -288,7 +288,7 @@ export class BattleScene extends Phaser.Scene {
         }
 
         const floatText = this.add.text(x + (Math.random() - 0.5) * 40, y, text, {
-            fontFamily: 'monospace',
+            fontFamily: 'NectoMono-Regular',
             fontSize: result.isCrit ? '20px' : '16px',
             color,
             stroke: '#000000',
@@ -313,7 +313,7 @@ export class BattleScene extends Phaser.Scene {
 
     private showHealNumber(x: number, y: number, amount: number) {
         const healText = this.add.text(x, y, `+${amount}`, {
-            fontFamily: 'monospace',
+            fontFamily: 'NectoMono-Regular',
             fontSize: '14px',
             color: '#a8d67e',
             stroke: '#000000',

@@ -6,31 +6,74 @@ import {
     Typography,
     IconButton,
     Grid,
+    CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { FONTS } from '../lib/globals';
-import {
-    PLATFORMER_LEVELS,
-    getHighestCompleted,
-    isLevelUnlocked,
-    type PlatformerLevel,
-} from '../lib/data/PlatformerLevels';
+import { type LevelFile, type ManifestEntry } from '../lib/LevelSchema';
+import { fetchManifest, fetchLevelFile } from '../utils/levelLoader';
+
+// ─── localStorage unlock helpers ─────────────────────────────────────────────────
+
+const STORAGE_KEY = 'platformer_highest_completed';
+
+export function getHighestCompleted(): number {
+    return parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10);
+}
+
+export function markLevelCompleted(levelNumber: number): void {
+    const current = getHighestCompleted();
+    if (levelNumber > current) {
+        localStorage.setItem(STORAGE_KEY, String(levelNumber));
+    }
+}
+
+function isLevelUnlocked(levelNumber: number, highestCompleted: number): boolean {
+    if (levelNumber === 1) return true;
+    return highestCompleted >= levelNumber - 1;
+}
 
 interface PlatformerLevelSelectProps {
     open: boolean;
     onClose: () => void;
-    onSelectLevel: (level: PlatformerLevel) => void;
+    /** Called with the fetched LevelFile when the player clicks an unlocked level */
+    onSelectLevel: (level: LevelFile) => void;
 }
 
 const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevelSelectProps) => {
     const [highestCompleted, setHighestCompleted] = useState(0);
+    const [entries, setEntries] = useState<ManifestEntry[]>([]);
+    const [manifestLoading, setManifestLoading] = useState(false);
+    const [manifestError, setManifestError] = useState<string | null>(null);
+    const [loadingLevel, setLoadingLevel] = useState<number | null>(null);
 
-    // Re-read unlock state every time the dialog opens
+    // Refresh unlock state + manifest every time the dialog opens
     useEffect(() => {
-        if (open) setHighestCompleted(getHighestCompleted());
+        if (!open) return;
+        setHighestCompleted(getHighestCompleted());
+        setManifestLoading(true);
+        setManifestError(null);
+
+        fetchManifest()
+            .then(m => setEntries(m.levels.sort((a, b) => a.number - b.number)))
+            .catch(err => setManifestError(String(err)))
+            .finally(() => setManifestLoading(false));
     }, [open]);
+
+    const handleSelect = async (entry: ManifestEntry) => {
+        if (!isLevelUnlocked(entry.number, highestCompleted)) return;
+        setLoadingLevel(entry.number);
+        try {
+            const levelFile = await fetchLevelFile(entry.file);
+            onSelectLevel(levelFile);
+        } catch (err) {
+            setManifestError(`Failed to load level ${entry.number}: ${err}`);
+        } finally {
+            setLoadingLevel(null);
+        }
+    };
 
     return (
         <Dialog
@@ -61,7 +104,7 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Typography
                         sx={{
-                            fontFamily: FONTS.ANTON,
+                            fontFamily: FONTS.POIRET_ONE,
                             color: '#ffd740',
                             fontSize: '1.15rem',
                             letterSpacing: 1,
@@ -82,7 +125,7 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
                             sx={{
                                 color: '#64b4ff',
                                 fontSize: '0.65rem',
-                                fontFamily: 'monospace',
+                                fontFamily: FONTS.NECTO_MONO,
                                 letterSpacing: 1,
                             }}
                         >
@@ -97,133 +140,103 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
 
             <DialogContent sx={{ p: 3 }}>
                 {/* Section label */}
-                <Typography
-                    sx={{
-                        fontFamily: FONTS.NECTO_MONO,
-                        color: 'rgba(255,255,255,0.4)',
-                        fontSize: '0.65rem',
-                        letterSpacing: 3,
-                        textTransform: 'uppercase',
-                        mb: 2.5,
-                    }}
-                >
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem', letterSpacing: 3, textTransform: 'uppercase', mb: 2.5 }}>
                     Select Level
                 </Typography>
 
+                {/* Loading manifest */}
+                {manifestLoading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                        <CircularProgress size={32} sx={{ color: '#ffd740' }} />
+                    </Box>
+                )}
+
+                {/* Manifest error */}
+                {manifestError && (
+                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#ff5555', fontSize: '0.8rem', textAlign: 'center', mt: 2 }}>
+                        {manifestError}
+                    </Typography>
+                )}
+
+                {/* No levels yet */}
+                {!manifestLoading && !manifestError && entries.length === 0 && (
+                    <Box sx={{ textAlign: 'center', mt: 4 }}>
+                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem', letterSpacing: 1 }}>
+                            No levels found
+                        </Typography>
+                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: 'rgba(255,255,255,0.18)', fontSize: '0.6rem', letterSpacing: 1, mt: 1 }}>
+                            Create one in the Level Editor at /editor
+                        </Typography>
+                    </Box>
+                )}
+
                 {/* Level grid */}
-                <Grid container spacing={1.5}>
-                    {PLATFORMER_LEVELS.map((level) => {
-                        const unlocked = isLevelUnlocked(level.number);
-                        const completed = highestCompleted >= level.number;
+                {!manifestLoading && entries.length > 0 && (
+                    <Grid container spacing={1.5}>
+                        {entries.map((entry) => {
+                            const unlocked = isLevelUnlocked(entry.number, highestCompleted);
+                            const completed = highestCompleted >= entry.number;
+                            const isLoading = loadingLevel === entry.number;
 
-                        return (
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={level.number}>
-                                <Box
-                                    onClick={() => unlocked && onSelectLevel(level)}
-                                    sx={{
-                                        position: 'relative',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        height: 120,
-                                        borderRadius: 1.5,
-                                        border: completed
-                                            ? '1px solid rgba(255,215,64,0.5)'
-                                            : unlocked
-                                                ? '1px solid rgba(255,255,255,0.15)'
-                                                : '1px solid rgba(255,255,255,0.06)',
-                                        bgcolor: unlocked
-                                            ? 'rgba(255,255,255,0.04)'
-                                            : 'rgba(0,0,0,0.2)',
-                                        cursor: unlocked ? 'pointer' : 'default',
-                                        transition: 'border-color 0.18s, background-color 0.18s, transform 0.12s',
-                                        userSelect: 'none',
-                                        ...(unlocked && {
-                                            '&:hover': {
-                                                bgcolor: 'rgba(255,215,64,0.07)',
-                                                borderColor: 'rgba(255,215,64,0.6)',
-                                                transform: 'translateY(-2px)',
-                                            },
-                                            '&:active': {
-                                                transform: 'translateY(0)',
-                                            },
-                                        }),
-                                    }}
-                                >
-                                    {/* Completed badge */}
-                                    {completed && (
-                                        <CheckCircleIcon
-                                            sx={{
-                                                position: 'absolute',
-                                                top: 8,
-                                                right: 8,
-                                                fontSize: 16,
-                                                color: '#ffd740',
-                                                opacity: 0.9,
-                                            }}
-                                        />
-                                    )}
-
-                                    {/* Lock icon overlay */}
-                                    {!unlocked && (
-                                        <LockIcon
-                                            sx={{
-                                                fontSize: 28,
-                                                color: 'rgba(255,255,255,0.15)',
-                                                mb: 0.5,
-                                            }}
-                                        />
-                                    )}
-
-                                    {/* Level number */}
-                                    {unlocked && (
-                                        <Typography
-                                            sx={{
-                                                fontFamily: FONTS.ANTON,
-                                                fontSize: '2.4rem',
-                                                lineHeight: 1,
-                                                color: completed ? '#ffd740' : 'rgba(255,255,255,0.85)',
-                                                mb: 0.5,
-                                            }}
-                                        >
-                                            {level.number}
-                                        </Typography>
-                                    )}
-
-                                    {/* Level name */}
-                                    <Typography
+                            return (
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={entry.number}>
+                                    <Box
+                                        onClick={() => !isLoading && handleSelect(entry)}
                                         sx={{
-                                            fontFamily: FONTS.NECTO_MONO,
-                                            fontSize: '0.62rem',
-                                            letterSpacing: 1.5,
-                                            textTransform: 'uppercase',
-                                            color: unlocked
-                                                ? 'rgba(255,255,255,0.55)'
-                                                : 'rgba(255,255,255,0.18)',
+                                            position: 'relative',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            height: 120,
+                                            borderRadius: 1.5,
+                                            border: completed
+                                                ? '1px solid rgba(255,215,64,0.5)'
+                                                : unlocked
+                                                    ? '1px solid rgba(255,255,255,0.15)'
+                                                    : '1px solid rgba(255,255,255,0.06)',
+                                            bgcolor: unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.2)',
+                                            cursor: unlocked ? 'pointer' : 'default',
+                                            transition: 'border-color 0.18s, background-color 0.18s, transform 0.12s',
+                                            userSelect: 'none',
+                                            ...(unlocked && {
+                                                '&:hover': { bgcolor: 'rgba(255,215,64,0.07)', borderColor: 'rgba(255,215,64,0.6)', transform: 'translateY(-2px)' },
+                                                '&:active': { transform: 'translateY(0)' },
+                                            }),
                                         }}
                                     >
-                                        {unlocked ? level.name : `Level ${level.number}`}
-                                    </Typography>
-                                </Box>
-                            </Grid>
-                        );
-                    })}
-                </Grid>
+                                        {completed && (
+                                            <CheckCircleIcon sx={{ position: 'absolute', top: 8, right: 8, fontSize: 16, color: '#ffd740', opacity: 0.9 }} />
+                                        )}
+                                        {isLoading && (
+                                            <CircularProgress size={24} sx={{ color: '#ffd740' }} />
+                                        )}
+                                        {!unlocked && !isLoading && (
+                                            <LockIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.15)', mb: 0.5 }} />
+                                        )}
+                                        {unlocked && !isLoading && (
+                                            <Typography sx={{ fontFamily: FONTS.POIRET_ONE, fontSize: '2.4rem', lineHeight: 1, color: completed ? '#ffd740' : 'rgba(255,255,255,0.85)', mb: 0.5 }}>
+                                                {entry.number}
+                                            </Typography>
+                                        )}
+                                        {!isLoading && (
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.62rem', letterSpacing: 1.5, textTransform: 'uppercase', color: unlocked ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.18)' }}>
+                                                {unlocked ? entry.name : `Level ${entry.number}`}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                </Grid>
+                            );
+                        })}
+                    </Grid>
+                )}
 
                 {/* Hint */}
-                <Typography
-                    sx={{
-                        mt: 3,
-                        fontFamily: FONTS.NECTO_MONO,
-                        fontSize: '0.6rem',
-                        letterSpacing: 1,
-                        color: 'rgba(255,255,255,0.2)',
-                        textAlign: 'center',
-                    }}
-                >
-                    Complete a level to unlock the next
-                </Typography>
+                {entries.length > 0 && (
+                    <Typography sx={{ mt: 3, fontFamily: FONTS.NECTO_MONO, fontSize: '0.6rem', letterSpacing: 1, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
+                        Complete a level to unlock the next
+                    </Typography>
+                )}
             </DialogContent>
         </Dialog>
     );

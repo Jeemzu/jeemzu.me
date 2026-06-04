@@ -2,12 +2,6 @@ import resumePdf from '../assets/james_friedenberg_resume.pdf';
 
 // Fonts
 export const FONTS = {
-    A_ART: 'aArt',
-    TRAP_BLACK: 'Trap-Black',
-    PALACE: 'Palace',
-    PIXER: 'Pixer',
-    TOP_SHOW: 'TopShow',
-    ANTON: 'Anton-Regular',
     NECTO_MONO: 'NectoMono-Regular',
     POIRET_ONE: 'PoiretOne-Regular',
 } as const;

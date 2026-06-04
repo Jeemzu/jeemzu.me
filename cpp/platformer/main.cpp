@@ -12,11 +12,10 @@ static constexpr int SH = 400;
 static constexpr int GROUND_Y = 320;
 static constexpr int PW = 32;
 static constexpr int PH = 32;
-static constexpr float GRAVITY = 0.4f;
-static constexpr float JUMP_VEL = -8.0f;
-static constexpr float BASE_SPEED = 3.5f;
-static constexpr float MAX_SPEED = 3.5f;  // unused — no acceleration
-static constexpr float SPEED_RATE = 0.0f; // unused — no acceleration
+static constexpr float RISE_GRAVITY = 0.28f; // gravity while ascending (slower decel)
+static constexpr float FALL_GRAVITY = 0.82f; // gravity while descending (faster fall)
+static constexpr float JUMP_VEL = -7.0f;
+static constexpr float BASE_SPEED = 2.0f;
 
 static constexpr float MIN_GAP = PW * 2.0f;
 static constexpr float MAX_GAP = PW * 7.0f;
@@ -92,7 +91,7 @@ struct Game
     std::vector<LevelObj> pending_objs;
     size_t pending_idx = 0;
     float scroll_x = 0.0f;
-    float level_finish_x = -1.0f; // scroll_x at which the level is considered complete
+    float level_finish_x = -1.0f; // scroll_x finish line for current level
 
     float speed = BASE_SPEED;
     float score = 0.0f;
@@ -122,7 +121,6 @@ struct Game
         gap_remain = (float)SW * 0.6f;
         scroll_x = 0.0f;
         pending_idx = 0;
-        // Preserve level_mode, pending_objs, and level_finish_x so the player replays the same level.
         state = State::WAITING;
     }
 
@@ -211,11 +209,20 @@ extern "C"
                   [](const LevelObj &a, const LevelObj &b)
                   { return a.worldX < b.worldX; });
         G->pending_idx = 0;
-        // Compute finish line: scroll past the last obstacle + clearance distance
+        // Compute fallback finish line (overridden by level_set_finish if a finish tile was placed)
         float last_x = 0.0f;
         for (const auto &obj : G->pending_objs)
             last_x = std::max(last_x, obj.worldX);
         G->level_finish_x = last_x + 900.0f;
+    }
+
+    EMSCRIPTEN_KEEPALIVE void level_set_finish(float worldX)
+    {
+        if (!G)
+            return;
+        // worldX is the scroll distance at which the finish tile's LEFT edge enters
+        // the right side of the screen. The player crosses it when scroll_x >= worldX.
+        G->level_finish_x = worldX;
     }
 }
 
@@ -348,7 +355,7 @@ static void loop()
     {
         float spd = G->speed;
 
-        G->player.vy += GRAVITY;
+        G->player.vy += (G->player.vy < 0.0f ? RISE_GRAVITY : FALL_GRAVITY);
         G->player.y += G->player.vy;
 
         for (auto &s : G->spikes)

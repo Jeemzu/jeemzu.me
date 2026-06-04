@@ -10,7 +10,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { FONTS } from '../lib/globals';
-import { type LevelData } from '../lib/LevelTypes';
+import { type LevelFile } from '../lib/LevelSchema';
+import { buildLevelCommands } from '../utils/levelLoader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ interface WasmGameContainerProps {
     canvasWidth?: number;
     canvasHeight?: number;
     /** If provided, loads this level into the C++ game via the level_* API */
-    levelData?: LevelData;
+    levelFile?: LevelFile;
     /** Called once when the C++ game reaches the COMPLETED state (state === 3) */
     onLevelComplete?: () => void;
     /** Human-readable level label shown in the completion overlay, e.g. "Level 1 — First Steps" */
@@ -61,7 +62,7 @@ const WasmGameContainer = ({
     exportName,
     canvasWidth = 800,
     canvasHeight = 400,
-    levelData,
+    levelFile,
     onLevelComplete,
     levelLabel,
 }: WasmGameContainerProps) => {
@@ -124,21 +125,25 @@ const WasmGameContainer = ({
                 const mod = await factory({ canvas });
                 moduleRef.current = mod;
 
-                // Load level data into the C++ game if provided
-                if (levelData && levelData.objects.length > 0) {
+                // Load level file into C++ game via the command bridge
+                if (levelFile && levelFile.cells.length > 0) {
                     const levelBegin = mod.cwrap('level_begin', null, []) as () => void;
                     const levelEnd = mod.cwrap('level_end', null, []) as () => void;
                     const addSpike = mod.cwrap('level_add_spike', null, ['number']) as (x: number) => void;
                     const addPit = mod.cwrap('level_add_pit', null, ['number', 'number']) as (x: number, w: number) => void;
                     const addPlatform = mod.cwrap('level_add_platform', null, ['number', 'number', 'number', 'number']) as (x: number, wy: number, w: number, h: number) => void;
+                    const setFinish = mod.cwrap('level_set_finish', null, ['number']) as (x: number) => void;
 
-                    levelBegin();
-                    for (const obj of levelData.objects) {
-                        if (obj.type === 'spike') addSpike(obj.worldX);
-                        else if (obj.type === 'pit') addPit(obj.worldX, obj.width);
-                        else addPlatform(obj.worldX, obj.worldY, obj.width, obj.height);
+                    for (const cmd of buildLevelCommands(levelFile)) {
+                        switch (cmd.cmd) {
+                            case 'begin': levelBegin(); break;
+                            case 'spike': addSpike(cmd.worldX); break;
+                            case 'pit': addPit(cmd.worldX, cmd.width); break;
+                            case 'platform': addPlatform(cmd.worldX, cmd.worldY, cmd.width, cmd.height); break;
+                            case 'end': levelEnd(); break;
+                            case 'set_finish': setFinish(cmd.worldX); break;
+                        }
                     }
-                    levelEnd();
                 }
 
                 startPolling(mod);
@@ -235,7 +240,7 @@ const WasmGameContainer = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Typography
                         sx={{
-                            fontFamily: FONTS.ANTON,
+                            fontFamily: FONTS.POIRET_ONE,
                             color: '#ffd740',
                             fontSize: '1.15rem',
                             letterSpacing: 1,
@@ -253,7 +258,7 @@ const WasmGameContainer = ({
                             bgcolor: 'rgba(100,180,255,0.08)',
                         }}
                     >
-                        <Typography sx={{ color: '#64b4ff', fontSize: '0.65rem', fontFamily: 'monospace', letterSpacing: 1 }}>
+                        <Typography sx={{ color: '#64b4ff', fontSize: '0.65rem', fontFamily: FONTS.NECTO_MONO, letterSpacing: 1 }}>
                             C++ / WASM
                         </Typography>
                     </Box>
@@ -293,7 +298,7 @@ const WasmGameContainer = ({
                         gap: 2,
                     }}>
                         <CircularProgress size={40} sx={{ color: '#ffd740' }} />
-                        <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontFamily: 'monospace' }}>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontFamily: FONTS.NECTO_MONO }}>
                             Loading WASM…
                         </Typography>
                     </Box>
@@ -308,7 +313,7 @@ const WasmGameContainer = ({
                         bgcolor: 'rgba(10,10,25,0.95)',
                         gap: 1.5, p: 3,
                     }}>
-                        <Typography sx={{ color: '#ff5555', fontFamily: 'monospace', textAlign: 'center', fontSize: '0.85rem' }}>
+                        <Typography sx={{ color: '#ff5555', fontFamily: FONTS.NECTO_MONO, textAlign: 'center', fontSize: '0.85rem' }}>
                             {error}
                         </Typography>
                     </Box>
@@ -324,7 +329,7 @@ const WasmGameContainer = ({
                         bgcolor: 'rgba(0,0,0,0.55)',
                     }}>
                         <Typography sx={{
-                            fontFamily: FONTS.ANTON,
+                            fontFamily: FONTS.POIRET_ONE,
                             color: '#ffd740',
                             fontSize: '2rem',
                             letterSpacing: 3,

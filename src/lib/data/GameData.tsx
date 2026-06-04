@@ -10,7 +10,8 @@ import { createPongGameConfig } from '../../games/PongGame';
 import { createBreakoutGameConfig } from '../../games/BreakoutGame';
 import { createTetrisGameConfig } from '../../games/TetrisGame';
 import { type GameDataProps } from "../GameTypes";
-import { type PlatformerLevel, markLevelCompleted } from './PlatformerLevels';
+import { type LevelFile } from '../LevelSchema';
+import { markLevelCompleted } from '../../components/PlatformerLevelSelect';
 
 // Import game assets
 import snakepng from '../../assets/images/snake.png';
@@ -35,7 +36,7 @@ export const useGameLauncher = () => {
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
     const [rpgOpen, setRpgOpen] = useState(false);
     const [platformerOpen, setPlatformerOpen] = useState(false);
-    const [selectedLevel, setSelectedLevel] = useState<PlatformerLevel | null>(null);
+    const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
     const launchSnake = () => {
         setCurrentGame({
@@ -136,7 +137,7 @@ export const useGameLauncher = () => {
             onClose={() => setSelectedLevel(null)}
             gameTitle="Platform Rush"
             wasmName="platformer"
-            levelData={selectedLevel.data}
+            levelFile={selectedLevel}
             levelLabel={`Level ${selectedLevel.number} — ${selectedLevel.name}`}
             onLevelComplete={() => markLevelCompleted(selectedLevel.number)}
         />

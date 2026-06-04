@@ -1,539 +1,518 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useId } from 'react';
 import {
-    Box, Button, Slider, Typography, Tooltip, ToggleButton,
-    ToggleButtonGroup, Divider, Stack,
+    Box, Button, Typography, TextField, Tooltip,
+    ToggleButton, ToggleButtonGroup, Stack, Divider,
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import WasmGameContainer from '../../components/WasmGameContainer';
-import { type LevelObject, type LevelData } from '../../lib/LevelTypes';
+import { type LevelFile, type LevelCell, type CellType } from '../../lib/LevelSchema';
 import { FONTS } from '../../lib/globals';
 
-// ─── Game constants (must match cpp/platformer/main.cpp) ─────────────────────
-const CANVAS_W = 800;
-const CANVAS_H = 400;
-const GROUND_Y = 320;
+// --- Grid constants (must match cpp/platformer/main.cpp) ---------------------
+
 const TILE = 32;
-const SPIKE_W = 32;
-const SPIKE_H = 40;
-const PW = 32;
-const PH = 32;
-const WORLD_W = 5120; // 160 tiles — max level length
-// Max jump height ≈ JUMP_VEL² / (2 × GRAVITY) = 8.0²/0.8 ≈ 80px
-const MAX_JUMP_H = 80;
+const GROUND_Y = 320;
+const SW = 800;
+const SH = 400;
 
-type Tool = 'spike' | 'pit' | 'platform' | 'eraser';
+const ROWS = Math.ceil(SH / TILE);   // 13  (rows 0-12)
+const GROUND_ROW = GROUND_Y / TILE;       // 10
 
-interface DragState {
+const MIN_COLS = Math.ceil(SW / TILE);   // 25
+const MAX_COLS = 400;
+
+const MAX_JUMP_H_PX = 81;
+const MAX_JUMP_GUIDE_Y = GROUND_Y - MAX_JUMP_H_PX;  // = 239 px
+
+const PLATFORM_ROW_MIN = GROUND_ROW - 2;  // row 8
+const PLATFORM_ROW_MAX = GROUND_ROW - 1;  // row 9
+
+// --- Tool colours -----------------------------------------------------------
+
+const TOOL_COLORS: Record<CellType, string> = {
+    platform: '#3a6ea0',
+    spike: '#d73737',
+    pit: '#0a0a14',
+    finish: '#ffd740',
+};
+
+const TOOL_HOVER: Record<CellType, string> = {
+    platform: 'rgba(58,110,160,0.55)',
+    spike: 'rgba(215,55,55,0.55)',
+    pit: 'rgba(10,10,20,0.8)',
+    finish: 'rgba(255,215,64,0.45)',
+};
+
+type Tool = CellType | 'eraser';
+
+// --- Cell map helpers -------------------------------------------------------
+
+type CellKey = `${number},${number}`;
+function key(row: number, col: number): CellKey { return `${row},${col}`; }
+
+// --- Canvas draw ------------------------------------------------------------
+
+interface DrawParams {
+    cells: Map<CellKey, CellType>;
+    scrollCol: number;
+    totalCols: number;
     tool: Tool;
-    startWorldX: number;
-    startScreenY: number;
-    curWorldX: number;
-    curScreenY: number;
+    hoverRow: number | null;
+    hoverCol: number | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function uid(): string { return Math.random().toString(36).slice(2, 9); }
-
-function snapX(wx: number): number { return Math.floor(wx / TILE) * TILE; }
-function snapY(sy: number): number { return Math.floor(sy / TILE) * TILE; }
-
-function rangeX(drag: DragState): { minX: number; maxX: number } {
-    const min = snapX(Math.min(drag.startWorldX, drag.curWorldX));
-    const max = snapX(Math.max(drag.startWorldX, drag.curWorldX)) + TILE;
-    return { minX: min, maxX: Math.max(max, min + TILE) };
+function isValidPlacement(tool: Tool, row: number): boolean {
+    if (tool === 'eraser') return true;
+    if (tool === 'platform') return row >= PLATFORM_ROW_MIN && row <= PLATFORM_ROW_MAX;
+    return row === GROUND_ROW;
 }
 
-// ─── Canvas draw function (reads all params, no stale closure issues) ─────────
-
-function drawCanvas(
-    canvas: HTMLCanvasElement,
-    objects: LevelObject[],
-    scrollX: number,
-    tool: Tool,
-    platH: number,
-    drag: DragState | null,
-    hoverWorldX: number | null,
-) {
+function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Background
+    const visibleCols = Math.ceil(SW / TILE) + 1;
+    const startCol = p.scrollCol;
+
     ctx.fillStyle = '#0a0a19';
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillRect(0, 0, SW, SH);
 
-    // ── Grid ──
-    const startTile = Math.floor(scrollX / TILE);
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    // Underground fill
+    ctx.fillStyle = '#1e1e38';
+    ctx.fillRect(0, (GROUND_ROW + 1) * TILE, SW, SH - (GROUND_ROW + 1) * TILE);
+
+    // Ground row
+    ctx.fillStyle = '#2a2a44';
+    ctx.fillRect(0, GROUND_ROW * TILE, SW, TILE);
+
+    // Existing cells
+    for (let c = startCol; c < startCol + visibleCols; c++) {
+        const sx = (c - startCol) * TILE;
+
+        if (p.cells.get(key(GROUND_ROW, c)) === 'pit') {
+            ctx.fillStyle = '#0a0a14';
+            ctx.fillRect(sx, GROUND_ROW * TILE, TILE, TILE);
+            ctx.fillStyle = '#080810';
+            ctx.fillRect(sx, (GROUND_ROW + 1) * TILE, TILE, SH - (GROUND_ROW + 1) * TILE);
+        }
+
+        for (let r = PLATFORM_ROW_MIN; r <= PLATFORM_ROW_MAX; r++) {
+            if (p.cells.get(key(r, c)) === 'platform') {
+                ctx.fillStyle = TOOL_COLORS.platform;
+                ctx.fillRect(sx, r * TILE, TILE, TILE);
+                ctx.fillStyle = 'rgba(120,180,255,0.6)';
+                ctx.fillRect(sx, r * TILE, TILE, 2);
+            }
+        }
+
+        if (p.cells.get(key(GROUND_ROW, c)) === 'spike') {
+            const tipX = sx + TILE / 2;
+            const tipY = GROUND_ROW * TILE;
+            ctx.fillStyle = TOOL_COLORS.spike;
+            ctx.beginPath();
+            ctx.moveTo(sx + 2, (GROUND_ROW + 1) * TILE);
+            ctx.lineTo(tipX, tipY + 8);
+            ctx.lineTo(sx + TILE - 2, (GROUND_ROW + 1) * TILE);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        if (p.cells.get(key(GROUND_ROW, c)) === 'finish') {
+            ctx.fillStyle = 'rgba(255,215,64,0.25)';
+            ctx.fillRect(sx, 0, TILE, GROUND_ROW * TILE);
+            ctx.fillStyle = TOOL_COLORS.finish;
+            ctx.fillRect(sx, 0, 3, GROUND_ROW * TILE);
+            const flagX = sx + 6;
+            const flagY = 20;
+            for (let fx = 0; fx < 3; fx++) {
+                for (let fy = 0; fy < 3; fy++) {
+                    ctx.fillStyle = (fx + fy) % 2 === 0 ? '#fff' : '#000';
+                    ctx.fillRect(flagX + fx * 4, flagY + fy * 4, 4, 4);
+                }
+            }
+        }
+    }
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
-    for (let t = startTile; t <= startTile + CANVAS_W / TILE + 1; t++) {
-        const cx = t * TILE - scrollX;
-        ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, CANVAS_H); ctx.stroke();
+    for (let c = 0; c <= visibleCols; c++) {
+        const sx = c * TILE;
+        ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, SH); ctx.stroke();
     }
-    for (let y = 0; y < CANVAS_H; y += TILE) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_W, y); ctx.stroke();
+    for (let r = 0; r <= ROWS; r++) {
+        ctx.beginPath(); ctx.moveTo(0, r * TILE); ctx.lineTo(SW, r * TILE); ctx.stroke();
     }
 
-    // ── Max jump height guide ──
-    const guideY = GROUND_Y - MAX_JUMP_H;
+    // Ground surface line
+    ctx.strokeStyle = 'rgba(150,150,200,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, GROUND_ROW * TILE); ctx.lineTo(SW, GROUND_ROW * TILE); ctx.stroke();
+
+    // Max-jump guide
     ctx.save();
     ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = 'rgba(255, 80, 80, 0.2)';
+    ctx.strokeStyle = 'rgba(255,80,80,0.25)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, guideY); ctx.lineTo(CANVAS_W, guideY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, MAX_JUMP_GUIDE_Y); ctx.lineTo(SW, MAX_JUMP_GUIDE_Y); ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
     ctx.fillStyle = 'rgba(255,80,80,0.35)';
     ctx.font = '9px monospace';
-    ctx.fillText('max jump', 4, guideY - 3);
+    ctx.fillText('max jump', 4, MAX_JUMP_GUIDE_Y - 3);
 
-    // ── Ground fill ──
-    ctx.fillStyle = '#2a2a44';
-    ctx.fillRect(0, GROUND_Y, CANVAS_W, CANVAS_H - GROUND_Y);
+    // Unreachable zone overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, 0, SW, PLATFORM_ROW_MIN * TILE);
+    ctx.fillStyle = 'rgba(255,80,80,0.06)';
+    ctx.fillRect(0, 0, SW, PLATFORM_ROW_MIN * TILE);
 
-    // ── Existing pits (cut into ground) ──
-    for (const obj of objects) {
-        if (obj.type !== 'pit') continue;
-        const cx = obj.worldX - scrollX;
-        const cr = cx + obj.width;
-        if (cr < 0 || cx > CANVAS_W) continue;
-        ctx.fillStyle = '#0a0a19';
-        ctx.fillRect(cx, GROUND_Y, obj.width, CANVAS_H - GROUND_Y);
-    }
-
-    // ── Ground surface line ──
-    ctx.strokeStyle = '#5f5f96';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(CANVAS_W, GROUND_Y); ctx.stroke();
-
-    // Erase line over pits and draw edge ticks
-    for (const obj of objects) {
-        if (obj.type !== 'pit') continue;
-        const cx = obj.worldX - scrollX;
-        const cr = cx + obj.width;
-        if (cr < 0 || cx > CANVAS_W) continue;
-        ctx.fillStyle = '#0a0a19';
-        ctx.fillRect(Math.max(0, cx), GROUND_Y - 1, Math.min(cr, CANVAS_W) - Math.max(0, cx), 3);
-        ctx.strokeStyle = '#5f5f96';
-        ctx.lineWidth = 1;
-        if (cx > 0 && cx < CANVAS_W) { ctx.beginPath(); ctx.moveTo(cx, GROUND_Y - 7); ctx.lineTo(cx, GROUND_Y); ctx.stroke(); }
-        if (cr > 0 && cr < CANVAS_W) { ctx.beginPath(); ctx.moveTo(cr, GROUND_Y - 7); ctx.lineTo(cr, GROUND_Y); ctx.stroke(); }
-    }
-
-    // ── Platforms ──
-    for (const obj of objects) {
-        if (obj.type !== 'platform') continue;
-        const cx = obj.worldX - scrollX;
-        if (cx + obj.width < 0 || cx > CANVAS_W) continue;
-        const cy = GROUND_Y - obj.worldY - obj.height;
-        ctx.fillStyle = '#3a6a9a';
-        ctx.fillRect(cx, cy, obj.width, obj.height);
-        ctx.strokeStyle = '#78b4e6';
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + obj.width, cy); ctx.stroke();
-        ctx.lineWidth = 1;
-    }
-
-    // ── Spikes ──
-    for (const obj of objects) {
-        if (obj.type !== 'spike') continue;
-        const cx = obj.worldX - scrollX;
-        if (cx + SPIKE_W < 0 || cx > CANVAS_W) continue;
-        const tipX = cx + SPIKE_W / 2;
-        const tipY = GROUND_Y - SPIKE_H;
-        ctx.fillStyle = '#d73737';
-        ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(cx, GROUND_Y); ctx.lineTo(cx + SPIKE_W, GROUND_Y); ctx.closePath(); ctx.fill();
-        ctx.strokeStyle = '#8c1919';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-
-    // ── Player spawn indicator ──
-    const playerCX = 120 - scrollX;
-    if (playerCX > -PW && playerCX < CANVAS_W) {
-        ctx.fillStyle = 'rgba(255,195,0,0.18)';
-        ctx.fillRect(playerCX, GROUND_Y - PH, PW, PH);
-        ctx.strokeStyle = 'rgba(255,195,0,0.45)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(playerCX, GROUND_Y - PH, PW, PH);
-        ctx.fillStyle = 'rgba(255,195,0,0.4)';
-        ctx.font = '9px monospace';
-        ctx.fillText('start', playerCX, GROUND_Y - PH - 3);
-    }
-
-    // ── Hover highlight ──
-    if (hoverWorldX !== null && !drag) {
-        const hcx = snapX(hoverWorldX) - scrollX;
-        if (tool === 'spike') {
-            ctx.globalAlpha = 0.45;
-            ctx.fillStyle = '#ff6666';
-            const tipX = hcx + SPIKE_W / 2;
-            ctx.beginPath(); ctx.moveTo(tipX, GROUND_Y - SPIKE_H); ctx.lineTo(hcx, GROUND_Y); ctx.lineTo(hcx + SPIKE_W, GROUND_Y); ctx.closePath(); ctx.fill();
-            ctx.globalAlpha = 1;
-        } else if (tool === 'eraser') {
-            ctx.strokeStyle = 'rgba(255,80,80,0.6)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(hcx, 0, TILE, CANVAS_H);
-        } else {
-            ctx.fillStyle = 'rgba(255,255,255,0.06)';
-            ctx.fillRect(hcx, 0, TILE, CANVAS_H);
-        }
-    }
-
-    // ── Drag preview ──
-    if (drag) {
-        const { minX, maxX } = rangeX(drag);
-        const cxMin = minX - scrollX;
-        const w = maxX - minX;
-        ctx.globalAlpha = 0.65;
-
-        if (drag.tool === 'spike') {
-            const sx = snapX(drag.curWorldX) - scrollX;
-            const tipX = sx + SPIKE_W / 2;
-            ctx.fillStyle = '#ff9999';
-            ctx.beginPath(); ctx.moveTo(tipX, GROUND_Y - SPIKE_H); ctx.lineTo(sx, GROUND_Y); ctx.lineTo(sx + SPIKE_W, GROUND_Y); ctx.closePath(); ctx.fill();
-        } else if (drag.tool === 'pit') {
-            ctx.fillStyle = '#0a0a19';
-            ctx.fillRect(cxMin, GROUND_Y, w, CANVAS_H - GROUND_Y);
-            ctx.strokeStyle = '#ff7777';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(cxMin, GROUND_Y, w, CANVAS_H - GROUND_Y);
-        } else if (drag.tool === 'platform') {
-            const cy = snapY(Math.min(drag.startScreenY, drag.curScreenY));
-            ctx.fillStyle = '#5a8abf';
-            ctx.fillRect(cxMin, cy, w, platH);
-            ctx.strokeStyle = '#78d4ff';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(cxMin, cy); ctx.lineTo(cxMin + w, cy); ctx.stroke();
+    // Column ruler
+    ctx.fillStyle = '#12121e';
+    ctx.fillRect(0, 0, SW, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '8px monospace';
+    for (let c = startCol; c < startCol + visibleCols; c++) {
+        if (c % 5 === 0) {
+            const sx = (c - startCol) * TILE;
+            ctx.fillText(String(c), sx + 2, 11);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
             ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(sx, 12); ctx.lineTo(sx, 16); ctx.stroke();
         }
-        ctx.globalAlpha = 1;
     }
 
-    // ── World ruler (top bar) ──
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, CANVAS_W, 18);
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.font = '9px monospace';
-    for (let t = startTile; t <= startTile + CANVAS_W / TILE + 1; t++) {
-        if (t % 4 === 0) {
-            const cx = t * TILE - scrollX;
-            if (cx >= 0 && cx < CANVAS_W - 20) ctx.fillText(`${t * TILE}`, cx + 2, 13);
+    // Player spawn indicator
+    const spawnCol = 3;
+    if (spawnCol >= startCol && spawnCol < startCol + visibleCols) {
+        const sx = (spawnCol - startCol) * TILE + 8;
+        ctx.fillStyle = 'rgba(255,195,0,0.35)';
+        ctx.fillRect(sx, GROUND_ROW * TILE - TILE, TILE - 8, TILE);
+        ctx.fillStyle = 'rgba(255,195,0,0.6)';
+        ctx.font = '8px monospace';
+        ctx.fillText('P', sx + 5, GROUND_ROW * TILE - 10);
+    }
+
+    // Hover preview
+    if (p.hoverRow !== null && p.hoverCol !== null) {
+        const hr = p.hoverRow;
+        const hc = p.hoverCol;
+        const sx = (hc - startCol) * TILE;
+        const sy = hr * TILE;
+        const valid = isValidPlacement(p.tool, hr);
+        if (valid && p.tool !== 'eraser') {
+            ctx.fillStyle = TOOL_HOVER[p.tool as CellType];
+            ctx.fillRect(sx, sy, TILE, TILE);
+        } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1);
         }
+    }
+
+    // Level end marker
+    const endCol = p.totalCols - 1;
+    if (endCol >= startCol && endCol < startCol + visibleCols) {
+        const sx = (endCol - startCol) * TILE;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(sx + TILE, 0); ctx.lineTo(sx + TILE, SH); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.font = '8px monospace';
+        ctx.fillText('END', sx + TILE - 22, 26);
     }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// --- LevelFile builder ------------------------------------------------------
 
-export default function LevelEditorPage() {
+function buildLevelFile(cells: Map<CellKey, CellType>, number: number, name: string, totalCols: number): LevelFile {
+    const cellArr: LevelCell[] = [];
+    for (const [k, type] of cells) {
+        const [r, c] = k.split(',').map(Number);
+        cellArr.push({ row: r, col: c, type });
+    }
+    return { version: 1, number, name, cols: totalCols, cells: cellArr };
+}
+
+// --- Component --------------------------------------------------------------
+
+const LevelEditorPage = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const dragRef = useRef<DragState | null>(null);
-    const hoverRef = useRef<number | null>(null); // hovered worldX
+    const [cells, setCells] = useState<Map<CellKey, CellType>>(new Map());
+    const [tool, setTool] = useState<Tool>('platform');
+    const [scrollCol, setScrollCol] = useState(0);
+    const [totalCols, setTotalCols] = useState(100);
+    const [levelNumber, setLevelNumber] = useState(1);
+    const [levelName, setLevelName] = useState('');
+    const [playOpen, setPlayOpen] = useState(false);
+    const [playLevelFile, setPlayLevelFile] = useState<LevelFile | null>(null);
+    const [hoverPos, setHoverPos] = useState<{ row: number; col: number } | null>(null);
+    const importId = useId();
 
-    const [objects, setObjects] = useState<LevelObject[]>([]);
-    const [scrollX, setScrollX] = useState(0);
-    const [tool, setTool] = useState<Tool>('spike');
-    const [platH, setPlatH] = useState(16);
-    const [gameOpen, setGameOpen] = useState(false);
-    const [levelData, setLevelData] = useState<LevelData | null>(null);
-    const [objCount, setObjCount] = useState(0); // forces re-render for count display
+    const paintingRef = useRef(false);
 
-    // ── Draw whenever relevant state changes ──
-    const redraw = useCallback((
-        objs: LevelObject[], sx: number, t: Tool, ph: number,
-        drag: DragState | null, hover: number | null,
-    ) => {
-        const canvas = canvasRef.current;
-        if (canvas) drawCanvas(canvas, objs, sx, t, ph, drag, hover);
-    }, []);
-
+    // Redraw whenever state changes
     useEffect(() => {
-        redraw(objects, scrollX, tool, platH, dragRef.current, hoverRef.current);
-    }, [objects, scrollX, tool, platH, redraw]);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        drawEditor(canvas, {
+            cells,
+            scrollCol,
+            totalCols,
+            tool,
+            hoverRow: hoverPos?.row ?? null,
+            hoverCol: hoverPos?.col ?? null,
+        });
+    }, [cells, scrollCol, totalCols, tool, hoverPos]);
 
-    // ── Canvas event helpers ──
-    const canvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Mouse helpers
+    const canvasRowCol = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         const rect = canvasRef.current!.getBoundingClientRect();
-        return {
-            worldX: e.clientX - rect.left + scrollX,
-            screenY: e.clientY - rect.top,
-        };
-    };
+        const col = Math.floor((e.clientX - rect.left) / TILE) + scrollCol;
+        const row = Math.floor((e.clientY - rect.top) / TILE);
+        return { row, col };
+    }, [scrollCol]);
 
-    const hitTest = useCallback((worldX: number, screenY: number, objs: LevelObject[]): string | null => {
-        // Returns ID of the first object near the click, or null.
-        for (let i = objs.length - 1; i >= 0; i--) {
-            const obj = objs[i];
-            if (obj.type === 'spike') {
-                if (Math.abs(worldX - (obj.worldX + SPIKE_W / 2)) < SPIKE_W / 2 + 4) return obj.id;
-            } else if (obj.type === 'pit') {
-                if (worldX >= obj.worldX && worldX <= obj.worldX + obj.width && screenY >= GROUND_Y - TILE) return obj.id;
-            } else if (obj.type === 'platform') {
-                const top = GROUND_Y - obj.worldY - obj.height;
-                const bot = GROUND_Y - obj.worldY;
-                if (worldX >= obj.worldX && worldX <= obj.worldX + obj.width && screenY >= top - 4 && screenY <= bot + 4) return obj.id;
+    const applyTool = useCallback((row: number, col: number) => {
+        if (col < 0 || col >= totalCols) return;
+        if (!isValidPlacement(tool, row)) return;
+        setCells(prev => {
+            const next = new Map(prev);
+            const k = key(row, col);
+            if (tool === 'eraser') {
+                next.delete(k);
+            } else {
+                if (tool === 'finish') {
+                    for (const [ek, ev] of next) { if (ev === 'finish') { next.delete(ek); break; } }
+                }
+                next.set(k, tool as CellType);
             }
-        }
-        return null;
-    }, []);
+            return next;
+        });
+    }, [tool, totalCols]);
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         if (e.button !== 0) return;
-        const { worldX, screenY } = canvasCoords(e);
-        dragRef.current = { tool, startWorldX: worldX, startScreenY: screenY, curWorldX: worldX, curScreenY: screenY };
+        paintingRef.current = true;
+        const { row, col } = canvasRowCol(e);
+        applyTool(row, col);
+    }, [canvasRowCol, applyTool]);
 
-        if (tool === 'eraser') {
-            const id = hitTest(worldX, screenY, objects);
-            if (id) {
-                const next = objects.filter(o => o.id !== id);
-                setObjects(next);
-                setObjCount(next.length);
-                dragRef.current = null;
-                redraw(next, scrollX, tool, platH, null, hoverRef.current);
-            }
-            return;
-        }
-        if (tool === 'spike') {
-            // Place immediately on mousedown
-            const wx = snapX(worldX);
-            const next: LevelObject[] = [...objects, { type: 'spike', id: uid(), worldX: wx }];
-            setObjects(next);
-            setObjCount(next.length);
-            dragRef.current = null;
-            redraw(next, scrollX, tool, platH, null, hoverRef.current);
-        }
-        // pit / platform: wait for mouseup to finalize
-    };
+    const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+        const { row, col } = canvasRowCol(e);
+        setHoverPos({ row, col });
+        if (paintingRef.current) applyTool(row, col);
+    }, [canvasRowCol, applyTool]);
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        const { worldX, screenY } = canvasCoords(e);
-        hoverRef.current = worldX;
-        if (dragRef.current) {
-            dragRef.current.curWorldX = worldX;
-            dragRef.current.curScreenY = screenY;
-        }
-        redraw(objects, scrollX, tool, platH, dragRef.current, hoverRef.current);
-    };
+    const handleMouseUp = useCallback(() => { paintingRef.current = false; }, []);
+    const handleMouseLeave = useCallback(() => { paintingRef.current = false; setHoverPos(null); }, []);
 
-    const handleMouseUp = (_e: React.MouseEvent<HTMLCanvasElement>) => {
-        const drag = dragRef.current;
-        dragRef.current = null;
-        if (!drag || drag.tool === 'spike' || drag.tool === 'eraser') return;
-
-        const { minX, maxX } = rangeX(drag);
-        const w = maxX - minX;
-        if (w < TILE) return; // too small
-
-        let next: LevelObject[];
-        if (drag.tool === 'pit') {
-            next = [...objects, { type: 'pit', id: uid(), worldX: minX, width: w }];
-        } else {
-            // platform
-            const topY = snapY(Math.min(drag.startScreenY, drag.curScreenY));
-            const wy = GROUND_Y - topY; // pixels above GROUND_Y
-            next = [...objects, { type: 'platform', id: uid(), worldX: minX, worldY: wy, width: w, height: platH }];
-        }
-        setObjects(next);
-        setObjCount(next.length);
-        redraw(next, scrollX, tool, platH, null, hoverRef.current);
-    };
-
-    const handleMouseLeave = () => {
-        hoverRef.current = null;
-        dragRef.current = null;
-        redraw(objects, scrollX, tool, platH, null, null);
-    };
-
-    const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
         e.preventDefault();
-        const next = Math.max(0, Math.min(WORLD_W - CANVAS_W, scrollX + e.deltaY * 1.2));
-        setScrollX(next);
-    };
+        setScrollCol(prev => Math.max(0, Math.min(totalCols - MIN_COLS, prev + Math.round(e.deltaY / 32))));
+    }, [totalCols]);
 
-    // ── Actions ──
-    const handleClear = () => { setObjects([]); setObjCount(0); };
-
+    // Export
     const handleExport = () => {
-        const data: LevelData = { objects };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const file = buildLevelFile(cells, levelNumber, levelName || `Level ${levelNumber}`, totalCols);
+        const json = JSON.stringify(file, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'level.json';
+        a.href = url;
+        a.download = `level-${String(levelNumber).padStart(3, '0')}.json`;
         a.click();
+        URL.revokeObjectURL(url);
+        setTimeout(() => alert('Downloaded! Place the file in public/levels/ and add it to manifest.json'), 50);
     };
 
-    const handleImport = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = () => {
-            const file = input.files?.[0];
-            if (!file) return;
-            file.text().then(text => {
-                try {
-                    const data = JSON.parse(text) as LevelData;
-                    if (!Array.isArray(data.objects)) throw new Error('Invalid format');
-                    setObjects(data.objects);
-                    setObjCount(data.objects.length);
-                } catch { alert('Invalid level JSON'); }
-            });
+    // Import
+    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const lf = JSON.parse(ev.target!.result as string) as LevelFile;
+                const map = new Map<CellKey, CellType>();
+                for (const c of lf.cells) map.set(key(c.row, c.col), c.type);
+                setCells(map);
+                setScrollCol(0);
+                setTotalCols(lf.cols ?? 100);
+                setLevelNumber(lf.number ?? 1);
+                setLevelName(lf.name ?? '');
+            } catch { alert('Failed to parse level file.'); }
         };
-        input.click();
+        reader.readAsText(file);
+        e.target.value = '';
     };
 
+    // Play
     const handlePlay = () => {
-        setLevelData({ objects: [...objects] });
-        setGameOpen(true);
+        const file = buildLevelFile(cells, levelNumber, levelName || `Level ${levelNumber}`, totalCols);
+        setPlayLevelFile(file);
+        setPlayOpen(true);
     };
 
-    const TOOL_COLORS: Record<Tool, string> = {
-        spike: '#d73737',
-        pit: '#5f5f96',
-        platform: '#3a6a9a',
-        eraser: '#888',
+    // Clear
+    const handleClear = () => { if (confirm('Clear all tiles?')) setCells(new Map()); };
+
+    const inputSx = {
+        '& .MuiInputBase-root': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: '#fff' },
+        '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' },
+        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' },
+        '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#0a0a19', color: 'white' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', bgcolor: '#090c0c', color: '#fff', overflow: 'hidden' }}>
 
-            {/* ── Header ── */}
-            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <Typography sx={{ fontFamily: FONTS.ANTON, color: '#ffd740', letterSpacing: 1, mr: 1 }}>
-                    Platform Rush — Level Editor
+            {/* Toolbar */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, px: 3, py: 2, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#ffd740', fontSize: '1.1rem', letterSpacing: 2, whiteSpace: 'nowrap' }}>
+                    Level Editor
                 </Typography>
 
-                <Box sx={{ px: 0.8, py: 0.1, borderRadius: 0.75, border: '1px solid rgba(100,180,255,0.4)', bgcolor: 'rgba(100,180,255,0.07)' }}>
-                    <Typography sx={{ color: '#64b4ff', fontSize: '0.65rem', fontFamily: 'monospace', letterSpacing: 1 }}>
-                        C++ / WASM
-                    </Typography>
-                </Box>
+                <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
-                <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)', mx: 0.5 }} />
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <TextField size="medium" label="Level #" type="number" value={levelNumber}
+                        onChange={e => setLevelNumber(Math.max(1, parseInt(e.target.value) || 1))}
+                        sx={{ width: 100, ...inputSx }} inputProps={{ min: 1 }} />
+                    <TextField size="medium" label="Name" value={levelName}
+                        onChange={e => setLevelName(e.target.value)}
+                        placeholder={`Level ${levelNumber}`}
+                        sx={{ width: 200, ...inputSx }} />
+                    <TextField size="medium" label="Cols" type="number" value={totalCols}
+                        onChange={e => setTotalCols(Math.max(MIN_COLS, Math.min(MAX_COLS, parseInt(e.target.value) || MIN_COLS)))}
+                        sx={{ width: 100, ...inputSx }} inputProps={{ min: MIN_COLS, max: MAX_COLS }} />
+                </Stack>
 
-                {/* Tool selector */}
+                <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+
                 <ToggleButtonGroup
-                    exclusive
-                    value={tool}
+                    value={tool} exclusive
                     onChange={(_, v) => { if (v) setTool(v as Tool); }}
-                    size="small"
-                    sx={{ '& .MuiToggleButton-root': { color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)', fontFamily: 'monospace', fontSize: '0.72rem', px: 1.5, py: 0.5 }, '& .Mui-selected': { bgcolor: 'rgba(255,255,255,0.1) !important', color: 'white !important' } }}
+                    size="medium"
+                    sx={{ '& .MuiToggleButton-root': { color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)', px: 2, py: 0.75, fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' } }}
                 >
-                    {(['spike', 'pit', 'platform', 'eraser'] as Tool[]).map(t => (
-                        <ToggleButton key={t} value={t} sx={{ '&.Mui-selected': { borderColor: `${TOOL_COLORS[t]} !important`, color: `${TOOL_COLORS[t]} !important` } }}>
-                            {t === 'spike' ? '▲ Spike' : t === 'pit' ? '⬛ Pit' : t === 'platform' ? '═ Platform' : '✕ Erase'}
+                    <Tooltip title="Platform — rows 8-9 only" placement="bottom">
+                        <ToggleButton value="platform" sx={{ '&.Mui-selected': { bgcolor: 'rgba(58,110,160,0.3) !important', color: '#78b4ff !important', borderColor: '#3a6ea0 !important' } }}>
+                            <Box sx={{ width: 12, height: 4, bgcolor: '#3a6ea0', mr: 0.75, borderRadius: 0.25 }} />Platform
                         </ToggleButton>
-                    ))}
+                    </Tooltip>
+                    <Tooltip title="Spike — ground row only" placement="bottom">
+                        <ToggleButton value="spike" sx={{ '&.Mui-selected': { bgcolor: 'rgba(215,55,55,0.25) !important', color: '#ff7777 !important', borderColor: '#d73737 !important' } }}>
+                            <Box component="span" sx={{ mr: 0.5 }}>▲</Box>Spike
+                        </ToggleButton>
+                    </Tooltip>
+                    <Tooltip title="Pit / void — ground row only" placement="bottom">
+                        <ToggleButton value="pit" sx={{ '&.Mui-selected': { bgcolor: 'rgba(10,10,20,0.7) !important', color: 'rgba(255,255,255,0.7) !important', borderColor: 'rgba(100,100,150,0.5) !important' } }}>
+                            <Box sx={{ width: 12, height: 12, bgcolor: '#080810', border: '1px solid rgba(100,100,150,0.4)', mr: 0.75 }} />Pit
+                        </ToggleButton>
+                    </Tooltip>
+                    <Tooltip title="Finish line — one per level, ground row only" placement="bottom">
+                        <ToggleButton value="finish" sx={{ '&.Mui-selected': { bgcolor: 'rgba(255,215,64,0.2) !important', color: '#ffd740 !important', borderColor: '#ffd740 !important' } }}>
+                            <Box component="span" sx={{ mr: 0.5 }}>⚑</Box>Finish
+                        </ToggleButton>
+                    </Tooltip>
+                    <Tooltip title="Eraser" placement="bottom">
+                        <ToggleButton value="eraser" sx={{ '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.1) !important', color: '#fff !important', borderColor: 'rgba(255,255,255,0.3) !important' } }}>
+                            ✕ Erase
+                        </ToggleButton>
+                    </Tooltip>
                 </ToggleButtonGroup>
 
-                {/* Platform height (only shown when platform tool active) */}
-                {tool === 'platform' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 180 }}>
-                        <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>
-                            Height: {platH}px
-                        </Typography>
-                        <Slider
-                            value={platH} min={8} max={64} step={8}
-                            onChange={(_, v) => setPlatH(v as number)}
-                            size="small"
-                            sx={{ color: '#3a6a9a', width: 100 }}
-                        />
-                    </Box>
-                )}
+                <Box sx={{ flex: 1 }} />
 
-                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-                        {objCount} object{objCount !== 1 ? 's' : ''}
-                    </Typography>
-                </Box>
+                <Stack direction="row" spacing={1}>
+                    <Tooltip title="Clear all tiles">
+                        <Button size="medium" startIcon={<DeleteOutlineIcon />} onClick={handleClear}
+                            variant="outlined" sx={{ color: 'rgba(255,100,100,0.7)', borderColor: 'rgba(255,100,100,0.2)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                            Clear
+                        </Button>
+                    </Tooltip>
+                    <Button size="medium" component="label" htmlFor={importId} startIcon={<UploadIcon />}
+                        variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                        Import
+                        <input id={importId} type="file" accept=".json" hidden onChange={handleImport} />
+                    </Button>
+                    <Button size="medium" startIcon={<DownloadIcon />} onClick={handleExport}
+                        variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                        Export
+                    </Button>
+                    <Button size="medium" variant="contained" startIcon={<PlayArrowIcon />} onClick={handlePlay}
+                        sx={{ bgcolor: '#ffd740', color: '#0a0a19', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', letterSpacing: 1, '&:hover': { bgcolor: '#e6c235' } }}>
+                        Play
+                    </Button>
+                </Stack>
             </Box>
 
-            {/* ── Canvas ── */}
-            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-                <Box sx={{ position: 'relative' }}>
+            {/* Canvas area */}
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: '#060610' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', flex: 1, pt: 2 }}>
                     <canvas
                         ref={canvasRef}
-                        width={CANVAS_W}
-                        height={CANVAS_H}
+                        width={SW}
+                        height={SH}
+                        style={{ display: 'block', cursor: tool === 'eraser' ? 'crosshair' : 'cell', imageRendering: 'pixelated' }}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseLeave}
                         onWheel={handleWheel}
-                        style={{ display: 'block', cursor: tool === 'eraser' ? 'crosshair' : 'cell', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}
                     />
-                    {/* Legend overlay */}
-                    <Box sx={{ position: 'absolute', bottom: 6, left: 8, display: 'flex', gap: 2, opacity: 0.55, pointerEvents: 'none' }}>
-                        {[
-                            { color: 'rgba(255,195,0,0.7)', label: 'player start' },
-                            { color: 'rgba(255,80,80,0.5)', label: 'max jump height' },
-                        ].map(({ color, label }) => (
-                            <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Box sx={{ width: 10, height: 10, bgcolor: color, borderRadius: 0.5 }} />
-                                <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>{label}</Typography>
-                            </Box>
-                        ))}
-                    </Box>
+                </Box>
+
+                {/* Scroll bar */}
+                <Box sx={{ px: 2, pb: 1.5, pt: 1, display: 'flex', justifyContent: 'center' }}>
+                    <input type="range" min={0} max={Math.max(0, totalCols - MIN_COLS)} value={scrollCol}
+                        onChange={e => setScrollCol(Number(e.target.value))}
+                        style={{ width: SW, display: 'block', accentColor: '#ffd740', cursor: 'pointer' }} />
                 </Box>
             </Box>
 
-            {/* ── Scrollbar ── */}
-            <Box sx={{ px: 3, pb: 0.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', minWidth: 64 }}>
-                    x: {Math.round(scrollX)}
+            {/* Status bar */}
+            <Box sx={{ px: 2, py: 0.5, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+                    {cells.size} tiles
                 </Typography>
-                <Slider
-                    value={scrollX}
-                    min={0}
-                    max={WORLD_W - CANVAS_W}
-                    onChange={(_, v) => setScrollX(v as number)}
-                    size="small"
-                    sx={{ color: 'rgba(255,255,255,0.2)', flex: 1 }}
-                />
-                <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', minWidth: 64, textAlign: 'right' }}>
-                    {WORLD_W - CANVAS_W - Math.round(scrollX)} left
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>
+                    col {scrollCol}–{scrollCol + MIN_COLS - 1} / {totalCols - 1}
+                </Typography>
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(255,100,100,0.4)' }}>
+                    rows 0–{PLATFORM_ROW_MIN - 1}: unreachable
+                </Typography>
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(58,110,160,0.7)' }}>
+                    rows {PLATFORM_ROW_MIN}–{PLATFORM_ROW_MAX}: platforms
+                </Typography>
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: 'rgba(150,150,200,0.5)' }}>
+                    row {GROUND_ROW}: ground
+                </Typography>
+                <Box sx={{ flex: 1 }} />
+                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)' }}>
+                    scroll: mouse wheel or slider · paint: click / drag
                 </Typography>
             </Box>
 
-            {/* ── Actions ── */}
-            <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Tooltip title="Remove all objects">
-                    <Button size="small" onClick={handleClear} sx={{ color: 'rgba(255,80,80,0.8)', borderColor: 'rgba(255,80,80,0.3)', fontFamily: 'monospace', fontSize: '0.72rem' }} variant="outlined">
-                        Clear
-                    </Button>
-                </Tooltip>
-                <Button size="small" onClick={handleImport} sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: 'monospace', fontSize: '0.72rem' }} variant="outlined">
-                    Import JSON
-                </Button>
-                <Button size="small" onClick={handleExport} sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: 'monospace', fontSize: '0.72rem' }} variant="outlined">
-                    Export JSON
-                </Button>
-
-                <Box sx={{ ml: 'auto' }}>
-                    <Stack direction="row" alignItems="center" gap={1}>
-                        <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
-                            Scroll: mouse wheel  ·  Click: place  ·  Drag: pit / platform
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            onClick={handlePlay}
-                            disabled={objects.length === 0}
-                            sx={{ bgcolor: '#ffd740', color: '#0a0a19', fontFamily: FONTS.ANTON, letterSpacing: 1, '&:hover': { bgcolor: '#ffe066' }, '&:disabled': { bgcolor: 'rgba(255,215,64,0.2)', color: 'rgba(255,255,255,0.3)' } }}
-                        >
-                            ▶ Play Level
-                        </Button>
-                    </Stack>
-                </Box>
-            </Box>
-
-            {/* ── Game modal ── */}
-            {gameOpen && levelData && (
+            {/* Play modal */}
+            {playLevelFile && (
                 <WasmGameContainer
-                    open={gameOpen}
-                    onClose={() => setGameOpen(false)}
-                    gameTitle="Platform Rush"
+                    open={playOpen}
+                    onClose={() => setPlayOpen(false)}
+                    gameTitle="Platform Rush — Preview"
                     wasmName="platformer"
-                    levelData={levelData}
+                    levelFile={playLevelFile}
+                    levelLabel={`Level ${levelNumber} — ${levelName || `Level ${levelNumber}`}`}
                 />
             )}
         </Box>
     );
-}
+};
+
+export default LevelEditorPage;

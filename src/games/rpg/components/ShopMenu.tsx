@@ -66,7 +66,7 @@ export default function ShopMenu({
                     ← Back to Town
                 </Button>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography fontFamily={FONTS.PALACE} sx={{ fontSize: '1.4rem', color: '#4ab5e8' }}>
+                    <Typography fontFamily={FONTS.POIRET_ONE} sx={{ fontSize: '1.4rem', color: '#4ab5e8' }}>
                         Brix's Emporium
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
