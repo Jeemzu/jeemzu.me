@@ -51,7 +51,7 @@ const theme = createTheme({
         },
     },
     typography: {
-        fontFamily: 'PoiretOne-Regular, Avenir, Helvetica, Arial, sans-serif',
+        fontFamily: 'NectoMono-Regular, monospace',
         h1: {
             fontSize: '3.5rem',
             fontWeight: 600,

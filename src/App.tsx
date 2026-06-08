@@ -33,7 +33,7 @@ const LoadingSpinner = () => (
     />
     <Typography
       variant="h6"
-      fontFamily={FONTS.POIRET_ONE}
+      fontFamily={FONTS.NECTO_MONO}
       sx={{
         color: '#bdeb92ff',
         textAlign: 'center'
@@ -77,7 +77,7 @@ function Custom404() {
       />
       <Typography
         variant="h3"
-        fontFamily={FONTS.POIRET_ONE}
+        fontFamily={FONTS.NECTO_MONO}
         sx={{ mb: 2 }}
       >
         *Visible Confusion*
@@ -95,7 +95,7 @@ function Custom404() {
         sx={{
           backgroundColor: '#bdeb92ff',
           color: '#121212',
-          fontFamily: FONTS.POIRET_ONE,
+          fontFamily: FONTS.NECTO_MONO,
           fontSize: '1.25rem',
           '&:hover': {
             backgroundColor: '#a8d67eff'

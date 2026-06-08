@@ -33,7 +33,7 @@ export default function LevelUpScreen({ state, actions }: LevelUpScreenProps) {
             px: 3,
             textAlign: 'center',
         }}>
-            <Typography fontFamily={FONTS.POIRET_ONE} sx={{ fontSize: '2rem', color: '#a8d67e', mb: 1, textShadow: '0 0 20px #a8d67e44' }}>
+            <Typography fontFamily={FONTS.NECTO_MONO} sx={{ fontSize: '2rem', color: '#a8d67e', mb: 1, textShadow: '0 0 20px #a8d67e44' }}>
                 Level Up!
             </Typography>
             <Typography fontFamily={FONTS.NECTO_MONO} sx={{ color: '#4a8a5a', fontSize: '0.7rem', mb: 3, letterSpacing: 2 }}>

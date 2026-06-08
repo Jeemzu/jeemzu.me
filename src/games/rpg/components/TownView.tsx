@@ -56,7 +56,7 @@ export default function TownView({ gold, onRest, onOpenShop, onBack }: TownViewP
                 >
                     ← World Map
                 </Button>
-                <Typography fontFamily={FONTS.POIRET_ONE} sx={{ fontSize: '1.6rem', color: '#a8d67e' }}>
+                <Typography fontFamily={FONTS.NECTO_MONO} sx={{ fontSize: '1.6rem', color: '#a8d67e' }}>
                     Ascent of Thrae
                 </Typography>
                 <Typography sx={{ color: '#5a7a6a', fontSize: '0.72rem', fontFamily: FONTS.NECTO_MONO }}>

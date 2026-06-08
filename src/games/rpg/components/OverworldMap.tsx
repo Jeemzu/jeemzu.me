@@ -30,7 +30,7 @@ export default function OverworldMap({ progress, onSelectLocation }: OverworldMa
             background: 'linear-gradient(180deg, #0a0a1a 0%, #16213e 50%, #1a0d0d 100%)',
         }}>
             <Typography
-                fontFamily={FONTS.POIRET_ONE}
+                fontFamily={FONTS.NECTO_MONO}
                 sx={{ fontSize: { xs: '1.8rem', md: '2.2rem' }, color: '#a8d67e', mb: 0.5, textAlign: 'center' }}
             >
                 The Progenitors

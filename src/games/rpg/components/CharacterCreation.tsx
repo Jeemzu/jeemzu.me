@@ -61,7 +61,7 @@ export default function CharacterCreation({ onConfirm }: CharacterCreationProps)
         }}>
             {/* Header */}
             <Typography
-                fontFamily={FONTS.POIRET_ONE}
+                fontFamily={FONTS.NECTO_MONO}
                 sx={{ fontSize: { xs: '1.8rem', md: '2.4rem' }, color: '#a8d67e', mb: 0.5, textAlign: 'center' }}
             >
                 The Progenitors

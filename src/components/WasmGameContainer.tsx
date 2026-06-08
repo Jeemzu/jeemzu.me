@@ -240,7 +240,7 @@ const WasmGameContainer = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Typography
                         sx={{
-                            fontFamily: FONTS.POIRET_ONE,
+                            fontFamily: FONTS.NECTO_MONO,
                             color: '#ffd740',
                             fontSize: '1.15rem',
                             letterSpacing: 1,
@@ -329,7 +329,7 @@ const WasmGameContainer = ({
                         bgcolor: 'rgba(0,0,0,0.55)',
                     }}>
                         <Typography sx={{
-                            fontFamily: FONTS.POIRET_ONE,
+                            fontFamily: FONTS.NECTO_MONO,
                             color: '#ffd740',
                             fontSize: '2rem',
                             letterSpacing: 3,

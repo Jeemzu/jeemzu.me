@@ -123,7 +123,7 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Typography
                         sx={{
-                            fontFamily: FONTS.POIRET_ONE,
+                            fontFamily: FONTS.NECTO_MONO,
                             color: '#ffd740',
                             fontSize: '1.15rem',
                             letterSpacing: 1,
@@ -234,7 +234,7 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
                                             <LockIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.15)', mb: 0.5 }} />
                                         )}
                                         {unlocked && !isLoading && (
-                                            <Typography sx={{ fontFamily: FONTS.POIRET_ONE, fontSize: '2.4rem', lineHeight: 1, color: completed ? '#ffd740' : 'rgba(255,255,255,0.85)', mb: 0.5 }}>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '2.4rem', lineHeight: 1, color: completed ? '#ffd740' : 'rgba(255,255,255,0.85)', mb: 0.5 }}>
                                                 {entry.number}
                                             </Typography>
                                         )}

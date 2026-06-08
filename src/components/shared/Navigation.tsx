@@ -26,7 +26,7 @@ const Navigation = () => {
                 <Button
                     sx={{
                         color: isActive ? theme.palette.text.primary : theme.palette.textSecondary.main,
-                        fontFamily: FONTS.POIRET_ONE,
+                        fontFamily: FONTS.NECTO_MONO,
                         fontWeight: 700,
                         fontSize: mobile ? '1.8rem' : '1.1rem',
                         px: 2,
@@ -127,7 +127,7 @@ const Navigation = () => {
                         <Button
                             sx={{
                                 color: theme.palette.primaryGreen.main,
-                                fontFamily: FONTS.POIRET_ONE,
+                                fontFamily: FONTS.NECTO_MONO,
                                 fontSize: '1.75rem',
                                 fontWeight: 600,
                                 transition: 'all 0.2s ease-in-out',

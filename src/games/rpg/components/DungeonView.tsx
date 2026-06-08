@@ -61,7 +61,7 @@ export default function DungeonView({
                 <Button onClick={onRetreat} sx={{ color: '#6a8fa0', fontFamily: FONTS.NECTO_MONO, fontSize: '0.7rem', mb: 1, p: 0 }}>
                     ← Retreat to Map
                 </Button>
-                <Typography fontFamily={FONTS.POIRET_ONE} sx={{ fontSize: '1.5rem', color: '#e05c2a' }}>
+                <Typography fontFamily={FONTS.NECTO_MONO} sx={{ fontSize: '1.5rem', color: '#e05c2a' }}>
                     {location.name}
                 </Typography>
                 <Typography sx={{ color: '#5a4a3a', fontSize: '0.7rem', fontFamily: FONTS.NECTO_MONO }}>

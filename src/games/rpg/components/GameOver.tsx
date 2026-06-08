@@ -34,7 +34,7 @@ export default function GameOver({ state, actions }: GameOverProps) {
                 ))}
             </Box>
 
-            <Typography fontFamily={FONTS.POIRET_ONE} sx={{
+            <Typography fontFamily={FONTS.NECTO_MONO} sx={{
                 fontSize: '2.5rem',
                 color: '#8a2020',
                 mb: 1,

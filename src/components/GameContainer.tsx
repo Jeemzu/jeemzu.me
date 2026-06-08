@@ -255,7 +255,7 @@ const GameContainer = ({
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="h4" sx={{ fontFamily: FONTS.POIRET_ONE }}>{gameTitle}</Typography>
+                    <Typography variant="h4" sx={{ fontFamily: FONTS.NECTO_MONO }}>{gameTitle}</Typography>
                     <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
                         Score: {currentScore}
                     </Typography>
@@ -338,7 +338,7 @@ const GameContainer = ({
                             maxWidth: '400px',
                         }}
                     >
-                        <Typography variant="h2" sx={{ fontFamily: FONTS.POIRET_ONE, color: 'primaryGreen.main', mb: 2 }}>
+                        <Typography variant="h2" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'primaryGreen.main', mb: 2 }}>
                             {gameTitle}
                         </Typography>
 
@@ -355,7 +355,7 @@ const GameContainer = ({
                                 sx={{
                                     bgcolor: 'primaryGreen.main',
                                     color: 'darkBackground.main',
-                                    fontFamily: FONTS.POIRET_ONE,
+                                    fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '1.5rem',
                                     py: 2,
                                     '&:hover': {
@@ -375,7 +375,7 @@ const GameContainer = ({
                                     sx={{
                                         borderColor: 'primaryGreen.main',
                                         color: 'primaryGreen.main',
-                                        fontFamily: FONTS.POIRET_ONE,
+                                        fontFamily: FONTS.NECTO_MONO,
                                         fontSize: '1.2rem',
                                         py: 1.5,
                                         '&:hover': {
@@ -394,7 +394,7 @@ const GameContainer = ({
                                 sx={{
                                     borderColor: 'primaryGreen.main',
                                     color: 'primaryGreen.main',
-                                    fontFamily: FONTS.POIRET_ONE,
+                                    fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '1.2rem',
                                     py: 1.5,
                                     '&:hover': {
@@ -412,7 +412,7 @@ const GameContainer = ({
                                 sx={{
                                     borderColor: 'white',
                                     color: 'white',
-                                    fontFamily: FONTS.POIRET_ONE,
+                                    fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '1.2rem',
                                     py: 1.5,
                                     '&:hover': {
@@ -439,7 +439,7 @@ const GameContainer = ({
                             maxWidth: '500px',
                         }}
                     >
-                        <Typography variant="h3" sx={{ fontFamily: FONTS.POIRET_ONE, color: 'primaryGreen.main' }}>
+                        <Typography variant="h3" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'primaryGreen.main' }}>
                             Options
                         </Typography>
 
@@ -501,7 +501,7 @@ const GameContainer = ({
                             sx={{
                                 borderColor: 'white',
                                 color: 'white',
-                                fontFamily: FONTS.POIRET_ONE,
+                                fontFamily: FONTS.NECTO_MONO,
                                 fontSize: '1.2rem',
                                 py: 1.5,
                                 px: 4,
@@ -550,7 +550,7 @@ const GameContainer = ({
                             gap: 2,
                         }}
                     >
-                        <Typography variant="h2" sx={{ color: 'white', fontFamily: FONTS.POIRET_ONE }}>
+                        <Typography variant="h2" sx={{ color: 'white', fontFamily: FONTS.NECTO_MONO }}>
                             Game Over!
                         </Typography>
                         <Typography variant="h5" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
@@ -569,7 +569,7 @@ const GameContainer = ({
                                 sx={{
                                     bgcolor: 'primaryGreen.main',
                                     color: 'darkBackground.main',
-                                    fontFamily: FONTS.POIRET_ONE,
+                                    fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '1.1rem',
                                     px: 4,
                                     py: 1.5,
@@ -588,7 +588,7 @@ const GameContainer = ({
                                 sx={{
                                     borderColor: 'white',
                                     color: 'white',
-                                    fontFamily: FONTS.POIRET_ONE,
+                                    fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '1.1rem',
                                     px: 4,
                                     py: 1.5,
@@ -620,7 +620,7 @@ const GameContainer = ({
                             justifyContent: 'center',
                         }}
                     >
-                        <Typography variant="h3" sx={{ color: 'white', fontFamily: FONTS.POIRET_ONE }}>
+                        <Typography variant="h3" sx={{ color: 'white', fontFamily: FONTS.NECTO_MONO }}>
                             PAUSED
                         </Typography>
                     </Box>

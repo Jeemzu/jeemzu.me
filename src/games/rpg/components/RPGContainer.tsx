@@ -87,7 +87,7 @@ export default function RPGContainer({ open, onClose }: RPGContainerProps) {
 
                         {/* Logo / title */}
                         <Box sx={{ position: 'relative', mb: 2 }}>
-                            <Typography fontFamily={FONTS.POIRET_ONE} sx={{
+                            <Typography fontFamily={FONTS.NECTO_MONO} sx={{
                                 fontSize: { xs: '2.5rem', md: '4rem' },
                                 color: '#a8d67e',
                                 textShadow: '0 0 40px #a8d67e33, 0 0 80px #a8d67e11',
