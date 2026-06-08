@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 const GRID_SIZE = 20;
-const CELL_SIZE = 20;
+const CELL_SIZE = 30;
 
 interface SnakeSegment {
     x: number;
@@ -19,7 +19,6 @@ export class SnakeScene extends Phaser.Scene {
     private graphics!: Phaser.GameObjects.Graphics;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private isGameOver: boolean = false;
-    private eatSound?: Phaser.Sound.BaseSound;
     private loseSound?: Phaser.Sound.BaseSound;
     private snakeHeadColor: number = 0x4ade80;
     private snakeBodyColor: number = 0x22c55e;
@@ -29,8 +28,6 @@ export class SnakeScene extends Phaser.Scene {
     }
 
     preload() {
-        // Load the eat sound
-        this.load.audio('eat', '/sounds/snake_eat.mp3');
         // Load the lose sound
         this.load.audio('lose', '/sounds/snake_lose.mp3');
     }
@@ -64,11 +61,6 @@ export class SnakeScene extends Phaser.Scene {
         this.nextDirection = { x: 1, y: 0 };
 
         // Initialize sounds only if they don't exist
-        if (!this.eatSound) {
-            this.eatSound = this.sound.add('eat', { volume: volume * 0.5 });
-        } else {
-            (this.eatSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.5);
-        }
         if (!this.loseSound) {
             this.loseSound = this.sound.add('lose', { volume: volume * 0.6 });
         } else {
@@ -104,9 +96,6 @@ export class SnakeScene extends Phaser.Scene {
 
         // Listen for volume changes from the UI
         this.events.on('volumeChange', (newVolume: number) => {
-            if (this.eatSound) {
-                (this.eatSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.5);
-            }
             if (this.loseSound) {
                 (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
             }
@@ -213,8 +202,6 @@ export class SnakeScene extends Phaser.Scene {
         if (this.food && newHead.x === this.food.x && newHead.y === this.food.y) {
             this.score += 10;
             this.game.events.emit('scoreUpdate', this.score);
-            // Play eat sound
-            this.eatSound?.play();
             this.placeFood();
             // Speed up slightly
             this.moveDelay = Math.max(50, this.moveDelay - 2);

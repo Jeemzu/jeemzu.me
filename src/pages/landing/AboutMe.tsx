@@ -93,7 +93,7 @@ const HighlightCard = ({
                         }}
                     >
                         <Typography
-                            fontFamily={FONTS.POIRET_ONE}
+                            fontFamily={FONTS.NECTO_MONO}
                             variant="h3"
                             sx={{ color: theme.palette.primaryGreen.main }}
                         >
@@ -136,7 +136,7 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
     const handleClose = () => setOpen(false);
 
     return (
-        <Box>
+        <Box sx={{ fontFamily: FONTS.NECTO_MONO }}>
             {!isMobile ? (
                 <>
                     {/* Highlight Cards */}

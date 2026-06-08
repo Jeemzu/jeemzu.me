@@ -3,7 +3,6 @@ import GameContainer from '../../components/GameContainer';
 import WasmGameContainer from '../../components/WasmGameContainer';
 import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
 import ComingSoonModal from '../../components/ComingSoonModal';
-import RPGContainer from '../../games/rpg/components/RPGContainer';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
 import { createZAimGameConfig } from '../../games/ZAimGame';
 import { createBreakoutGameConfig } from '../../games/BreakoutGame';
@@ -31,7 +30,6 @@ export const useGameLauncher = () => {
         showColorOption?: boolean;
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
-    const [rpgOpen, setRpgOpen] = useState(false);
     const [platformerOpen, setPlatformerOpen] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
@@ -64,10 +62,6 @@ export const useGameLauncher = () => {
             title: 'Tetris',
             config: createTetrisGameConfig(),
         });
-    };
-
-    const launchRPG = () => {
-        setRpgOpen(true);
     };
 
     const launchPlatformer = () => {
@@ -105,12 +99,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    const RPGModal = (
-        <RPGContainer
-            open={rpgOpen}
-            onClose={() => setRpgOpen(false)}
-        />
-    );
+    const RPGModal = null;
 
     const LevelSelectModal = (
         <PlatformerLevelSelect
@@ -132,7 +121,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
+    return { launchSnake, launchZAim, launchBreakout, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions
@@ -141,7 +130,6 @@ export const createGameData = (launchers: {
     launchZAim: () => void;
     launchBreakout: () => void;
     launchTetris: () => void;
-    launchRPG: () => void;
     launchPlatformer: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
@@ -153,7 +141,7 @@ export const createGameData = (launchers: {
             gameplayGif: progenitorsThumbnail,
             genre: 'RPG',
             featured: true,
-            onPlay: launchers.launchRPG,
+            onPlay: () => launchers.showComingSoon('The Progenitors'),
         },
         {
             id: 'zaim',

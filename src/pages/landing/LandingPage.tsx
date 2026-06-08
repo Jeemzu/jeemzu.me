@@ -1,5 +1,5 @@
 import { Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal } from "@mui/material";
-import { FaDice, FaEnvelope, FaFile } from "react-icons/fa6";
+import { FaDice, FaEnvelope, FaFile, FaCode, FaRoad } from "react-icons/fa6";
 import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
@@ -82,6 +82,7 @@ const LandingPage = () => {
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    startIcon={<FaCode />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
@@ -106,6 +107,7 @@ const LandingPage = () => {
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    startIcon={<FaRoad />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
@@ -152,21 +154,23 @@ const LandingPage = () => {
                             </Link>
 
                             <Button
-                                startIcon={<FaEnvelope size={16} />}
-                                onClick={onClickUrl(LINKS.EMAIL)}
+                                variant="contained"
                                 size="medium"
-                                variant="text"
+                                startIcon={<FaEnvelope />}
+                                onClick={onClickUrl(LINKS.EMAIL)}
                                 sx={{
-                                    color: theme.palette.textSecondary.main,
+                                    backgroundColor: theme.palette.primaryGreen.main,
+                                    color: theme.palette.background.default,
                                     fontFamily: FONTS.NECTO_MONO,
-                                    px: 1.5,
-                                    py: 0.75,
-                                    fontSize: '0.875rem',
+                                    px: 3,
+                                    py: 1,
+                                    fontSize: '1rem',
                                     whiteSpace: 'nowrap',
                                     transition: EFFECTS.TRANSITION,
                                     '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
+                                        backgroundColor: theme.palette.softGreen.main,
+                                        transform: EFFECTS.HOVER_SCALE,
+                                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
                                     }
                                 }}
                             >
@@ -174,21 +178,23 @@ const LandingPage = () => {
                             </Button>
 
                             <Button
-                                startIcon={<FaFile size={16} />}
-                                onClick={onClickUrl(LINKS.RESUME)}
+                                variant="contained"
                                 size="medium"
-                                variant="text"
+                                startIcon={<FaFile />}
+                                onClick={onClickUrl(LINKS.RESUME)}
                                 sx={{
-                                    color: theme.palette.textSecondary.main,
+                                    backgroundColor: theme.palette.primaryGreen.main,
+                                    color: theme.palette.background.default,
                                     fontFamily: FONTS.NECTO_MONO,
-                                    px: 1.5,
-                                    py: 0.75,
-                                    fontSize: '0.875rem',
+                                    px: 3,
+                                    py: 1,
+                                    fontSize: '1rem',
                                     whiteSpace: 'nowrap',
                                     transition: EFFECTS.TRANSITION,
                                     '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
+                                        backgroundColor: theme.palette.softGreen.main,
+                                        transform: EFFECTS.HOVER_SCALE,
+                                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
                                     }
                                 }}
                             >
