@@ -145,7 +145,7 @@ export class BreakoutScene extends Phaser.Scene {
         // Lives text
         this.livesText = this.add.text(CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20, `Lives: ${this.lives}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
         this.livesText.setOrigin(1, 1);
@@ -153,7 +153,7 @@ export class BreakoutScene extends Phaser.Scene {
         // Serve text
         this.serveText = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80, 'Get Ready...', {
             fontSize: '24px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
         this.serveText.setOrigin(0.5);

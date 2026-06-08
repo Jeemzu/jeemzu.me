@@ -14,8 +14,8 @@ const Navigation = () => {
     const navItems = [
         { label: "Home", path: "/" },
         { label: "Projects", path: "/projects" },
-        { label: "Games", path: "/games" },
         { label: "Experience", path: "/experience" },
+        { label: "Games", path: "/games" },
     ];
 
     const NavButton = ({ label, path, mobile = false }: { label: string; path: string; mobile?: boolean }) => {
@@ -27,6 +27,7 @@ const Navigation = () => {
                     sx={{
                         color: isActive ? theme.palette.text.primary : theme.palette.textSecondary.main,
                         fontFamily: FONTS.POIRET_ONE,
+                        fontWeight: 700,
                         fontSize: mobile ? '1.8rem' : '1.1rem',
                         px: 2,
                         borderBottom: isActive ? `2px solid ${theme.palette.primaryGreen.main}` : 'none',

@@ -255,7 +255,7 @@ export class ZAimScene extends Phaser.Scene {
             const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
             const hitMarker = this.add.text(cell.rect.x, cell.rect.y, '+10', {
                 fontSize: '24px',
-                fontFamily: 'Arial',
+                fontFamily: 'NectoMono-Regular',
                 color: primaryColorHex,
                 fontStyle: 'bold'
             });

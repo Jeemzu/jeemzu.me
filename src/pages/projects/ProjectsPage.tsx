@@ -16,7 +16,7 @@ const ProjectsPage = () => {
                     color: theme.palette.primaryGreen.main,
                 }}
             >
-                My Projects
+                Projects
             </Typography>
             <Typography
                 fontFamily={FONTS.NECTO_MONO}

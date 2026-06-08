@@ -7,9 +7,11 @@ import DownloadIcon from '@mui/icons-material/Download';
 import UploadIcon from '@mui/icons-material/Upload';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import SaveIcon from '@mui/icons-material/Save';
 import WasmGameContainer from '../../components/WasmGameContainer';
 import { type LevelFile, type LevelCell, type CellType } from '../../lib/LevelSchema';
 import { FONTS } from '../../lib/globals';
+import { saveCustomLevel } from '../../utils/customLevels';
 
 // --- Grid constants (must match cpp/platformer/main.cpp)
 
@@ -231,6 +233,8 @@ function buildLevelFile(cells: Map<CellKey, CellType>, number: number, name: str
 
 const LevelEditorPage = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const editorRef = useRef<HTMLDivElement>(null);
+    const mouseInsideRef = useRef(false);
     const [cells, setCells] = useState<Map<CellKey, CellType>>(new Map());
     const [tool, setTool] = useState<Tool>('platform');
     const [scrollCol, setScrollCol] = useState(0);
@@ -240,6 +244,7 @@ const LevelEditorPage = () => {
     const [playOpen, setPlayOpen] = useState(false);
     const [playLevelFile, setPlayLevelFile] = useState<LevelFile | null>(null);
     const [hoverPos, setHoverPos] = useState<{ row: number; col: number } | null>(null);
+    const [savedMsg, setSavedMsg] = useState(false);
     const importId = useId();
 
     const paintingRef = useRef(false);
@@ -298,12 +303,34 @@ const LevelEditorPage = () => {
     }, [canvasRowCol, applyTool]);
 
     const handleMouseUp = useCallback(() => { paintingRef.current = false; }, []);
-    const handleMouseLeave = useCallback(() => { paintingRef.current = false; setHoverPos(null); }, []);
+    const handleMouseLeave = useCallback(() => { paintingRef.current = false; setHoverPos(null); mouseInsideRef.current = false; }, []);
 
-    const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-        e.preventDefault();
-        setScrollCol(prev => Math.max(0, Math.min(totalCols - MIN_COLS, prev + Math.round(e.deltaY / 32))));
+    // Non-passive wheel listener on the editor container:
+    // when mouse is inside, intercept wheel to scroll the column range; when outside, let page scroll.
+    useEffect(() => {
+        const el = editorRef.current;
+        if (!el) return;
+        const onWheel = (e: WheelEvent) => {
+            if (!mouseInsideRef.current) return;
+            e.preventDefault();
+            setScrollCol(prev => Math.max(0, Math.min(totalCols - MIN_COLS, prev + Math.round(e.deltaY / 32))));
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
     }, [totalCols]);
+
+    // Save to My Levels (localStorage)
+    const handleSave = () => {
+        const name = levelName.trim() || `My Level ${Date.now()}`;
+        const cellArr: LevelCell[] = [];
+        for (const [k, type] of cells) {
+            const [r, c] = k.split(',').map(Number);
+            cellArr.push({ row: r, col: c, type });
+        }
+        saveCustomLevel(name, totalCols, cellArr);
+        setSavedMsg(true);
+        setTimeout(() => setSavedMsg(false), 2500);
+    };
 
     // Export
     const handleExport = () => {
@@ -351,14 +378,33 @@ const LevelEditorPage = () => {
     const handleClear = () => { if (confirm('Clear all tiles?')) setCells(new Map()); };
 
     const inputSx = {
-        '& .MuiInputBase-root': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: '#fff' },
-        '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' },
+        '& .MuiInputBase-root': { fontFamily: FONTS.NECTO_MONO, fontSize: '1.35rem', color: '#fff' },
+        '& .MuiInputLabel-root': { color: '#ffd740', fontSize: '1.275rem' },
+        '& .MuiInputLabel-root.Mui-focused': { color: '#ffd740' },
         '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' },
         '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
     };
 
+    const tooltipSx = {
+        componentsProps: {
+            tooltip: {
+                sx: {
+                    fontFamily: FONTS.NECTO_MONO,
+                    fontSize: '0.85rem',
+                    color: '#ffd740',
+                    bgcolor: '#12121e',
+                    border: '1px solid rgba(255,215,64,0.25)',
+                    px: 1.5,
+                    py: 0.75,
+                },
+            },
+        },
+    };
+
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 272px)', bgcolor: '#090c0c', color: '#fff' }}>
+        <Box
+            ref={editorRef}
+            sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 272px)', overflowY: 'auto', bgcolor: '#090c0c', color: '#fff' }}>
 
             {/* Toolbar */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, px: 3, py: 2, borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap' }}>
@@ -371,14 +417,14 @@ const LevelEditorPage = () => {
                 <Stack direction="row" spacing={1.5} alignItems="center">
                     <TextField size="medium" label="Level #" type="number" value={levelNumber}
                         onChange={e => setLevelNumber(Math.max(1, parseInt(e.target.value) || 1))}
-                        sx={{ width: 100, ...inputSx }} inputProps={{ min: 1 }} />
+                        sx={{ width: 150, ...inputSx }} inputProps={{ min: 1 }} />
                     <TextField size="medium" label="Name" value={levelName}
                         onChange={e => setLevelName(e.target.value)}
                         placeholder={`Level ${levelNumber}`}
-                        sx={{ width: 200, ...inputSx }} />
+                        sx={{ width: 300, ...inputSx }} />
                     <TextField size="medium" label="Cols" type="number" value={totalCols}
                         onChange={e => setTotalCols(Math.max(MIN_COLS, Math.min(MAX_COLS, parseInt(e.target.value) || MIN_COLS)))}
-                        sx={{ width: 100, ...inputSx }} inputProps={{ min: MIN_COLS, max: MAX_COLS }} />
+                        sx={{ width: 150, ...inputSx }} inputProps={{ min: MIN_COLS, max: MAX_COLS }} />
                 </Stack>
 
                 <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
@@ -389,27 +435,27 @@ const LevelEditorPage = () => {
                     size="medium"
                     sx={{ '& .MuiToggleButton-root': { color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)', px: 2, py: 0.75, fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' } }}
                 >
-                    <Tooltip title="Platform — any row above ground" placement="bottom">
+                    <Tooltip title="Platform — any row above ground" placement="bottom" {...tooltipSx}>
                         <ToggleButton value="platform" sx={{ '&.Mui-selected': { bgcolor: 'rgba(58,110,160,0.3) !important', color: '#78b4ff !important', borderColor: '#3a6ea0 !important' } }}>
                             <Box sx={{ width: 12, height: 4, bgcolor: '#3a6ea0', mr: 0.75, borderRadius: 0.25 }} />Platform
                         </ToggleButton>
                     </Tooltip>
-                    <Tooltip title="Spike — ground or any platform row" placement="bottom">
+                    <Tooltip title="Spike — ground or any platform row" placement="bottom" {...tooltipSx}>
                         <ToggleButton value="spike" sx={{ '&.Mui-selected': { bgcolor: 'rgba(215,55,55,0.25) !important', color: '#ff7777 !important', borderColor: '#d73737 !important' } }}>
                             <Box component="span" sx={{ mr: 0.5 }}>▲</Box>Spike
                         </ToggleButton>
                     </Tooltip>
-                    <Tooltip title="Pit / void — ground row only" placement="bottom">
+                    <Tooltip title="Pit / void — ground row only" placement="bottom" {...tooltipSx}>
                         <ToggleButton value="pit" sx={{ '&.Mui-selected': { bgcolor: 'rgba(10,10,20,0.7) !important', color: 'rgba(255,255,255,0.7) !important', borderColor: 'rgba(100,100,150,0.5) !important' } }}>
                             <Box sx={{ width: 12, height: 12, bgcolor: '#080810', border: '1px solid rgba(100,100,150,0.4)', mr: 0.75 }} />Pit
                         </ToggleButton>
                     </Tooltip>
-                    <Tooltip title="Finish line — one per level, ground row only" placement="bottom">
+                    <Tooltip title="Finish line — one per level, ground row only" placement="bottom" {...tooltipSx}>
                         <ToggleButton value="finish" sx={{ '&.Mui-selected': { bgcolor: 'rgba(255,215,64,0.2) !important', color: '#ffd740 !important', borderColor: '#ffd740 !important' } }}>
                             <Box component="span" sx={{ mr: 0.5 }}>⚑</Box>Finish
                         </ToggleButton>
                     </Tooltip>
-                    <Tooltip title="Eraser" placement="bottom">
+                    <Tooltip title="Eraser" placement="bottom" {...tooltipSx}>
                         <ToggleButton value="eraser" sx={{ '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.1) !important', color: '#fff !important', borderColor: 'rgba(255,255,255,0.3) !important' } }}>
                             ✕ Erase
                         </ToggleButton>
@@ -419,21 +465,31 @@ const LevelEditorPage = () => {
                 <Box sx={{ flex: 1 }} />
 
                 <Stack direction="row" spacing={1}>
-                    <Tooltip title="Clear all tiles">
+                    <Tooltip title="Clear all tiles" {...tooltipSx}>
                         <Button size="medium" startIcon={<DeleteOutlineIcon />} onClick={handleClear}
                             variant="outlined" sx={{ color: 'rgba(255,100,100,0.7)', borderColor: 'rgba(255,100,100,0.2)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
                             Clear
                         </Button>
                     </Tooltip>
-                    <Button size="medium" component="label" htmlFor={importId} startIcon={<UploadIcon />}
-                        variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
-                        Import
-                        <input id={importId} type="file" accept=".json" hidden onChange={handleImport} />
-                    </Button>
-                    <Button size="medium" startIcon={<DownloadIcon />} onClick={handleExport}
-                        variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
-                        Export
-                    </Button>
+                    <Tooltip title="Load a previously exported level JSON file into the editor" {...tooltipSx}>
+                        <Button size="medium" component="label" htmlFor={importId} startIcon={<UploadIcon />}
+                            variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                            Import
+                            <input id={importId} type="file" accept=".json" hidden onChange={handleImport} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Save to your browser's local storage — playable from the Level Select" {...tooltipSx}>
+                        <Button size="medium" startIcon={<SaveIcon />} onClick={handleSave}
+                            variant="outlined" sx={{ color: savedMsg ? '#4caf50' : '#ffd740', borderColor: savedMsg ? 'rgba(76,175,80,0.5)' : 'rgba(255,215,64,0.4)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', transition: 'color 0.2s, border-color 0.2s' }}>
+                            {savedMsg ? 'Saved!' : 'Save'}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Download the level as a JSON file — add it to public/levels/ and manifest.json to include it as an official level" {...tooltipSx}>
+                        <Button size="medium" startIcon={<DownloadIcon />} onClick={handleExport}
+                            variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                            Export
+                        </Button>
+                    </Tooltip>
                     <Button size="medium" variant="contained" startIcon={<PlayArrowIcon />} onClick={handlePlay}
                         sx={{ bgcolor: '#ffd740', color: '#0a0a19', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', letterSpacing: 1, '&:hover': { bgcolor: '#e6c235' } }}>
                         Play
@@ -442,7 +498,7 @@ const LevelEditorPage = () => {
             </Box>
 
             {/* Canvas area */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: '#060610' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#060610' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', flex: 1, pt: 2 }}>
                     <canvas
                         ref={canvasRef}
@@ -453,7 +509,7 @@ const LevelEditorPage = () => {
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseLeave}
-                        onWheel={handleWheel}
+                        onMouseEnter={() => { mouseInsideRef.current = true; }}
                     />
                 </Box>
 

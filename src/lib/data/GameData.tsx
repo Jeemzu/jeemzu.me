@@ -6,7 +6,6 @@ import ComingSoonModal from '../../components/ComingSoonModal';
 import RPGContainer from '../../games/rpg/components/RPGContainer';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
 import { createZAimGameConfig } from '../../games/ZAimGame';
-import { createPongGameConfig } from '../../games/PongGame';
 import { createBreakoutGameConfig } from '../../games/BreakoutGame';
 import { createTetrisGameConfig } from '../../games/TetrisGame';
 import { type GameDataProps } from "../GameTypes";
@@ -18,8 +17,6 @@ import snakepng from '../../assets/images/snake.png';
 import snakegif from '../../assets/images/snake.gif';
 import zaimpng from '../../assets/images/zaim.png';
 import zaimgif from '../../assets/images/zaim.gif';
-import pongpng from '../../assets/images/pong.png';
-import ponggif from '../../assets/images/pong.gif';
 import breakoutpng from '../../assets/images/breakout.png';
 import breakoutgif from '../../assets/images/breakout.gif';
 import tetrispng from '../../assets/images/tetris.png';
@@ -54,17 +51,9 @@ export const useGameLauncher = () => {
         });
     };
 
-    const launchPong = () => {
-        setCurrentGame({
-            title: 'Pong',
-            config: createPongGameConfig(),
-            showColorOption: true,
-        });
-    };
-
     const launchBreakout = () => {
         setCurrentGame({
-            title: 'Breakout',
+            title: 'Brick Break',
             config: createBreakoutGameConfig(),
             showColorOption: true,
         });
@@ -138,19 +127,18 @@ export const useGameLauncher = () => {
             gameTitle="Platform Rush"
             wasmName="platformer"
             levelFile={selectedLevel}
-            levelLabel={`Level ${selectedLevel.number} — ${selectedLevel.name}`}
-            onLevelComplete={() => markLevelCompleted(selectedLevel.number)}
+            levelLabel={selectedLevel.number > 0 ? `Level ${selectedLevel.number} — ${selectedLevel.name}` : selectedLevel.name}
+            onLevelComplete={selectedLevel.number > 0 ? () => markLevelCompleted(selectedLevel.number) : undefined}
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
+    return { launchSnake, launchZAim, launchBreakout, launchTetris, launchRPG, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions
 export const createGameData = (launchers: {
     launchSnake: () => void;
     launchZAim: () => void;
-    launchPong: () => void;
     launchBreakout: () => void;
     launchTetris: () => void;
     launchRPG: () => void;
@@ -187,17 +175,8 @@ export const createGameData = (launchers: {
             onPlay: launchers.launchSnake,
         },
         {
-            id: 'pong',
-            title: 'Pong',
-            description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-            thumbnail: pongpng,
-            gameplayGif: ponggif,
-            genre: 'Classics',
-            onPlay: launchers.launchPong,
-        },
-        {
             id: 'breakout',
-            title: 'Breakout',
+            title: 'Brick Break',
             description: 'Break all the bricks with your paddle and ball!',
             thumbnail: breakoutpng,
             gameplayGif: breakoutgif,
@@ -235,22 +214,13 @@ export const gameData: GameDataProps[] = [
         onPlay: () => console.log('Use GamesPage with launcher'),
     },
     {
-        id: 'pong',
-        title: 'Pong',
-        description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-        thumbnail: pongpng,
-        gameplayGif: ponggif,
-        genre: 'Classics',
-        onPlay: () => console.log('Launching Pong game...'),
-    },
-    {
         id: 'breakout',
-        title: 'Breakout',
+        title: 'Brick Break',
         description: 'Break all the bricks with your paddle and ball!',
         thumbnail: breakoutpng,
         gameplayGif: breakoutgif,
         genre: 'Classics',
-        onPlay: () => console.log('Launching Breakout game...'),
+        onPlay: () => console.log('Use GamesPage with launcher'),
     },
     {
         id: 'tetris',

@@ -12,10 +12,10 @@ static constexpr int SH = 720;
 static constexpr int GROUND_Y = 640;
 static constexpr int PW = 32;
 static constexpr int PH = 32;
-static constexpr float RISE_GRAVITY = 0.38f; // gravity while ascending (slower decel)
-static constexpr float FALL_GRAVITY = 0.65f; // gravity while descending (faster fall)
-static constexpr float JUMP_VEL = -8.0f;
-static constexpr float BASE_SPEED = 2.0f;
+static constexpr float RISE_GRAVITY = 0.11f; // gravity while ascending — wide arc, same height
+static constexpr float FALL_GRAVITY = 0.50f; // gravity while descending
+static constexpr float JUMP_VEL = -5.5f;
+static constexpr float BASE_SPEED = 1.5f;
 
 static constexpr float MIN_GAP = PW * 2.0f;
 static constexpr float MAX_GAP = PW * 7.0f;
@@ -30,6 +30,13 @@ enum class State
     COMPLETED
 };
 
+enum class JumpState
+{
+    GROUNDED,
+    RISING,
+    FALLING
+};
+
 struct Player
 {
     float x = 120.0f;
@@ -37,6 +44,7 @@ struct Player
     float vy = 0.0f;
     bool ground = true;
     float jump_angle = 0.0f; // degrees, 0 = upright, accumulates during jump
+    JumpState jump_state = JumpState::GROUNDED;
 };
 
 struct Spike
@@ -143,6 +151,7 @@ struct Game
             {
                 player.vy = JUMP_VEL;
                 player.ground = false;
+                player.jump_state = JumpState::RISING;
             }
             break;
         }
@@ -226,9 +235,9 @@ extern "C"
     {
         if (!G)
             return;
-        // worldX is the scroll distance at which the finish tile's LEFT edge enters
-        // the right side of the screen. The player crosses it when scroll_x >= worldX.
-        G->level_finish_x = worldX;
+        // worldX = col * TILE: the scroll_x at which the tile spawns at the right edge.
+        // The player (fixed at screen x=120) actually reaches it SW-120 = 840px later.
+        G->level_finish_x = worldX + ((float)SW - 120.0f);
     }
 }
 
@@ -361,12 +370,17 @@ static void loop()
     {
         float spd = G->speed;
 
-        G->player.vy += (G->player.vy < 0.0f ? RISE_GRAVITY : FALL_GRAVITY);
+        // Explicit jump state machine: RISING → FALLING at apex, FALLING → GROUNDED on land
+        if (G->player.jump_state == JumpState::RISING && G->player.vy >= 0.0f)
+            G->player.jump_state = JumpState::FALLING;
+
+        float grav = (G->player.jump_state == JumpState::RISING) ? RISE_GRAVITY : FALL_GRAVITY;
+        G->player.vy += grav;
         G->player.y += G->player.vy;
 
         // Accumulate rotation while airborne
         if (!G->player.ground)
-            G->player.jump_angle += 4.9f; // ~37 frames per jump → ~180°
+            G->player.jump_angle += 4.8f; // ~75 frames per jump → 360° (one full rotation)
 
         for (auto &s : G->spikes)
             s.x -= spd;
@@ -405,7 +419,7 @@ static void loop()
                 {
                     Platform p;
                     p.x = (float)SW + 4;
-                    p.y = (float)GROUND_Y - obj.wy - obj.h;
+                    p.y = (float)GROUND_Y - obj.wy;
                     p.w = obj.w;
                     p.h = obj.h;
                     G->platforms.push_back(p);
@@ -452,6 +466,7 @@ static void loop()
                 G->player.y = plat.y - (float)PH;
                 G->player.vy = 0.0f;
                 G->player.ground = true;
+                G->player.jump_state = JumpState::GROUNDED;
                 G->player.jump_angle = 0.0f; // snap upright on landing
                 on_platform = true;
                 break;
@@ -485,8 +500,23 @@ static void loop()
                     G->player.y = floor_y;
                     G->player.vy = 0.0f;
                     G->player.ground = true;
+                    G->player.jump_state = JumpState::GROUNDED;
                     G->player.jump_angle = 0.0f; // snap upright on landing
                 }
+            }
+        }
+
+        // Platform underside collision — jumping into the bottom of a platform is fatal
+        for (const auto &plat : G->platforms)
+        {
+            bool x_hit = G->player.x + (float)PW > plat.x && G->player.x < plat.x + plat.w;
+            bool hit_underside = G->player.vy < 0.0f &&
+                                 G->player.y < plat.y + plat.h &&
+                                 G->player.y + (float)PH > plat.y + plat.h;
+            if (x_hit && hit_underside)
+            {
+                G->state = State::DEAD;
+                break;
             }
         }
 
@@ -603,6 +633,35 @@ static void loop()
 
     for (const auto &s : G->spikes)
         draw_spike(r, s);
+
+    // Finish line pillar
+    if (G->level_mode && G->level_finish_x > 0.0f)
+    {
+        float fx = G->level_finish_x - G->scroll_x + 120.0f;
+        if (fx >= 0.0f && fx <= (float)SW)
+        {
+            float pulse = 0.5f + 0.5f * std::sin((float)ticks / 300.0f);
+            Uint8 alpha_glow = (Uint8)(60 + 60 * pulse);
+
+            // Wide soft glow behind the pillar
+            SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(r, 255, 215, 64, alpha_glow);
+            SDL_Rect glow = {(int)(fx - 12), 0, 24, GROUND_Y};
+            SDL_RenderFillRect(r, &glow);
+
+            // Solid pillar (3px wide)
+            Uint8 pillar_alpha = (Uint8)(180 + 75 * pulse);
+            SDL_SetRenderDrawColor(r, 255, 215, 64, pillar_alpha);
+            SDL_Rect pillar = {(int)(fx - 1), 0, 3, GROUND_Y};
+            SDL_RenderFillRect(r, &pillar);
+
+            // Bright core line
+            SDL_SetRenderDrawColor(r, 255, 245, 180, 255);
+            SDL_RenderDrawLine(r, (int)fx, 0, (int)fx, GROUND_Y);
+
+            SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+        }
+    }
 
     {
         // Draw player as a rotation-animated cube

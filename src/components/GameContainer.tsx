@@ -227,7 +227,7 @@ const GameContainer = ({
         <Dialog
             open={open}
             onClose={handleClose}
-            maxWidth="md"
+            maxWidth="lg"
             fullWidth
             TransitionProps={{
                 onEntered: () => {
@@ -236,8 +236,10 @@ const GameContainer = ({
             }}
             PaperProps={{
                 sx: {
-                    bgcolor: 'darkBackground.main',
-                    minHeight: '70vh',
+                    background: 'linear-gradient(145deg, #0d1117 0%, #111827 100%)',
+                    minHeight: '80vh',
+                    border: '1px solid rgba(168, 214, 126, 0.2)',
+                    boxShadow: '0 0 60px rgba(168, 214, 126, 0.08), 0 24px 80px rgba(0,0,0,0.95)',
                 },
             }}
         >
@@ -246,8 +248,10 @@ const GameContainer = ({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    bgcolor: 'darkBackground.dark',
+                    bgcolor: 'rgba(0,0,0,0.4)',
                     color: 'white',
+                    borderBottom: '1px solid rgba(168, 214, 126, 0.15)',
+                    backgroundImage: 'linear-gradient(90deg, rgba(168, 214, 126, 0.06) 0%, transparent 60%)',
                 }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -318,8 +322,8 @@ const GameContainer = ({
                     justifyContent: 'center',
                     p: 2,
                     position: 'relative',
-                    minHeight: '500px',
-                    bgcolor: '#1a1a1a',
+                    minHeight: '600px',
+                    bgcolor: 'transparent',
                 }}
             >
                 {/* Start Menu */}

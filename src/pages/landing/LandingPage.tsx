@@ -1,5 +1,5 @@
 import { Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal } from "@mui/material";
-import { FaDice, FaEnvelope, FaFile, FaGamepad } from "react-icons/fa6";
+import { FaDice, FaEnvelope, FaFile } from "react-icons/fa6";
 import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
@@ -98,7 +98,7 @@ const LandingPage = () => {
                                         }
                                     }}
                                 >
-                                    My Projects
+                                    Projects
                                 </Button>
                             </Link>
 
@@ -122,7 +122,7 @@ const LandingPage = () => {
                                         }
                                     }}
                                 >
-                                    My Experience
+                                    Experience
                                 </Button>
                             </Link>
 
@@ -195,27 +195,7 @@ const LandingPage = () => {
                                 Resume
                             </Button>
 
-                            <Button
-                                startIcon={<FaGamepad size={16} />}
-                                onClick={onClickUrl(LINKS.MINECRAFT_CREDITS)}
-                                size="medium"
-                                variant="text"
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    fontFamily: FONTS.NECTO_MONO,
-                                    px: 1.5,
-                                    py: 0.75,
-                                    fontSize: '0.875rem',
-                                    whiteSpace: 'nowrap',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        color: theme.palette.primaryGreen.main,
-                                        backgroundColor: 'rgba(168, 214, 126, 0.08)',
-                                    }
-                                }}
-                            >
-                                MC Credits
-                            </Button>
+
                         </Stack>
                     </Box>
                 </Box>

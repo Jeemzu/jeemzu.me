@@ -81,9 +81,6 @@ const HighlightCard = ({
                     backgroundColor: theme.palette.cardBackground.main,
                     boxShadow: EFFECTS.CARD_SHADOW,
                     transition: EFFECTS.TRANSITION,
-                    '&:hover': {
-                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                    },
                 }}
             >
                 <CardContent sx={{ p: { xs: 4, md: 5 }, textAlign: 'left', position: 'relative' }}>

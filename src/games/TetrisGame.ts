@@ -184,20 +184,20 @@ export class TetrisScene extends Phaser.Scene {
 
         this.add.text(panelX, 10, 'NEXT', {
             fontSize: '20px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
             fontStyle: 'bold',
         });
 
         this.levelText = this.add.text(panelX, 160, `Level: ${this.level}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
 
         this.linesText = this.add.text(panelX, 190, `Lines: ${this.linesCleared}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
 

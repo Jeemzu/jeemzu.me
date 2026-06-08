@@ -7,13 +7,19 @@ import {
     IconButton,
     Grid,
     CircularProgress,
+    Button,
+    Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { useLocation } from 'wouter';
 import { FONTS } from '../lib/globals';
 import { type LevelFile, type ManifestEntry } from '../lib/LevelSchema';
 import { fetchManifest, fetchLevelFile } from '../utils/levelLoader';
+import { type CustomLevel, loadCustomLevels, deleteCustomLevel, customLevelToLevelFile } from '../utils/customLevels';
 
 // ─── localStorage unlock helpers ─────────────────────────────────────────────────
 
@@ -48,11 +54,14 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
     const [manifestLoading, setManifestLoading] = useState(false);
     const [manifestError, setManifestError] = useState<string | null>(null);
     const [loadingLevel, setLoadingLevel] = useState<number | null>(null);
+    const [customLevels, setCustomLevels] = useState<CustomLevel[]>([]);
+    const [, navigate] = useLocation();
 
     // Refresh unlock state + manifest every time the dialog opens
     useEffect(() => {
         if (!open) return;
         setHighestCompleted(getHighestCompleted());
+        setCustomLevels(loadCustomLevels().reverse()); // newest first
         setManifestLoading(true);
         setManifestError(null);
 
@@ -61,6 +70,16 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
             .catch(err => setManifestError(String(err)))
             .finally(() => setManifestLoading(false));
     }, [open]);
+
+    const handleDeleteCustom = (id: string) => {
+        deleteCustomLevel(id);
+        setCustomLevels(prev => prev.filter(l => l.id !== id));
+    };
+
+    const handleLevelCreator = () => {
+        onClose();
+        navigate('/editor');
+    };
 
     const handleSelect = async (entry: ManifestEntry) => {
         if (!isLevelUnlocked(entry.number, highestCompleted)) return;
@@ -236,6 +255,76 @@ const PlatformerLevelSelect = ({ open, onClose, onSelectLevel }: PlatformerLevel
                     <Typography sx={{ mt: 3, fontFamily: FONTS.NECTO_MONO, fontSize: '0.6rem', letterSpacing: 1, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
                         Complete a level to unlock the next
                     </Typography>
+                )}
+
+                {/* My Levels section */}
+                <Divider sx={{ mt: 3, mb: 2.5, borderColor: 'rgba(255,255,255,0.07)' }} />
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: 'rgba(255,255,255,0.4)', fontSize: '0.65rem', letterSpacing: 3, textTransform: 'uppercase' }}>
+                        My Levels
+                    </Typography>
+                    <Button
+                        size="small"
+                        startIcon={<AddCircleOutlineIcon />}
+                        onClick={handleLevelCreator}
+                        variant="outlined"
+                        sx={{
+                            fontFamily: FONTS.NECTO_MONO,
+                            fontSize: '0.65rem',
+                            letterSpacing: 1.5,
+                            color: '#ffd740',
+                            borderColor: 'rgba(255,215,64,0.4)',
+                            '&:hover': { bgcolor: 'rgba(255,215,64,0.08)', borderColor: '#ffd740' },
+                        }}
+                    >
+                        Level Creator
+                    </Button>
+                </Box>
+
+                {customLevels.length === 0 && (
+                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', letterSpacing: 1, textAlign: 'center', py: 2 }}>
+                        No custom levels yet — click Level Creator to build one
+                    </Typography>
+                )}
+
+                {customLevels.length > 0 && (
+                    <Grid container spacing={1.5}>
+                        {customLevels.map(level => (
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={level.id}>
+                                <Box
+                                    onClick={() => onSelectLevel(customLevelToLevelFile(level))}
+                                    sx={{
+                                        position: 'relative',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        height: 100,
+                                        borderRadius: 1.5,
+                                        border: '1px solid rgba(255,215,64,0.2)',
+                                        bgcolor: 'rgba(255,215,64,0.04)',
+                                        cursor: 'pointer',
+                                        transition: 'border-color 0.18s, background-color 0.18s, transform 0.12s',
+                                        userSelect: 'none',
+                                        '&:hover': { bgcolor: 'rgba(255,215,64,0.09)', borderColor: 'rgba(255,215,64,0.55)', transform: 'translateY(-2px)' },
+                                        '&:active': { transform: 'translateY(0)' },
+                                    }}
+                                >
+                                    <IconButton
+                                        size="small"
+                                        onClick={e => { e.stopPropagation(); handleDeleteCustom(level.id); }}
+                                        sx={{ position: 'absolute', top: 4, right: 4, color: 'rgba(255,100,100,0.4)', '&:hover': { color: 'rgba(255,100,100,0.9)' } }}
+                                    >
+                                        <DeleteOutlineIcon sx={{ fontSize: 14 }} />
+                                    </IconButton>
+                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', letterSpacing: 1.5, color: 'rgba(255,215,64,0.85)', textAlign: 'center', px: 3 }}>
+                                        {level.name}
+                                    </Typography>
+                                </Box>
+                            </Grid>
+                        ))}
+                    </Grid>
                 )}
             </DialogContent>
         </Dialog>
