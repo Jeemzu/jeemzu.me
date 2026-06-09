@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "number": 1,
+  "name": "A New Beginning",
+  "cols": 30,
+  "cells": [
+    {
+      "row": 19,
+      "col": 10,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 11,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 12,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 13,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 21,
+      "type": "spike"
+    },
+    {
+      "row": 20,
+      "col": 28,
+      "type": "finish"
+    }
+  ]
+}

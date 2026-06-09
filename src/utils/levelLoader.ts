@@ -1,4 +1,4 @@
-// ─── Level file → C++ WASM bridge loader ─────────────────────────────────────
+// ─── Level file → C++ WASM bridge loader
 //
 // Converts a LevelFile (tile-grid format) into the sequence of C++ API calls
 // expected by WasmGameContainer:
@@ -14,26 +14,21 @@ import { type LevelFile, type CellType } from '../lib/LevelSchema';
 export const TILE = 32;
 export const GROUND_Y = 640;
 
-// ─── worldX / worldY helpers ─────────────────────────────────────────────────
+// worldX / worldY helpers
 
 export function colToWorldX(col: number): number {
     return col * TILE;
 }
 
-/**
- * Distance from GROUND_Y to the TOP surface of the platform tile.
- * row 18 → worldY = GROUND_Y - 18*TILE = 640 - 576 = 64 px
- * row 19 → worldY = GROUND_Y - 19*TILE = 640 - 608 = 32 px
- */
+// Distance from GROUND_Y to the TOP surface of the platform tile.
 export function rowToWorldY(row: number): number {
     return GROUND_Y - row * TILE;
 }
 
-// ─── Merge contiguous columns at a given row into spans ──────────────────────
-
+// Merge contiguous columns at a given row into spans
 interface ColSpan {
     startCol: number;
-    endCol: number;   // inclusive
+    endCol: number;
 }
 
 function colsAtRow(cells: LevelFile['cells'], type: CellType, targetRow: number): number[] {
@@ -75,7 +70,7 @@ function mergeContiguous(cols: number[]): ColSpan[] {
     return spans;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+// Public API 
 
 /**
  * Returned by buildLevelCommands — a plain description of what to call
@@ -114,7 +109,7 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
         }
     }
 
-    // ── Pits (row 10 — contiguous cols merged into one pit each) ───────────
+    // ── Pits (row 10 — contiguous cols merged into one pit each) 
     const pitCols = colsAtRow(level.cells, 'pit', 10);
     for (const span of mergeContiguous(pitCols)) {
         cmds.push({
@@ -124,7 +119,7 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
         });
     }
 
-    // ── Platforms (rows 8–9 — merge per row) ────────────────────────────────
+    // ── Platforms (rows 8–9 — merge per row) 
     const platformsByRow = colsForType(level.cells, 'platform');
     for (const [row, cols] of platformsByRow) {
         const worldY = rowToWorldY(row);     // distance from GROUND_Y to top surface
@@ -142,7 +137,7 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
 
     cmds.push({ cmd: 'end' });
 
-    // ── Finish line (any finish cell — only col matters for worldX) ──────────
+    // ── Finish line (any finish cell — only col matters for worldX) 
     const finishCell = level.cells.find(c => c.type === 'finish');
     if (finishCell) {
         // Place the finish threshold at the LEFT edge of the finish tile column
@@ -152,7 +147,7 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
     return cmds;
 }
 
-// ─── Manifest fetcher ─────────────────────────────────────────────────────────
+// ─── Manifest fetcher 
 
 import { type LevelManifest, type LevelFile as LF } from '../lib/LevelSchema';
 

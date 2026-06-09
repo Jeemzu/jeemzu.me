@@ -1,7 +1,8 @@
 import websiteImg from '../../assets/images/website.png';
-import filterkitImg from '../../assets/images/filterkit.png';
 import legendsImg from '../../assets/images/legends.webp';
 import mobvoteImg from '../../assets/images/mobvote.jpg';
+import nimzeyImg from '../../assets/images/nimzey.png';
+import mctoolsImg from '../../assets/images/mctools.png';
 
 export type ProjectDataProps = {
     onClick?: () => void;
@@ -21,10 +22,17 @@ export const projectData: ProjectDataProps[] = [
         degrees: 0
     },
     {
-        img: filterkitImg,
-        title: 'Filter Pipeline',
-        description: 'A toolkit for crafting beautiful, professional-grade visual effects with intuitive, node-based editing.',
-        link: '#',
+        img: nimzeyImg,
+        title: 'Nimzey',
+        description: 'Nimzey runs in the background while you create, capturing timelapses, screenshots, GIFs, recordings, and tracking your creative journey.',
+        link: 'https://nimzey.com/',
+        degrees: -1,
+    },
+    {
+        img: mctoolsImg,
+        title: 'MCTools',
+        description: 'MCTools is a multi-platform content management system for Minecraft content creators.',
+        link: 'https://mctools.dev/',
         degrees: -1,
     },
     {

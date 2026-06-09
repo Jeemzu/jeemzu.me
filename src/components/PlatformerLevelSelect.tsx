@@ -21,7 +21,7 @@ import { type LevelFile, type ManifestEntry } from '../lib/LevelSchema';
 import { fetchManifest, fetchLevelFile } from '../utils/levelLoader';
 import { type CustomLevel, loadCustomLevels, deleteCustomLevel, customLevelToLevelFile } from '../utils/customLevels';
 
-// ─── localStorage unlock helpers ─────────────────────────────────────────────────
+// ─── localStorage unlock helpers
 
 const STORAGE_KEY = 'platformer_highest_completed';
 
@@ -44,7 +44,6 @@ function isLevelUnlocked(levelNumber: number, highestCompleted: number): boolean
 interface PlatformerLevelSelectProps {
     open: boolean;
     onClose: () => void;
-    /** Called with the fetched LevelFile when the player clicks an unlocked level */
     onSelectLevel: (level: LevelFile) => void;
 }
 

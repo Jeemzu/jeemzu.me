@@ -1,3 +1,5 @@
 {
-    "levels": []
+    "levels": [
+        "level-001.json"
+    ]
 }

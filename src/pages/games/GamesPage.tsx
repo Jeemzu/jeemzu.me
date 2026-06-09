@@ -5,8 +5,8 @@ import GameCard from "./GameCard";
 
 const GamesPage = () => {
     const theme = useTheme();
-    const { launchSnake, launchZAim, launchBreakout, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal } = useGameLauncher();
-    const gameData = createGameData({ launchSnake, launchZAim, launchBreakout, launchTetris, launchPlatformer, showComingSoon });
+    const { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal } = useGameLauncher();
+    const gameData = createGameData({ launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon });
 
     return (
         <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
@@ -38,9 +38,9 @@ const GamesPage = () => {
             <Box
                 sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
                     gap: 4,
-                    maxWidth: '900px',
+                    maxWidth: '1500px',
                     mx: 'auto',
                 }}
             >

@@ -90,10 +90,10 @@ const Projects = () => {
                 display: 'grid',
                 gridTemplateColumns: {
                     xs: '1fr',
-                    sm: 'repeat(2, 1fr)',
+                    sm: 'repeat(3, 1fr)',
                 },
                 gap: 4,
-                maxWidth: '900px',
+                maxWidth: '1500px',
                 mx: 'auto',
             }}
         >
