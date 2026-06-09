@@ -6,16 +6,6 @@
   "cells": [
     {
       "row": 19,
-      "col": 10,
-      "type": "platform"
-    },
-    {
-      "row": 19,
-      "col": 11,
-      "type": "platform"
-    },
-    {
-      "row": 19,
       "col": 12,
       "type": "platform"
     },
@@ -26,7 +16,32 @@
     },
     {
       "row": 19,
-      "col": 21,
+      "col": 14,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 15,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 16,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 17,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 18,
+      "type": "platform"
+    },
+    {
+      "row": 18,
+      "col": 18,
       "type": "spike"
     },
     {

@@ -298,15 +298,13 @@ const LevelEditorPage = () => {
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         const { row, col } = canvasRowCol(e);
-        setHoverPos({ row, col });
+        setHoverPos(prev => (prev?.row === row && prev?.col === col ? prev : { row, col }));
         if (paintingRef.current) applyTool(row, col);
     }, [canvasRowCol, applyTool]);
 
     const handleMouseUp = useCallback(() => { paintingRef.current = false; }, []);
     const handleMouseLeave = useCallback(() => { paintingRef.current = false; setHoverPos(null); mouseInsideRef.current = false; }, []);
 
-    // Non-passive wheel listener on the editor container:
-    // when mouse is inside, intercept wheel to scroll the column range; when outside, let page scroll.
     useEffect(() => {
         const el = editorRef.current;
         if (!el) return;
@@ -401,6 +399,19 @@ const LevelEditorPage = () => {
         },
     };
 
+    const [colsInput, setColsInput] = useState(String(totalCols));
+
+    // Keep colsInput in sync if totalCols changes externally (e.g. on import)
+    useEffect(() => {
+        setColsInput(String(totalCols));
+    }, [totalCols]);
+
+    const [levelNumberInput, setLevelNumberInput] = useState(String(levelNumber));
+
+    useEffect(() => {
+        setLevelNumberInput(String(levelNumber));
+    }, [levelNumber]);
+
     return (
         <Box
             ref={editorRef}
@@ -415,16 +426,38 @@ const LevelEditorPage = () => {
                 <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <TextField size="medium" label="Level #" type="number" value={levelNumber}
-                        onChange={e => setLevelNumber(Math.max(1, parseInt(e.target.value) || 1))}
-                        sx={{ width: 150, ...inputSx }} inputProps={{ min: 1 }} />
+                    <TextField
+                        size="medium"
+                        label="Level #"
+                        type="number"
+                        value={levelNumberInput}
+                        onChange={e => setLevelNumberInput(e.target.value)}
+                        onBlur={() => {
+                            const clamped = Math.max(1, parseInt(levelNumberInput) || 1);
+                            setLevelNumber(clamped);
+                            setLevelNumberInput(String(clamped));
+                        }}
+                        sx={{ width: 150, ...inputSx }}
+                        inputProps={{ min: 1 }}
+                    />
                     <TextField size="medium" label="Name" value={levelName}
                         onChange={e => setLevelName(e.target.value)}
                         placeholder={`Level ${levelNumber}`}
                         sx={{ width: 300, ...inputSx }} />
-                    <TextField size="medium" label="Cols" type="number" value={totalCols}
-                        onChange={e => setTotalCols(Math.max(MIN_COLS, Math.min(MAX_COLS, parseInt(e.target.value) || MIN_COLS)))}
-                        sx={{ width: 150, ...inputSx }} inputProps={{ min: MIN_COLS, max: MAX_COLS }} />
+                    <TextField
+                        size="medium"
+                        label="Cols"
+                        type="number"
+                        value={colsInput}
+                        onChange={e => setColsInput(e.target.value)}
+                        onBlur={() => {
+                            const clamped = Math.max(MIN_COLS, Math.min(MAX_COLS, parseInt(colsInput) || MIN_COLS));
+                            setTotalCols(clamped);
+                            setColsInput(String(clamped));
+                        }}
+                        sx={{ width: 150, ...inputSx }}
+                        inputProps={{ min: MIN_COLS, max: MAX_COLS }}
+                    />
                 </Stack>
 
                 <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />

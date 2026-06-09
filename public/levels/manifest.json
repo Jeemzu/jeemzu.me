@@ -1,5 +1,9 @@
 {
     "levels": [
-        "level-001.json"
+        {
+            "number": 1,
+            "name": "A New Beginning",
+            "file": "1.json"
+        }
     ]
 }
