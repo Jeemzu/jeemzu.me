@@ -19,7 +19,8 @@ import brickbreakpng from '../../assets/images/brickbreak.png';
 import brickbreakgif from '../../assets/images/brickbreak.gif';
 import tetrispng from '../../assets/images/tetris.png';
 import tetrisgif from '../../assets/images/tetris.gif';
-import progenitorsThumbnail from '../../assets/images/progenitors-thumbnail.svg';
+import platformerpng from '../../assets/images/platformer.png';
+import comingSoonpng from "../../assets/images/comingsoon.png";
 
 export const useGameLauncher = () => {
     const [currentGame, setCurrentGame] = useState<{
@@ -111,7 +112,7 @@ export const useGameLauncher = () => {
         <WasmGameContainer
             open={platformerOpen && !!selectedLevel}
             onClose={() => setSelectedLevel(null)}
-            gameTitle="Platform Rush"
+            gameTitle="The (Im)Possible Game"
             wasmName="platformer"
             levelFile={selectedLevel}
             levelLabel={selectedLevel.number > 0 ? `Level ${selectedLevel.number} — ${selectedLevel.name}` : selectedLevel.name}
@@ -135,8 +136,8 @@ export const createGameData = (launchers: {
             id: 'platformer',
             title: 'The (Im)Possible Game',
             description: 'A side-scrolling platformer with a level editor you can use to create your own challenges.',
-            thumbnail: progenitorsThumbnail,
-            gameplayGif: progenitorsThumbnail,
+            thumbnail: platformerpng,
+            gameplayGif: platformerpng,
             genre: 'Native',
             onPlay: launchers.launchPlatformer,
         },
@@ -180,9 +181,9 @@ export const createGameData = (launchers: {
         {
             id: 'progenitors',
             title: 'The Progenitors',
-            description: 'A turn-based RPG. Choose your class, master Spirit Aura, and descend into the Undercroft. Progress saved locally.',
-            thumbnail: progenitorsThumbnail,
-            gameplayGif: progenitorsThumbnail,
+            description: 'A turn-based RPG. Progress saved locally.',
+            thumbnail: comingSoonpng,
+            gameplayGif: comingSoonpng,
             genre: 'RPG',
             featured: true,
             onPlay: () => launchers.showComingSoon('The Progenitors'),

@@ -579,7 +579,7 @@ const LevelEditorPage = () => {
                 <WasmGameContainer
                     open={playOpen}
                     onClose={() => setPlayOpen(false)}
-                    gameTitle="Platform Rush — Preview"
+                    gameTitle="The (Im)Possible Game — Preview"
                     wasmName="platformer"
                     levelFile={playLevelFile}
                     levelLabel={`Level ${levelNumber} — ${levelName || `Level ${levelNumber}`}`}

@@ -248,20 +248,6 @@ const WasmGameContainer = ({
                     >
                         {gameTitle}
                     </Typography>
-                    {/* C++ badge */}
-                    <Box
-                        sx={{
-                            px: 0.8,
-                            py: 0.15,
-                            borderRadius: 0.75,
-                            border: '1px solid rgba(100,180,255,0.5)',
-                            bgcolor: 'rgba(100,180,255,0.08)',
-                        }}
-                    >
-                        <Typography sx={{ color: '#64b4ff', fontSize: '0.65rem', fontFamily: FONTS.NECTO_MONO, letterSpacing: 1 }}>
-                            C++ / WASM
-                        </Typography>
-                    </Box>
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
