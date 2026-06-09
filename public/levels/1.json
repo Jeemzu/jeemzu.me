@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "number": 1,
+  "name": "A New Beginning",
+  "cols": 30,
+  "cells": [
+    {
+      "row": 19,
+      "col": 12,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 13,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 14,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 15,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 16,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 17,
+      "type": "platform"
+    },
+    {
+      "row": 19,
+      "col": 18,
+      "type": "platform"
+    },
+    {
+      "row": 18,
+      "col": 18,
+      "type": "spike"
+    },
+    {
+      "row": 20,
+      "col": 28,
+      "type": "finish"
+    }
+  ]
+}

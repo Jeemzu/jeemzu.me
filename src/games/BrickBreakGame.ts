@@ -35,7 +35,7 @@ const ROW_COLORS = [
 
 const ROW_POINTS = [70, 60, 50, 40, 30, 20];
 
-export class BreakoutScene extends Phaser.Scene {
+export class BrickBreakScene extends Phaser.Scene {
     private paddle!: Phaser.GameObjects.Rectangle;
     private ball!: Phaser.GameObjects.Arc;
     private bricks: Brick[] = [];
@@ -54,15 +54,15 @@ export class BreakoutScene extends Phaser.Scene {
     private serveText!: Phaser.GameObjects.Text;
 
     constructor() {
-        super({ key: 'BreakoutScene' });
+        super({ key: 'BrickBreakScene' });
     }
 
     preload() {
         for (let i = 1; i <= 5; i++) {
-            this.load.audio(`breakoutBreak${i}`, `/sounds/breakout_break_${i}.mp3`);
+            this.load.audio(`brickbreakBreak${i}`, `/sounds/brickbreak_break_${i}.mp3`);
         }
-        this.load.audio('breakoutWallHit', '/sounds/breakout_wall_hit.mp3');
-        this.load.audio('breakoutLose', '/sounds/breakout_lose.mp3');
+        this.load.audio('brickbreakWallHit', '/sounds/brickbreak_wall_hit.mp3');
+        this.load.audio('brickbreakLose', '/sounds/brickbreak_lose.mp3');
     }
 
     create() {
@@ -75,7 +75,7 @@ export class BreakoutScene extends Phaser.Scene {
         if (this.breakSounds.length === 0) {
             for (let i = 1; i <= 5; i++) {
                 try {
-                    const key = `breakoutBreak${i}`;
+                    const key = `brickbreakBreak${i}`;
                     if (this.cache.audio.exists(key)) {
                         this.breakSounds.push(this.sound.add(key, { volume: volume * 0.5 }));
                     }
@@ -87,13 +87,13 @@ export class BreakoutScene extends Phaser.Scene {
             });
         }
         try {
-            if (!this.wallHitSound && this.cache.audio.exists('breakoutWallHit')) {
-                this.wallHitSound = this.sound.add('breakoutWallHit', { volume: volume * 0.4 });
+            if (!this.wallHitSound && this.cache.audio.exists('brickbreakWallHit')) {
+                this.wallHitSound = this.sound.add('brickbreakWallHit', { volume: volume * 0.4 });
             }
         } catch { /* audio not available */ }
         try {
-            if (!this.loseSound && this.cache.audio.exists('breakoutLose')) {
-                this.loseSound = this.sound.add('breakoutLose', { volume: volume * 0.6 });
+            if (!this.loseSound && this.cache.audio.exists('brickbreakLose')) {
+                this.loseSound = this.sound.add('brickbreakLose', { volume: volume * 0.6 });
             }
         } catch { /* audio not available */ }
         // Reset state
@@ -145,7 +145,7 @@ export class BreakoutScene extends Phaser.Scene {
         // Lives text
         this.livesText = this.add.text(CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20, `Lives: ${this.lives}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
         this.livesText.setOrigin(1, 1);
@@ -153,7 +153,7 @@ export class BreakoutScene extends Phaser.Scene {
         // Serve text
         this.serveText = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80, 'Get Ready...', {
             fontSize: '24px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
         this.serveText.setOrigin(0.5);
@@ -353,12 +353,12 @@ export class BreakoutScene extends Phaser.Scene {
     }
 }
 
-export const createBreakoutGameConfig = (): Omit<Phaser.Types.Core.GameConfig, 'parent'> => {
+export const createBrickBreakGameConfig = (): Omit<Phaser.Types.Core.GameConfig, 'parent'> => {
     return {
         type: Phaser.AUTO,
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
         backgroundColor: '#1a1a1a',
-        scene: BreakoutScene,
+        scene: BrickBreakScene,
     };
 };

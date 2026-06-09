@@ -112,29 +112,7 @@ export class TetrisScene extends Phaser.Scene {
         super({ key: 'TetrisScene' });
     }
 
-    preload() {
-        this.load.audio('tetrisClear', '/sounds/tetris_clear.mp3');
-        this.load.audio('tetrisDrop', '/sounds/tetris_drop.mp3');
-    }
-
     create() {
-        const volume = this.registry.get('volume') ?? 0.5;
-
-        // Initialize sounds gracefully
-        try {
-
-        } catch { /* audio not available */ }
-        try {
-            if (!this.lineClearSound && this.cache.audio.exists('tetrisClear')) {
-                this.lineClearSound = this.sound.add('tetrisClear', { volume: volume * 0.5 });
-            }
-        } catch { /* audio not available */ }
-        try {
-            if (!this.dropSound && this.cache.audio.exists('tetrisDrop')) {
-                this.dropSound = this.sound.add('tetrisDrop', { volume: volume * 0.4 });
-            }
-        } catch { /* audio not available */ }
-
         // Reset state
         this.score = 0;
         this.level = 1;
@@ -184,20 +162,20 @@ export class TetrisScene extends Phaser.Scene {
 
         this.add.text(panelX, 10, 'NEXT', {
             fontSize: '20px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
             fontStyle: 'bold',
         });
 
         this.levelText = this.add.text(panelX, 160, `Level: ${this.level}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
 
         this.linesText = this.add.text(panelX, 190, `Lines: ${this.linesCleared}`, {
             fontSize: '18px',
-            fontFamily: 'Arial',
+            fontFamily: 'NectoMono-Regular',
             color: '#888888',
         });
 

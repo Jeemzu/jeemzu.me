@@ -1,0 +1,31 @@
+{
+    "configurations": [
+        {
+            "name": "Win32 (Clang)",
+            "includePath": [
+                "${workspaceFolder}/cpp/**",
+                "C:/Program Files/LLVM/include/**"
+            ],
+            "defines": [],
+            "compilerPath": "C:/Program Files/LLVM/bin/clang.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-clang-x64"
+        },
+        {
+            "name": "Emscripten (WASM)",
+            "includePath": [
+                "${workspaceFolder}/cpp/**",
+                "${env:EMSDK}/upstream/emscripten/cache/sysroot/include/**"
+            ],
+            "defines": [
+                "__EMSCRIPTEN__"
+            ],
+            "compilerPath": "${env:EMSDK}/upstream/bin/clang.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-clang-x64"
+        }
+    ],
+    "version": 4
+}

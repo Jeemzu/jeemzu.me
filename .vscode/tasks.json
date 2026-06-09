@@ -1,0 +1,85 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build WASM: current project",
+            "type": "shell",
+            "command": "emcc",
+            "args": [
+                "${file}",
+                "-o",
+                "${workspaceFolder}/public/wasm/${fileBasenameNoExtension}.js",
+                "-s",
+                "WASM=1",
+                "-s",
+                "EXPORTED_RUNTIME_METHODS=['cwrap','ccall']",
+                "-s",
+                "MODULARIZE=1",
+                "-s",
+                "EXPORT_NAME='${fileBasenameNoExtension}Module'",
+                "-s",
+                "ALLOW_MEMORY_GROWTH=1",
+                "-O2",
+                "--std=c++20"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Build WASM: all projects",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-File",
+                "${workspaceFolder}/cpp/build-all.ps1"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Build native: current file",
+            "type": "shell",
+            "command": "clang++",
+            "args": [
+                "-std=c++20",
+                "-O2",
+                "-Wall",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}.exe"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "Run native: current file",
+            "type": "shell",
+            "command": "${fileDirname}/${fileBasenameNoExtension}.exe",
+            "dependsOn": "Build native: current file",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

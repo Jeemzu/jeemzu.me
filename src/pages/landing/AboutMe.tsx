@@ -81,9 +81,6 @@ const HighlightCard = ({
                     backgroundColor: theme.palette.cardBackground.main,
                     boxShadow: EFFECTS.CARD_SHADOW,
                     transition: EFFECTS.TRANSITION,
-                    '&:hover': {
-                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                    },
                 }}
             >
                 <CardContent sx={{ p: { xs: 4, md: 5 }, textAlign: 'left', position: 'relative' }}>
@@ -139,7 +136,7 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
     const handleClose = () => setOpen(false);
 
     return (
-        <Box>
+        <Box sx={{ fontFamily: FONTS.NECTO_MONO }}>
             {!isMobile ? (
                 <>
                     {/* Highlight Cards */}
@@ -224,8 +221,8 @@ const AboutMe = ({ hideImages = false }: { hideImages?: boolean }) => {
                             width: '100%', height: 'auto',
                         }} />
                     </Box>
-                    <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.POIRET_ONE, width: 'auto' }}>
-                        <Typography fontFamily={FONTS.POIRET_ONE} variant="h5">
+                    <Button onClick={() => setOpen(true)} sx={{ mt: 2, p: 2, color: theme.palette.primaryGreen.main, backgroundColor: theme.palette.darkBackground.main, fontFamily: FONTS.NECTO_MONO, width: 'auto' }}>
+                        <Typography fontFamily={FONTS.NECTO_MONO} variant="h5">
                             Who are you again?
                         </Typography>
                     </Button>

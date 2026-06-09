@@ -1,26 +1,26 @@
 import { useState } from 'react';
 import GameContainer from '../../components/GameContainer';
+import WasmGameContainer from '../../components/WasmGameContainer';
+import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
 import ComingSoonModal from '../../components/ComingSoonModal';
 import { createSnakeGameConfig } from '../../games/SnakeGame';
 import { createZAimGameConfig } from '../../games/ZAimGame';
-import { createPongGameConfig } from '../../games/PongGame';
-import { createBreakoutGameConfig } from '../../games/BreakoutGame';
+import { createBrickBreakGameConfig } from '../../games/BrickBreakGame';
 import { createTetrisGameConfig } from '../../games/TetrisGame';
 import { type GameDataProps } from "../GameTypes";
+import { type LevelFile } from '../LevelSchema';
+import { markLevelCompleted } from '../../components/PlatformerLevelSelect';
 
-// Import game assets
 import snakepng from '../../assets/images/snake.png';
 import snakegif from '../../assets/images/snake.gif';
 import zaimpng from '../../assets/images/zaim.png';
 import zaimgif from '../../assets/images/zaim.gif';
-import pongpng from '../../assets/images/pong.png';
-import ponggif from '../../assets/images/pong.gif';
-import breakoutpng from '../../assets/images/breakout.png';
-import breakoutgif from '../../assets/images/breakout.gif';
+import brickbreakpng from '../../assets/images/brickbreak.png';
+import brickbreakgif from '../../assets/images/brickbreak.gif';
 import tetrispng from '../../assets/images/tetris.png';
 import tetrisgif from '../../assets/images/tetris.gif';
+import progenitorsThumbnail from '../../assets/images/progenitors-thumbnail.svg';
 
-// Game launcher hook - we'll use this to manage game state
 export const useGameLauncher = () => {
     const [currentGame, setCurrentGame] = useState<{
         title: string;
@@ -28,6 +28,8 @@ export const useGameLauncher = () => {
         showColorOption?: boolean;
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
+    const [platformerOpen, setPlatformerOpen] = useState(false);
+    const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
     const launchSnake = () => {
         setCurrentGame({
@@ -45,18 +47,10 @@ export const useGameLauncher = () => {
         });
     };
 
-    const launchPong = () => {
+    const launchBrickBreak = () => {
         setCurrentGame({
-            title: 'Pong',
-            config: createPongGameConfig(),
-            showColorOption: true,
-        });
-    };
-
-    const launchBreakout = () => {
-        setCurrentGame({
-            title: 'Breakout',
-            config: createBreakoutGameConfig(),
+            title: 'Brick Break',
+            config: createBrickBreakGameConfig(),
             showColorOption: true,
         });
     };
@@ -66,6 +60,11 @@ export const useGameLauncher = () => {
             title: 'Tetris',
             config: createTetrisGameConfig(),
         });
+    };
+
+    const launchPlatformer = () => {
+        setSelectedLevel(null);
+        setPlatformerOpen(true);
     };
 
     const showComingSoon = (gameTitle: string) => {
@@ -98,18 +97,49 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchPong, launchBreakout, launchTetris, showComingSoon, GameModal, ComingSoonGameModal };
+    const RPGModal = null;
+
+    const LevelSelectModal = (
+        <PlatformerLevelSelect
+            open={platformerOpen && !selectedLevel}
+            onClose={() => setPlatformerOpen(false)}
+            onSelectLevel={(level) => setSelectedLevel(level)}
+        />
+    );
+
+    const WasmModal = selectedLevel ? (
+        <WasmGameContainer
+            open={platformerOpen && !!selectedLevel}
+            onClose={() => setSelectedLevel(null)}
+            gameTitle="Platform Rush"
+            wasmName="platformer"
+            levelFile={selectedLevel}
+            levelLabel={selectedLevel.number > 0 ? `Level ${selectedLevel.number} — ${selectedLevel.name}` : selectedLevel.name}
+            onLevelComplete={selectedLevel.number > 0 ? () => markLevelCompleted(selectedLevel.number) : undefined}
+        />
+    ) : null;
+
+    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions
 export const createGameData = (launchers: {
     launchSnake: () => void;
     launchZAim: () => void;
-    launchPong: () => void;
-    launchBreakout: () => void;
+    launchBrickBreak: () => void;
     launchTetris: () => void;
+    launchPlatformer: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
+        {
+            id: 'platformer',
+            title: 'The (Im)Possible Game',
+            description: 'A side-scrolling platformer with a level editor you can use to create your own challenges.',
+            thumbnail: progenitorsThumbnail,
+            gameplayGif: progenitorsThumbnail,
+            genre: 'Native',
+            onPlay: launchers.launchPlatformer,
+        },
         {
             id: 'zaim',
             title: 'zAim',
@@ -117,7 +147,7 @@ export const createGameData = (launchers: {
             thumbnail: zaimpng,
             gameplayGif: zaimgif,
             genre: 'Arcade',
-            featured: true,
+            featured: false,
             onPlay: launchers.launchZAim,
         },
         {
@@ -130,22 +160,13 @@ export const createGameData = (launchers: {
             onPlay: launchers.launchSnake,
         },
         {
-            id: 'pong',
-            title: 'Pong',
-            description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-            thumbnail: pongpng,
-            gameplayGif: ponggif,
-            genre: 'Classics',
-            onPlay: launchers.launchPong,
-        },
-        {
-            id: 'breakout',
-            title: 'Breakout',
+            id: 'brickbreak',
+            title: 'Brick Break',
             description: 'Break all the bricks with your paddle and ball!',
-            thumbnail: breakoutpng,
-            gameplayGif: breakoutgif,
+            thumbnail: brickbreakpng,
+            gameplayGif: brickbreakgif,
             genre: 'Classics',
-            onPlay: launchers.launchBreakout,
+            onPlay: launchers.launchBrickBreak,
         },
         {
             id: 'tetris',
@@ -156,43 +177,14 @@ export const createGameData = (launchers: {
             genre: 'Classics',
             onPlay: launchers.launchTetris,
         },
-    ];// Default export for backward compatibility - empty onPlay handlers
-export const gameData: GameDataProps[] = [
-    {
-        id: 'snake',
-        title: 'Snake',
-        description: 'Classic Snake - eat the food and grow longer without hitting yourself!',
-        thumbnail: snakepng,
-        gameplayGif: snakegif,
-        genre: 'Classics',
-        featured: true,
-        onPlay: () => console.log('Use GamesPage with launcher'),
-    },
-    {
-        id: 'pong',
-        title: 'Pong',
-        description: 'Retro arcade classic - bounce the ball and beat the AI opponent!',
-        thumbnail: pongpng,
-        gameplayGif: ponggif,
-        genre: 'Classics',
-        onPlay: () => console.log('Launching Pong game...'),
-    },
-    {
-        id: 'breakout',
-        title: 'Breakout',
-        description: 'Break all the bricks with your paddle and ball!',
-        thumbnail: breakoutpng,
-        gameplayGif: breakoutgif,
-        genre: 'Classics',
-        onPlay: () => console.log('Launching Breakout game...'),
-    },
-    {
-        id: 'tetris',
-        title: 'Tetris',
-        description: 'Stack falling blocks to clear lines. How high can you score?',
-        thumbnail: tetrispng,
-        gameplayGif: tetrisgif,
-        genre: 'Classics',
-        onPlay: () => console.log('Launching Tetris game...'),
-    },
-];
+        {
+            id: 'progenitors',
+            title: 'The Progenitors',
+            description: 'A turn-based RPG. Choose your class, master Spirit Aura, and descend into the Undercroft. Progress saved locally.',
+            thumbnail: progenitorsThumbnail,
+            gameplayGif: progenitorsThumbnail,
+            genre: 'RPG',
+            featured: true,
+            onPlay: () => launchers.showComingSoon('The Progenitors'),
+        }
+    ];
