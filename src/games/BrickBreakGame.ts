@@ -1,57 +1,146 @@
 import Phaser from 'phaser';
+import { LEVELS, TOTAL_LEVELS, BRICK_COLS, getBrickType, type BrickType } from './brickbreak/levels';
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
-const PADDLE_WIDTH = 120;
-const PADDLE_HEIGHT = 15;
-const PADDLE_Y = CANVAS_HEIGHT - 40;
-const PADDLE_SPEED = 500;
-const BALL_SIZE = 10;
-const BRICK_ROWS = 6;
-const BRICK_COLS = 10;
-const BRICK_WIDTH = 68;
-const BRICK_HEIGHT = 22;
-const BRICK_PADDING = 6;
-const BRICK_OFFSET_X = 30;
-const BRICK_OFFSET_Y = 50;
-const INITIAL_BALL_SPEED = 350;
+const CANVAS_WIDTH = 960;
+const CANVAS_HEIGHT = 720;
 
-interface Brick {
-    rect: Phaser.GameObjects.Rectangle;
-    row: number;
-    col: number;
-    alive: boolean;
-    points: number;
+const PADDLE_WIDTH = 110;
+const PADDLE_HEIGHT = 14;
+const PADDLE_Y = CANVAS_HEIGHT - 48;
+const PADDLE_SPEED = 760;
+
+const BALL_RADIUS = 7;
+const BASE_BALL_SPEED = 450;
+const MAX_BALLS = 6;
+
+const BRICK_GAP = 6;
+const BRICK_HEIGHT = 24;
+const BRICK_TOP = 72;
+const BRICK_SIDE_MARGIN = 54;
+const BRICK_WIDTH = (CANVAS_WIDTH - BRICK_SIDE_MARGIN * 2 - BRICK_GAP * (BRICK_COLS - 1)) / BRICK_COLS;
+
+const SERVE_DELAY = 1200;
+const START_LIVES = 3;
+const MAX_LIVES = 5;
+
+const DROP_SPEED = 200;
+const DROP_WIDTH = 30;
+const DROP_HEIGHT = 16;
+const DROP_CHANCE = 0.16;
+
+const UNLOCK_KEY = 'brickbreak_highest_completed';
+const HIGHSCORE_KEY = 'highScore_Brick Break';
+
+// ─── unlock storage helpers ────────────────────────────────────────────────
+
+function getHighestCompleted(): number {
+    return parseInt(localStorage.getItem(UNLOCK_KEY) ?? '0', 10);
 }
 
-const ROW_COLORS = [
-    0xff4444, // red
-    0xff8844, // orange
-    0xffcc44, // yellow
-    0x44cc44, // green
-    0x4488ff, // blue
-    0x8844ff, // purple
-];
+function markCompleted(level: number): void {
+    if (level > getHighestCompleted()) {
+        localStorage.setItem(UNLOCK_KEY, String(level));
+    }
+}
 
-const ROW_POINTS = [70, 60, 50, 40, 30, 20];
+function isUnlocked(level: number): boolean {
+    return level === 1 || getHighestCompleted() >= level - 1;
+}
+
+// ─── powerups / debuffs ────────────────────────────────────────────────────
+
+type EffectKind = 'expand' | 'multi' | 'slow' | 'life' | 'shrink' | 'fast';
+
+interface PowerDef {
+    label: string;
+    color: number;
+    good: boolean;
+    weight: number;
+}
+
+const POWER_DEFS: Record<EffectKind, PowerDef> = {
+    expand: { label: 'E', color: 0x5ad65a, good: true, weight: 3 },
+    multi: { label: 'M', color: 0x4dd6d6, good: true, weight: 2 },
+    slow: { label: 'S', color: 0x4d8cff, good: true, weight: 2 },
+    life: { label: '+', color: 0xff6fae, good: true, weight: 1 },
+    shrink: { label: 'H', color: 0xff5252, good: false, weight: 2 },
+    fast: { label: 'F', color: 0xff9d2e, good: false, weight: 2 },
+};
+
+// ─── internal types ────────────────────────────────────────────────────────
+
+const BBState = {
+    LevelSelect: 'levelSelect',
+    Serving: 'serving',
+    Playing: 'playing',
+    LevelComplete: 'levelComplete',
+    GameOver: 'gameOver',
+} as const;
+type BBState = (typeof BBState)[keyof typeof BBState];
+
+interface Ball {
+    obj: Phaser.GameObjects.Arc;
+    vx: number;
+    vy: number;
+}
+
+interface BrickObj {
+    rect: Phaser.GameObjects.Rectangle;
+    type: BrickType;
+    hp: number;
+    alive: boolean;
+}
+
+interface Drop {
+    rect: Phaser.GameObjects.Rectangle;
+    text: Phaser.GameObjects.Text;
+    kind: EffectKind;
+}
+
+function darken(color: number, factor: number): number {
+    const r = Math.round(((color >> 16) & 0xff) * factor);
+    const g = Math.round(((color >> 8) & 0xff) * factor);
+    const b = Math.round((color & 0xff) * factor);
+    return (r << 16) | (g << 8) | b;
+}
+
+function hexStr(color: number): string {
+    return '#' + color.toString(16).padStart(6, '0');
+}
 
 export class BrickBreakScene extends Phaser.Scene {
-    private paddle!: Phaser.GameObjects.Rectangle;
-    private ball!: Phaser.GameObjects.Arc;
-    private bricks: Brick[] = [];
-    private ballVelocity: { x: number; y: number } = { x: 0, y: 0 };
-    private score: number = 0;
-    private lives: number = 3;
-    private isGameOver: boolean = false;
-    private isServing: boolean = true;
-    private serveTimer: number = 0;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    private primaryColor: number = 0xa8d67e;
+    private state: BBState = BBState.LevelSelect;
+
+    private paddle?: Phaser.GameObjects.Rectangle;
+    private balls: Ball[] = [];
+    private bricks: BrickObj[] = [];
+    private drops: Drop[] = [];
+
+    private level = 1;
+    private score = 0;
+    private lives = START_LIVES;
+    private highScore = 0;
+
+    private ballSpeed = BASE_BALL_SPEED;
+    private speedMultiplier = 1;
+    private speedEffectTimer = 0;
+    private paddleWidth = PADDLE_WIDTH;
+    private paddleEffectTimer = 0;
+    private serveTimer = 0;
+
+    private primaryColor = 0xa8d67e;
+
+    private keysHeld = new Set<string>();
+    private onKeyDown = (e: KeyboardEvent) => this.keysHeld.add(e.code);
+    private onKeyUp = (e: KeyboardEvent) => this.keysHeld.delete(e.code);
+
+    private hudText?: Phaser.GameObjects.Text;
+    private centerText?: Phaser.GameObjects.Text;
+    private transient: Phaser.GameObjects.GameObject[] = [];
+
     private breakSounds: Phaser.Sound.BaseSound[] = [];
     private wallHitSound?: Phaser.Sound.BaseSound;
     private loseSound?: Phaser.Sound.BaseSound;
-    private livesText!: Phaser.GameObjects.Text;
-    private serveText!: Phaser.GameObjects.Text;
 
     constructor() {
         super({ key: 'BrickBreakScene' });
@@ -70,286 +159,750 @@ export class BrickBreakScene extends Phaser.Scene {
         this.primaryColor = parseInt(primaryColorHex.replace('#', ''), 16);
 
         const volume = this.registry.get('volume') ?? 0.5;
+        this.initSounds(volume);
 
-        // Initialize sounds (gracefully handle missing audio files)
-        if (this.breakSounds.length === 0) {
-            for (let i = 1; i <= 5; i++) {
-                try {
-                    const key = `brickbreakBreak${i}`;
-                    if (this.cache.audio.exists(key)) {
-                        this.breakSounds.push(this.sound.add(key, { volume: volume * 0.5 }));
-                    }
-                } catch { /* audio not available */ }
-            }
-        } else {
-            this.breakSounds.forEach(s => {
-                (s as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(volume * 0.5);
-            });
-        }
-        try {
-            if (!this.wallHitSound && this.cache.audio.exists('brickbreakWallHit')) {
-                this.wallHitSound = this.sound.add('brickbreakWallHit', { volume: volume * 0.4 });
-            }
-        } catch { /* audio not available */ }
-        try {
-            if (!this.loseSound && this.cache.audio.exists('brickbreakLose')) {
-                this.loseSound = this.sound.add('brickbreakLose', { volume: volume * 0.6 });
-            }
-        } catch { /* audio not available */ }
-        // Reset state
+        this.cameras.main.setBackgroundColor('#16161f');
+
+        // Boundary frame
+        const frame = this.add.graphics();
+        frame.lineStyle(2, 0x444455, 0.4);
+        frame.strokeRect(1, 1, CANVAS_WIDTH - 2, CANVAS_HEIGHT - 2);
+
+        // Input — use window listeners so key state is never stuck when the
+        // canvas loses focus inside the MUI Dialog.
+        window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            window.removeEventListener('keydown', this.onKeyDown);
+            window.removeEventListener('keyup', this.onKeyUp);
+        });
+
+        this.input.on('pointerdown', () => {
+            if (this.state === BBState.Serving) this.launchBalls();
+        });
+
+        // Volume reactivity
+        this.events.on('volumeChange', (newVolume: number) => this.applyVolume(newVolume));
+
+        // Reset session state
         this.score = 0;
-        this.lives = 3;
-        this.isGameOver = false;
-        this.isServing = true;
-        this.serveTimer = 0;
-        this.bricks = [];
-
-        this.cameras.main.setBackgroundColor('#1a1a1a');
-
-        // Create bricks
-        for (let row = 0; row < BRICK_ROWS; row++) {
-            for (let col = 0; col < BRICK_COLS; col++) {
-                const x = BRICK_OFFSET_X + col * (BRICK_WIDTH + BRICK_PADDING) + BRICK_WIDTH / 2;
-                const y = BRICK_OFFSET_Y + row * (BRICK_HEIGHT + BRICK_PADDING) + BRICK_HEIGHT / 2;
-
-                const rect = this.add.rectangle(x, y, BRICK_WIDTH, BRICK_HEIGHT, ROW_COLORS[row]);
-                rect.setStrokeStyle(1, 0xffffff, 0.2);
-
-                this.bricks.push({
-                    rect,
-                    row,
-                    col,
-                    alive: true,
-                    points: ROW_POINTS[row],
-                });
-            }
-        }
-
-        // Create paddle
-        this.paddle = this.add.rectangle(
-            CANVAS_WIDTH / 2,
-            PADDLE_Y,
-            PADDLE_WIDTH,
-            PADDLE_HEIGHT,
-            this.primaryColor
-        );
-
-        // Create ball
-        this.ball = this.add.circle(
-            CANVAS_WIDTH / 2,
-            PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_SIZE,
-            BALL_SIZE / 2,
-            0xffffff
-        );
-
-        // Lives text
-        this.livesText = this.add.text(CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20, `Lives: ${this.lives}`, {
-            fontSize: '18px',
-            fontFamily: 'NectoMono-Regular',
-            color: '#888888',
-        });
-        this.livesText.setOrigin(1, 1);
-
-        // Serve text
-        this.serveText = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 80, 'Get Ready...', {
-            fontSize: '24px',
-            fontFamily: 'NectoMono-Regular',
-            color: '#888888',
-        });
-        this.serveText.setOrigin(0.5);
-
-        // Draw boundary lines
-        const graphics = this.add.graphics();
-        graphics.lineStyle(2, 0x444444, 0.4);
-        graphics.strokeRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        // Keyboard
-        this.cursors = this.input.keyboard!.createCursorKeys();
-
-        // Emit score
+        this.lives = START_LIVES;
+        this.highScore = parseInt(localStorage.getItem(HIGHSCORE_KEY) ?? '0', 10);
         this.game.events.emit('scoreUpdate', this.score);
 
-        // Listen for volume changes
-        this.events.on('volumeChange', (newVolume: number) => {
-            this.breakSounds.forEach(s => {
-                (s as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.5);
-            });
-            if (this.wallHitSound) {
-                (this.wallHitSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.4);
-            }
-            if (this.loseSound) {
-                (this.loseSound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(newVolume * 0.6);
-            }
-        });
+        this.showLevelSelect();
     }
 
+    // ─── sounds ─────────────────────────────────────────────────────────────
+
+    private initSounds(volume: number) {
+        if (this.breakSounds.length === 0) {
+            for (let i = 1; i <= 5; i++) {
+                const key = `brickbreakBreak${i}`;
+                if (this.cache.audio.exists(key)) {
+                    this.breakSounds.push(this.sound.add(key, { volume: volume * 0.5 }));
+                }
+            }
+        }
+        if (!this.wallHitSound && this.cache.audio.exists('brickbreakWallHit')) {
+            this.wallHitSound = this.sound.add('brickbreakWallHit', { volume: volume * 0.35 });
+        }
+        if (!this.loseSound && this.cache.audio.exists('brickbreakLose')) {
+            this.loseSound = this.sound.add('brickbreakLose', { volume: volume * 0.6 });
+        }
+    }
+
+    private applyVolume(v: number) {
+        this.breakSounds.forEach(s =>
+            (s as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(v * 0.5));
+        (this.wallHitSound as Phaser.Sound.WebAudioSound | undefined)?.setVolume(v * 0.35);
+        (this.loseSound as Phaser.Sound.WebAudioSound | undefined)?.setVolume(v * 0.6);
+    }
+
+    private playBreak() {
+        if (this.breakSounds.length > 0) {
+            this.breakSounds[Phaser.Math.Between(0, this.breakSounds.length - 1)].play();
+        }
+    }
+
+    // ─── cleanup helpers ────────────────────────────────────────────────────
+
+    private clearTransient() {
+        this.transient.forEach(o => o.destroy());
+        this.transient = [];
+    }
+
+    private clearGameplay() {
+        this.balls.forEach(b => b.obj.destroy());
+        this.balls = [];
+        this.bricks.forEach(b => b.rect.destroy());
+        this.bricks = [];
+        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops = [];
+        this.paddle?.destroy();
+        this.paddle = undefined;
+        this.hudText?.destroy();
+        this.hudText = undefined;
+        this.centerText?.destroy();
+        this.centerText = undefined;
+    }
+
+    // ─── level select ───────────────────────────────────────────────────────
+
+    private showLevelSelect() {
+        this.state = BBState.LevelSelect;
+        this.clearGameplay();
+        this.clearTransient();
+
+        const title = this.add.text(CANVAS_WIDTH / 2, 70, 'SELECT LEVEL', {
+            fontFamily: 'NectoMono-Regular', fontSize: '40px', color: hexStr(this.primaryColor),
+        }).setOrigin(0.5);
+        const hint = this.add.text(CANVAS_WIDTH / 2, 112, 'Clear a level to unlock the next', {
+            fontFamily: 'NectoMono-Regular', fontSize: '15px', color: '#7a7a88',
+        }).setOrigin(0.5);
+        this.transient.push(title, hint);
+
+        const cols = 5;
+        const cellW = 150;
+        const cellH = 90;
+        const gapX = 20;
+        const gapY = 22;
+        const gridW = cols * cellW + (cols - 1) * gapX;
+        const offsetX = (CANVAS_WIDTH - gridW) / 2;
+        const offsetY = 160;
+        const highest = getHighestCompleted();
+
+        for (let i = 0; i < TOTAL_LEVELS; i++) {
+            const n = i + 1;
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const cx = offsetX + col * (cellW + gapX) + cellW / 2;
+            const cy = offsetY + row * (cellH + gapY) + cellH / 2;
+            const unlocked = isUnlocked(n);
+            const completed = highest >= n;
+
+            const borderColor = completed ? this.primaryColor : unlocked ? 0xffffff : 0x333344;
+            const borderAlpha = completed ? 0.8 : unlocked ? 0.2 : 0.15;
+            const cell = this.add.rectangle(cx, cy, cellW, cellH, unlocked ? 0x1f1f2b : 0x14141c)
+                .setStrokeStyle(2, borderColor, borderAlpha);
+            this.transient.push(cell);
+
+            if (unlocked) {
+                const numText = this.add.text(cx, cy + (completed ? 4 : 0), String(n), {
+                    fontFamily: 'NectoMono-Regular', fontSize: '34px',
+                    color: completed ? hexStr(this.primaryColor) : '#dddddd',
+                }).setOrigin(0.5);
+                this.transient.push(numText);
+
+                if (completed) {
+                    const check = this.add.graphics();
+                    check.lineStyle(2.5, this.primaryColor, 1);
+                    check.beginPath();
+                    check.moveTo(cx + cellW / 2 - 22, cy - cellH / 2 + 16);
+                    check.lineTo(cx + cellW / 2 - 16, cy - cellH / 2 + 22);
+                    check.lineTo(cx + cellW / 2 - 8, cy - cellH / 2 + 10);
+                    check.strokePath();
+                    this.transient.push(check);
+                }
+
+                cell.setInteractive({ useHandCursor: true });
+                cell.on('pointerover', () => cell.setFillStyle(0x2a2a3a));
+                cell.on('pointerout', () => cell.setFillStyle(0x1f1f2b));
+                cell.on('pointerdown', () => this.startLevel(n, true));
+            } else {
+                // padlock
+                const lock = this.add.graphics();
+                lock.lineStyle(2.5, 0x555566, 1);
+                lock.strokeRoundedRect(cx - 11, cy - 2, 22, 18, 3);
+                lock.beginPath();
+                lock.arc(cx, cy - 2, 7, Phaser.Math.DegToRad(180), Phaser.Math.DegToRad(360));
+                lock.strokePath();
+                this.transient.push(lock);
+            }
+        }
+    }
+
+    // ─── level setup ────────────────────────────────────────────────────────
+
+    private startLevel(level: number, resetScore: boolean) {
+        this.clearTransient();
+        this.clearGameplay();
+
+        this.level = level;
+        if (resetScore) {
+            this.score = 0;
+            this.lives = START_LIVES;
+            this.game.events.emit('scoreUpdate', this.score);
+        }
+
+        this.ballSpeed = BASE_BALL_SPEED + (level - 1) * 8;
+        this.speedMultiplier = 1;
+        this.speedEffectTimer = 0;
+        this.paddleWidth = PADDLE_WIDTH;
+        this.paddleEffectTimer = 0;
+
+        this.buildLevel(level);
+        this.applyPaddleWidth();
+        this.spawnBallOnPaddle();
+
+        this.hudText = this.add.text(14, 12, '', {
+            fontFamily: 'NectoMono-Regular', fontSize: '16px', color: '#9aa0a6',
+        }).setOrigin(0, 0);
+        this.updateHud();
+
+        this.centerText = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, 'Get Ready...', {
+            fontFamily: 'NectoMono-Regular', fontSize: '24px', color: '#aaaaaa',
+        }).setOrigin(0.5);
+
+        this.state = BBState.Serving;
+        this.serveTimer = 0;
+    }
+
+    private buildLevel(level: number) {
+        const layout = LEVELS[level - 1] ?? [];
+        for (let r = 0; r < layout.length; r++) {
+            const rowStr = layout[r];
+            for (let c = 0; c < Math.min(rowStr.length, BRICK_COLS); c++) {
+                const ch = rowStr[c];
+                if (ch === '.' || ch === ' ') continue;
+                const type = getBrickType(ch);
+                if (!type) continue;
+
+                const x = BRICK_SIDE_MARGIN + c * (BRICK_WIDTH + BRICK_GAP) + BRICK_WIDTH / 2;
+                const y = BRICK_TOP + r * (BRICK_HEIGHT + BRICK_GAP) + BRICK_HEIGHT / 2;
+                const rect = this.add.rectangle(x, y, BRICK_WIDTH, BRICK_HEIGHT, type.color)
+                    .setStrokeStyle(1, 0xffffff, 0.15);
+                this.bricks.push({ rect, type, hp: type.hits, alive: true });
+            }
+        }
+    }
+
+    private applyPaddleWidth() {
+        const x = this.paddle ? this.paddle.x : CANVAS_WIDTH / 2;
+        this.paddle?.destroy();
+        this.paddle = this.add.rectangle(x, PADDLE_Y, this.paddleWidth, PADDLE_HEIGHT, this.primaryColor);
+    }
+
+    private spawnBallOnPaddle() {
+        const px = this.paddle?.x ?? CANVAS_WIDTH / 2;
+        const obj = this.add.circle(px, PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_RADIUS, BALL_RADIUS, 0xffffff);
+        this.balls.push({ obj, vx: 0, vy: 0 });
+    }
+
+    private launchBalls() {
+        if (this.state !== BBState.Serving) return;
+        this.state = BBState.Playing;
+        this.centerText?.setVisible(false);
+        const angle = Phaser.Math.Between(-25, 25) * (Math.PI / 180);
+        const speed = this.currentSpeed();
+        for (const b of this.balls) {
+            b.vx = Math.sin(angle) * speed;
+            b.vy = -Math.cos(angle) * speed;
+        }
+    }
+
+    private currentSpeed(): number {
+        return this.ballSpeed * this.speedMultiplier;
+    }
+
+    private updateHud() {
+        this.hudText?.setText(`LEVEL ${this.level}    LIVES ${this.lives}`);
+    }
+
+    // ─── main loop ──────────────────────────────────────────────────────────
+
     update(_time: number, delta: number) {
-        if (this.isGameOver) return;
-
-        // Serve delay
-        if (this.isServing) {
-            this.serveTimer += delta;
-            // Ball follows paddle while serving
-            this.ball.x = this.paddle.x;
-            this.ball.y = PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_SIZE;
-
-            // Still allow paddle movement during serve
+        if (this.state === BBState.Serving) {
             this.movePaddle(delta);
-
-            if (this.serveTimer >= 1500) {
-                this.isServing = false;
-                this.serveText.setVisible(false);
-                this.launchBall();
+            const top = PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_RADIUS;
+            for (const b of this.balls) {
+                b.obj.x = this.paddle?.x ?? b.obj.x;
+                b.obj.y = top;
+            }
+            this.serveTimer += delta;
+            if (this.keysHeld.has('Space') || this.serveTimer >= SERVE_DELAY) {
+                this.launchBalls();
             }
             return;
         }
 
-        // Paddle movement
+        if (this.state !== BBState.Playing) return;
+
         this.movePaddle(delta);
+        this.updateEffects(delta);
+        this.updateBalls(delta);
+        this.updateDrops(delta);
 
-        // Move ball
-        this.ball.x += this.ballVelocity.x * (delta / 1000);
-        this.ball.y += this.ballVelocity.y * (delta / 1000);
-
-        // Wall collisions (left/right)
-        if (this.ball.x - BALL_SIZE / 2 <= 0) {
-            this.ball.x = BALL_SIZE / 2;
-            this.ballVelocity.x = Math.abs(this.ballVelocity.x);
-            this.wallHitSound?.play();
-        } else if (this.ball.x + BALL_SIZE / 2 >= CANVAS_WIDTH) {
-            this.ball.x = CANVAS_WIDTH - BALL_SIZE / 2;
-            this.ballVelocity.x = -Math.abs(this.ballVelocity.x);
-            this.wallHitSound?.play();
-        }
-
-        // Top wall collision
-        if (this.ball.y - BALL_SIZE / 2 <= 0) {
-            this.ball.y = BALL_SIZE / 2;
-            this.ballVelocity.y = Math.abs(this.ballVelocity.y);
-            this.wallHitSound?.play();
-        }
-
-        // Ball falls below paddle - lose life
-        if (this.ball.y > CANVAS_HEIGHT + BALL_SIZE) {
+        if (this.balls.length === 0) {
             this.loseLife();
             return;
         }
 
-        // Paddle collision
-        if (
-            this.ballVelocity.y > 0 &&
-            this.ball.y + BALL_SIZE / 2 >= this.paddle.y - PADDLE_HEIGHT / 2 &&
-            this.ball.y + BALL_SIZE / 2 <= this.paddle.y + PADDLE_HEIGHT / 2 + 5 &&
-            this.ball.x >= this.paddle.x - PADDLE_WIDTH / 2 &&
-            this.ball.x <= this.paddle.x + PADDLE_WIDTH / 2
-        ) {
-            this.ball.y = this.paddle.y - PADDLE_HEIGHT / 2 - BALL_SIZE / 2;
-            // Angle based on where ball hits paddle
-            const hitPos = (this.ball.x - this.paddle.x) / (PADDLE_WIDTH / 2);
-            const angle = hitPos * 60 * (Math.PI / 180); // Max 60 degree angle
-            const speed = Math.sqrt(this.ballVelocity.x ** 2 + this.ballVelocity.y ** 2);
-            this.ballVelocity.x = Math.sin(angle) * speed;
-            this.ballVelocity.y = -Math.abs(Math.cos(angle) * speed);
-            this.wallHitSound?.play();
-        }
-
-        // Brick collisions
-        this.checkBrickCollisions();
-
-        // Check win
-        if (this.bricks.every(b => !b.alive)) {
-            this.isGameOver = true;
-            this.game.events.emit('gameOver', this.score);
-        }
+        const remaining = this.bricks.some(b => b.alive && b.type.breakable);
+        if (!remaining) this.onLevelComplete();
     }
 
     private movePaddle(delta: number) {
-        const left = this.cursors.left.isDown || this.input.keyboard!.checkDown(this.input.keyboard!.addKey('A'));
-        const right = this.cursors.right.isDown || this.input.keyboard!.checkDown(this.input.keyboard!.addKey('D'));
+        if (!this.paddle) return;
+        const half = this.paddleWidth / 2;
+        const step = PADDLE_SPEED * (delta / 1000);
+        const left = this.keysHeld.has('ArrowLeft') || this.keysHeld.has('KeyA');
+        const right = this.keysHeld.has('ArrowRight') || this.keysHeld.has('KeyD');
 
         if (left) {
-            this.paddle.x = Math.max(PADDLE_WIDTH / 2, this.paddle.x - PADDLE_SPEED * (delta / 1000));
+            this.paddle.x = Math.max(half, this.paddle.x - step);
         } else if (right) {
-            this.paddle.x = Math.min(CANVAS_WIDTH - PADDLE_WIDTH / 2, this.paddle.x + PADDLE_SPEED * (delta / 1000));
+            this.paddle.x = Math.min(CANVAS_WIDTH - half, this.paddle.x + step);
         }
     }
 
-    private launchBall() {
-        const angle = Phaser.Math.Between(-30, 30) * (Math.PI / 180);
-        this.ballVelocity = {
-            x: Math.sin(angle) * INITIAL_BALL_SPEED,
-            y: -INITIAL_BALL_SPEED,
-        };
+    private updateEffects(delta: number) {
+        if (this.paddleEffectTimer > 0) {
+            this.paddleEffectTimer -= delta;
+            if (this.paddleEffectTimer <= 0) {
+                this.paddleWidth = PADDLE_WIDTH;
+                this.applyPaddleWidth();
+            }
+        }
+        if (this.speedEffectTimer > 0) {
+            this.speedEffectTimer -= delta;
+            if (this.speedEffectTimer <= 0) this.speedMultiplier = 1;
+        }
     }
 
-    private checkBrickCollisions() {
+    private updateBalls(delta: number) {
+        const dt = delta / 1000;
+        const speed = this.currentSpeed();
+        const survivors: Ball[] = [];
+
+        for (const b of this.balls) {
+            b.obj.x += b.vx * dt;
+            b.obj.y += b.vy * dt;
+
+            // Side walls
+            if (b.obj.x - BALL_RADIUS <= 0) {
+                b.obj.x = BALL_RADIUS;
+                b.vx = Math.abs(b.vx);
+                this.wallHitSound?.play();
+            } else if (b.obj.x + BALL_RADIUS >= CANVAS_WIDTH) {
+                b.obj.x = CANVAS_WIDTH - BALL_RADIUS;
+                b.vx = -Math.abs(b.vx);
+                this.wallHitSound?.play();
+            }
+            // Top wall
+            if (b.obj.y - BALL_RADIUS <= 0) {
+                b.obj.y = BALL_RADIUS;
+                b.vy = Math.abs(b.vy);
+                this.wallHitSound?.play();
+            }
+
+            this.reflectOffPaddle(b);
+            this.checkBrickCollisions(b);
+
+            // Lost ball
+            if (b.obj.y > CANVAS_HEIGHT + BALL_RADIUS * 2) {
+                b.obj.destroy();
+                continue;
+            }
+
+            // Enforce constant speed (keeps direction from reflections)
+            const mag = Math.hypot(b.vx, b.vy);
+            if (mag > 0) {
+                b.vx = (b.vx / mag) * speed;
+                b.vy = (b.vy / mag) * speed;
+            }
+            survivors.push(b);
+        }
+        this.balls = survivors;
+    }
+
+    // Physics-based reflection: treat the paddle as a gently curved surface.
+    // The contact normal tilts with the hit position, and the incoming
+    // velocity is reflected about that normal (v' = v - 2(v·n)n), which
+    // preserves the ball's speed.
+    private reflectOffPaddle(b: Ball) {
+        if (!this.paddle || b.vy <= 0) return;
+        const half = this.paddleWidth / 2;
+        const top = this.paddle.y - PADDLE_HEIGHT / 2;
+        const within =
+            b.obj.y + BALL_RADIUS >= top &&
+            b.obj.y - BALL_RADIUS <= this.paddle.y + PADDLE_HEIGHT / 2 &&
+            b.obj.x >= this.paddle.x - half &&
+            b.obj.x <= this.paddle.x + half;
+        if (!within) return;
+
+        const t = Phaser.Math.Clamp((b.obj.x - this.paddle.x) / half, -1, 1);
+        const tilt = t * Phaser.Math.DegToRad(60);
+        const nx = Math.sin(tilt);
+        const ny = -Math.cos(tilt);
+
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+            b.vx -= 2 * dot * nx;
+            b.vy -= 2 * dot * ny;
+        }
+
+        // Guarantee a sensible upward trajectory (avoid near-horizontal stalls)
+        const mag = Math.hypot(b.vx, b.vy) || 1;
+        const minUp = mag * 0.4;
+        if (b.vy > -minUp) {
+            b.vy = -minUp;
+            const signX = b.vx >= 0 ? 1 : -1;
+            b.vx = signX * Math.sqrt(Math.max(0, mag * mag - minUp * minUp));
+        }
+        b.obj.y = top - BALL_RADIUS;
+        this.wallHitSound?.play();
+    }
+
+    private checkBrickCollisions(b: Ball) {
         for (const brick of this.bricks) {
             if (!brick.alive) continue;
 
-            const brickLeft = brick.rect.x - BRICK_WIDTH / 2;
-            const brickRight = brick.rect.x + BRICK_WIDTH / 2;
-            const brickTop = brick.rect.y - BRICK_HEIGHT / 2;
-            const brickBottom = brick.rect.y + BRICK_HEIGHT / 2;
+            const bl = brick.rect.x - BRICK_WIDTH / 2;
+            const br = brick.rect.x + BRICK_WIDTH / 2;
+            const bt = brick.rect.y - BRICK_HEIGHT / 2;
+            const bb = brick.rect.y + BRICK_HEIGHT / 2;
 
-            // Check if ball overlaps brick
             if (
-                this.ball.x + BALL_SIZE / 2 >= brickLeft &&
-                this.ball.x - BALL_SIZE / 2 <= brickRight &&
-                this.ball.y + BALL_SIZE / 2 >= brickTop &&
-                this.ball.y - BALL_SIZE / 2 <= brickBottom
+                b.obj.x + BALL_RADIUS >= bl &&
+                b.obj.x - BALL_RADIUS <= br &&
+                b.obj.y + BALL_RADIUS >= bt &&
+                b.obj.y - BALL_RADIUS <= bb
             ) {
-                // Determine collision side
-                const overlapLeft = (this.ball.x + BALL_SIZE / 2) - brickLeft;
-                const overlapRight = brickRight - (this.ball.x - BALL_SIZE / 2);
-                const overlapTop = (this.ball.y + BALL_SIZE / 2) - brickTop;
-                const overlapBottom = brickBottom - (this.ball.y - BALL_SIZE / 2);
-
+                const overlapLeft = (b.obj.x + BALL_RADIUS) - bl;
+                const overlapRight = br - (b.obj.x - BALL_RADIUS);
+                const overlapTop = (b.obj.y + BALL_RADIUS) - bt;
+                const overlapBottom = bb - (b.obj.y - BALL_RADIUS);
                 const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
                 if (minOverlap === overlapLeft || minOverlap === overlapRight) {
-                    this.ballVelocity.x = -this.ballVelocity.x;
+                    b.vx = -b.vx;
                 } else {
-                    this.ballVelocity.y = -this.ballVelocity.y;
+                    b.vy = -b.vy;
                 }
 
-                // Destroy brick
-                brick.alive = false;
-                brick.rect.setVisible(false);
-
-                // Score
-                this.score += brick.points;
-                this.game.events.emit('scoreUpdate', this.score);
-
-                // Play a random break sound
-                if (this.breakSounds.length > 0) {
-                    const randomIndex = Phaser.Math.Between(0, this.breakSounds.length - 1);
-                    this.breakSounds[randomIndex].play();
-                }
-
-                // Only break one brick per frame
-                break;
+                this.hitBrick(brick);
+                break; // one brick per ball per frame
             }
         }
     }
 
+    private hitBrick(brick: BrickObj) {
+        if (!brick.type.breakable) {
+            this.wallHitSound?.play();
+            return;
+        }
+
+        brick.hp -= 1;
+        if (brick.hp <= 0) {
+            brick.alive = false;
+            brick.rect.destroy();
+            this.score += brick.type.points;
+            this.game.events.emit('scoreUpdate', this.score);
+            this.playBreak();
+            if (Math.random() < DROP_CHANCE) {
+                this.spawnDrop(brick.rect.x, brick.rect.y);
+            }
+        } else {
+            // Damage feedback: darken remaining brick
+            const factor = 0.6 + 0.4 * (brick.hp / brick.type.hits);
+            brick.rect.setFillStyle(darken(brick.type.color, factor));
+            this.wallHitSound?.play();
+        }
+    }
+
+    // ─── powerups ───────────────────────────────────────────────────────────
+
+    private pickPower(): EffectKind {
+        const entries = Object.entries(POWER_DEFS) as [EffectKind, PowerDef][];
+        const total = entries.reduce((s, [, d]) => s + d.weight, 0);
+        let r = Math.random() * total;
+        for (const [k, d] of entries) {
+            r -= d.weight;
+            if (r <= 0) return k;
+        }
+        return 'expand';
+    }
+
+    private spawnDrop(x: number, y: number) {
+        const kind = this.pickPower();
+        const def = POWER_DEFS[kind];
+        const rect = this.add.rectangle(x, y, DROP_WIDTH, DROP_HEIGHT, def.color, 0.9)
+            .setStrokeStyle(1, 0xffffff, 0.5);
+        const text = this.add.text(x, y, def.label, {
+            fontFamily: 'NectoMono-Regular', fontSize: '13px', color: '#101018',
+        }).setOrigin(0.5);
+        this.drops.push({ rect, text, kind });
+    }
+
+    private updateDrops(delta: number) {
+        if (!this.paddle) return;
+        const dt = delta / 1000;
+        const half = this.paddleWidth / 2;
+        const survivors: Drop[] = [];
+
+        for (const d of this.drops) {
+            d.rect.y += DROP_SPEED * dt;
+            d.text.y = d.rect.y;
+
+            const caught =
+                d.rect.y + DROP_HEIGHT / 2 >= this.paddle.y - PADDLE_HEIGHT / 2 &&
+                d.rect.y - DROP_HEIGHT / 2 <= this.paddle.y + PADDLE_HEIGHT / 2 &&
+                d.rect.x >= this.paddle.x - half &&
+                d.rect.x <= this.paddle.x + half;
+
+            if (caught) {
+                this.applyEffect(d.kind);
+                d.rect.destroy();
+                d.text.destroy();
+                continue;
+            }
+            if (d.rect.y > CANVAS_HEIGHT + DROP_HEIGHT) {
+                d.rect.destroy();
+                d.text.destroy();
+                continue;
+            }
+            survivors.push(d);
+        }
+        this.drops = survivors;
+    }
+
+    private applyEffect(kind: EffectKind) {
+        switch (kind) {
+            case 'expand':
+                this.paddleWidth = Math.min(PADDLE_WIDTH * 1.6, CANVAS_WIDTH * 0.5);
+                this.applyPaddleWidth();
+                this.paddleEffectTimer = 12000;
+                break;
+            case 'shrink':
+                this.paddleWidth = PADDLE_WIDTH * 0.6;
+                this.applyPaddleWidth();
+                this.paddleEffectTimer = 10000;
+                break;
+            case 'slow':
+                this.speedMultiplier = 0.6;
+                this.speedEffectTimer = 9000;
+                break;
+            case 'fast':
+                this.speedMultiplier = 1.5;
+                this.speedEffectTimer = 8000;
+                break;
+            case 'life':
+                this.lives = Math.min(MAX_LIVES, this.lives + 1);
+                this.updateHud();
+                break;
+            case 'multi':
+                this.spawnMultiball();
+                break;
+        }
+        this.playBreak();
+    }
+
+    private spawnMultiball() {
+        const source = this.balls[0];
+        if (!source) return;
+        const speed = this.currentSpeed();
+        const offsets = [Phaser.Math.DegToRad(-22), Phaser.Math.DegToRad(22)];
+        for (const off of offsets) {
+            if (this.balls.length >= MAX_BALLS) break;
+            const baseAngle = Math.atan2(source.vy, source.vx) + off;
+            const obj = this.add.circle(source.obj.x, source.obj.y, BALL_RADIUS, 0xffffff);
+            this.balls.push({
+                obj,
+                vx: Math.cos(baseAngle) * speed,
+                vy: Math.sin(baseAngle) * speed,
+            });
+        }
+    }
+
+    // ─── life / win / lose ──────────────────────────────────────────────────
+
     private loseLife() {
         this.lives--;
-        this.livesText.setText(`Lives: ${this.lives}`);
         this.loseSound?.play();
+        this.updateHud();
 
         if (this.lives <= 0) {
-            this.isGameOver = true;
-            this.game.events.emit('gameOver', this.score);
-        } else {
-            // Reset ball position
-            this.ball.x = this.paddle.x;
-            this.ball.y = PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_SIZE;
-            this.ballVelocity = { x: 0, y: 0 };
-            this.isServing = true;
-            this.serveTimer = 0;
-            this.serveText.setVisible(true);
-            this.serveText.setText(`Lives: ${this.lives} - Get Ready...`);
+            this.onGameOver();
+            return;
         }
+
+        // Clear drops + active effects, re-serve a single ball
+        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops = [];
+        this.paddleWidth = PADDLE_WIDTH;
+        this.paddleEffectTimer = 0;
+        this.speedMultiplier = 1;
+        this.speedEffectTimer = 0;
+        this.applyPaddleWidth();
+        this.spawnBallOnPaddle();
+
+        this.state = BBState.Serving;
+        this.serveTimer = 0;
+        this.centerText?.setVisible(true);
+        this.centerText?.setText('Get Ready...');
+    }
+
+    private saveHighScore() {
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem(HIGHSCORE_KEY, String(this.highScore));
+        }
+    }
+
+    private onLevelComplete() {
+        this.state = BBState.LevelComplete;
+        this.balls.forEach(b => b.obj.destroy());
+        this.balls = [];
+        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops = [];
+
+        markCompleted(this.level);
+        const bonus = this.lives * 100;
+        this.score += bonus;
+        this.game.events.emit('scoreUpdate', this.score);
+        this.saveHighScore();
+        this.playBreak();
+
+        const hasNext = this.level < TOTAL_LEVELS;
+        const lines = [
+            `LEVEL ${this.level} COMPLETE`,
+            `Score: ${this.score}   (+${bonus} bonus)`,
+        ];
+        const buttons: { label: string; onClick: () => void }[] = [];
+        if (hasNext) buttons.push({ label: 'Next Level', onClick: () => this.startLevel(this.level + 1, false) });
+        buttons.push({ label: 'Replay', onClick: () => this.startLevel(this.level, true) });
+        buttons.push({ label: 'Level Select', onClick: () => this.showLevelSelect() });
+        this.showOverlay(lines, buttons);
+    }
+
+    private onGameOver() {
+        this.state = BBState.GameOver;
+        this.balls.forEach(b => b.obj.destroy());
+        this.balls = [];
+        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops = [];
+
+        this.saveHighScore();
+        this.showOverlay(
+            ['GAME OVER', `Level ${this.level}`, `Score: ${this.score}`, `High Score: ${this.highScore}`],
+            [
+                { label: 'Retry', onClick: () => this.startLevel(this.level, true) },
+                { label: 'Level Select', onClick: () => this.showLevelSelect() },
+            ],
+        );
+    }
+
+    // ─── overlay UI ─────────────────────────────────────────────────────────
+
+    private showOverlay(lines: string[], buttons: { label: string; onClick: () => void }[]) {
+        // Full-screen dim
+        this.transient.push(
+            this.add.rectangle(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.86)
+        );
+
+        const panelW = 460;
+        const px = CANVAS_WIDTH / 2;
+        const py = CANVAS_HEIGHT / 2;
+
+        // Compute panel height from content
+        let estimatedH = 82; // title row
+        for (let i = 1; i < lines.length; i++) {
+            estimatedH += lines[i].startsWith('High Score') ? 78 : 46;
+        }
+        estimatedH += 86; // button row + bottom padding
+        const panelH = Math.max(280, estimatedH);
+        const panelLeft = px - panelW / 2;
+        const panelTop = py - panelH / 2;
+
+        // Card background
+        const g = this.add.graphics();
+        g.fillStyle(0x0c0c1a, 0.98);
+        g.fillRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
+        g.lineStyle(1, 0xffffff, 0.1);
+        g.strokeRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
+        // Thin accent bar across the top
+        g.fillStyle(this.primaryColor, 1);
+        g.fillRect(panelLeft, panelTop, panelW, 3);
+        this.transient.push(g);
+
+        let y = panelTop + 40;
+
+        // Title
+        this.transient.push(
+            this.add.text(px, y, lines[0], {
+                fontFamily: 'NectoMono-Regular',
+                fontSize: '38px',
+                color: hexStr(this.primaryColor),
+                letterSpacing: 3,
+            }).setOrigin(0.5, 0)
+        );
+        y += 74;
+
+        // Stat rows
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            const isHighScore = line.startsWith('High Score');
+            const isLevelLine = line.startsWith('Level ');
+
+            if (isHighScore) {
+                // Separator + extra breathing room
+                const sep = this.add.graphics();
+                sep.lineStyle(1, 0xffffff, 0.08);
+                sep.beginPath();
+                sep.moveTo(panelLeft + 28, y + 10);
+                sep.lineTo(panelLeft + panelW - 28, y + 10);
+                sep.strokePath();
+                this.transient.push(sep);
+                y += 30;
+            }
+
+            this.transient.push(
+                this.add.text(px, y, line, {
+                    fontFamily: 'NectoMono-Regular',
+                    fontSize: isLevelLine ? '22px' : '19px',
+                    color: isHighScore ? '#6a6a80' : isLevelLine ? '#c8c8e0' : '#ddddef',
+                    letterSpacing: isLevelLine ? 2 : 0,
+                }).setOrigin(0.5, 0)
+            );
+            y += isHighScore ? 48 : 44;
+        }
+
+        // Buttons anchored to panel bottom
+        const btnW = 148;
+        const btnH = 38;
+        const gap = 14;
+        const totalW = buttons.length * btnW + (buttons.length - 1) * gap;
+        let bx = px - totalW / 2 + btnW / 2;
+        const by = panelTop + panelH - 36;
+        buttons.forEach(b => {
+            this.makeButton(bx, by, btnW, btnH, b.label, b.onClick);
+            bx += btnW + gap;
+        });
+    }
+
+    private makeButton(cx: number, cy: number, w: number, h: number, label: string, onClick: () => void) {
+        const rect = this.add.rectangle(cx, cy, w, h, 0x000000, 0)
+            .setStrokeStyle(1, 0xffffff, 0.2)
+            .setInteractive({ useHandCursor: true });
+        const txt = this.add.text(cx, cy, label, {
+            fontFamily: 'NectoMono-Regular',
+            fontSize: '14px',
+            color: '#bbbbcc',
+            letterSpacing: 1,
+        }).setOrigin(0.5);
+        rect.on('pointerover', () => {
+            rect.setFillStyle(this.primaryColor, 0.12);
+            rect.setStrokeStyle(1.5, this.primaryColor, 0.85);
+            txt.setColor(hexStr(this.primaryColor));
+        });
+        rect.on('pointerout', () => {
+            rect.setFillStyle(0x000000, 0);
+            rect.setStrokeStyle(1, 0xffffff, 0.2);
+            txt.setColor('#bbbbcc');
+        });
+        rect.on('pointerdown', onClick);
+        this.transient.push(rect, txt);
     }
 }
 
@@ -358,7 +911,7 @@ export const createBrickBreakGameConfig = (): Omit<Phaser.Types.Core.GameConfig,
         type: Phaser.AUTO,
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#16161f',
         scene: BrickBreakScene,
     };
 };
