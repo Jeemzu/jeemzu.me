@@ -8,6 +8,21 @@ const CANVAS_HEIGHT = CELL_SIZE * ROWS;
 const BOARD_OFFSET_X = 0;
 const BOARD_OFFSET_Y = 0;
 
+// Drop interval per level in ms, derived from NES Tetris frame counts at 60fps.
+// Each entry corresponds to levels 1, 2, 3, … 29+ (index = level - 1, capped).
+const LEVEL_INTERVALS: number[] = [
+    800, 717, 633, 550, 467, // 1-5
+    383, 300, 217, 133, 100, // 6-10  (level 9 is where NES gets scary)
+    83, 83, 83, 67, 67, // 11-15
+    67, 50, 50, 50, 33, // 16-20
+    33, 33, 33, 33, 33, // 21-25
+    33, 33, 33, 33, 17, // 26-30+ (level 30 is essentially unplayable)
+];
+
+function levelInterval(level: number): number {
+    return LEVEL_INTERVALS[Math.min(level - 1, LEVEL_INTERVALS.length - 1)];
+}
+
 // Standard Tetris piece definitions (SRS)
 // Each piece is defined as a set of rotations, each rotation as [row, col] offsets
 const TETROMINOES: Record<string, { shape: number[][][]; color: number }> = {
@@ -90,13 +105,22 @@ export class TetrisScene extends Phaser.Scene {
     private activePiece: ActivePiece | null = null;
     private nextPieceType: string = '';
     private score: number = 0;
+    private highScore: number = 0;
     private level: number = 1;
     private linesCleared: number = 0;
     private isGameOver: boolean = false;
     private dropTimer: number = 0;
     private dropInterval: number = 800; // ms per drop
     private graphics!: Phaser.GameObjects.Graphics;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    private overlayObjects: Phaser.GameObjects.GameObject[] = [];
+    private keysHeld = new Set<string>();
+    private onKeyDown = (e: KeyboardEvent) => {
+        this.keysHeld.add(e.code);
+        if (e.repeat || this.isGameOver || !this.activePiece) return;
+        if (e.code === 'Space') this.hardDrop();
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') this.rotatePiece();
+    };
+    private onKeyUp = (e: KeyboardEvent) => this.keysHeld.delete(e.code);
     private dasTimer: number = 0;
     private dasDirection: string = '';
     private dasDelay: number = 170; // ms before auto-repeat
@@ -119,12 +143,14 @@ export class TetrisScene extends Phaser.Scene {
         this.linesCleared = 0;
         this.isGameOver = false;
         this.dropTimer = 0;
-        this.dropInterval = 800;
+        this.dropInterval = levelInterval(1);
         this.activePiece = null;
         this.softDropping = false;
         this.dasTimer = 0;
         this.dasDirection = '';
         this.dasActive = false;
+        this.overlayObjects = [];
+        this.highScore = parseInt(localStorage.getItem('highScore_Tetris') ?? '0', 10);
 
         // Initialize empty board
         this.board = [];
@@ -135,26 +161,13 @@ export class TetrisScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor('#1a1a1a');
         this.graphics = this.add.graphics();
 
-        // Keyboard
-        this.cursors = this.input.keyboard!.createCursorKeys();
-
-        // Hard drop on space
-        this.input.keyboard!.on('keydown-SPACE', () => {
-            if (!this.isGameOver && this.activePiece) {
-                this.hardDrop();
-            }
-        });
-
-        // Rotate on Up arrow or W
-        this.input.keyboard!.on('keydown-UP', () => {
-            if (!this.isGameOver && this.activePiece) {
-                this.rotatePiece();
-            }
-        });
-        this.input.keyboard!.on('keydown-W', () => {
-            if (!this.isGameOver && this.activePiece) {
-                this.rotatePiece();
-            }
+        // Keyboard — window-level listeners so key state is never stuck
+        // when the canvas loses focus inside the MUI Dialog.
+        window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            window.removeEventListener('keydown', this.onKeyDown);
+            window.removeEventListener('keyup', this.onKeyUp);
         });
 
         // Side panel text
@@ -204,7 +217,7 @@ export class TetrisScene extends Phaser.Scene {
         this.handleMovement(delta);
 
         // Soft drop
-        this.softDropping = this.cursors.down.isDown || this.input.keyboard!.checkDown(this.input.keyboard!.addKey('S'));
+        this.softDropping = this.keysHeld.has('ArrowDown') || this.keysHeld.has('KeyS');
 
         // Drop timer
         const currentInterval = this.softDropping ? Math.min(this.dropInterval, 50) : this.dropInterval;
@@ -224,8 +237,8 @@ export class TetrisScene extends Phaser.Scene {
     }
 
     private handleMovement(delta: number) {
-        const leftDown = this.cursors.left.isDown || this.input.keyboard!.checkDown(this.input.keyboard!.addKey('A'));
-        const rightDown = this.cursors.right.isDown || this.input.keyboard!.checkDown(this.input.keyboard!.addKey('D'));
+        const leftDown = this.keysHeld.has('ArrowLeft') || this.keysHeld.has('KeyA');
+        const rightDown = this.keysHeld.has('ArrowRight') || this.keysHeld.has('KeyD');
 
         const currentDir = leftDown ? 'left' : rightDown ? 'right' : '';
 
@@ -280,7 +293,7 @@ export class TetrisScene extends Phaser.Scene {
         // Check if spawn position is valid
         if (!this.isValidPosition(this.activePiece)) {
             this.isGameOver = true;
-            this.game.events.emit('gameOver', this.score);
+            this.showGameOver();
         }
     }
 
@@ -391,22 +404,21 @@ export class TetrisScene extends Phaser.Scene {
         const cleared = this.clearLines();
         if (cleared > 0) {
             this.lineClearSound?.play();
-            // Scoring: 100, 300, 500, 800 for 1-4 lines
-            const lineScores = [0, 100, 300, 500, 800];
-            this.score += (lineScores[cleared] || 0) * this.level;
+            // Scoring: classic NES values scaled by level
+            const lineScores = [0, 40, 100, 300, 1200];
+            this.score += (lineScores[Math.min(cleared, 4)] ?? 0) * this.level;
             this.linesCleared += cleared;
             this.game.events.emit('scoreUpdate', this.score);
 
-            // Level up every 10 lines
+            // Level up every 10 lines (classic rule)
             const newLevel = Math.floor(this.linesCleared / 10) + 1;
             if (newLevel > this.level) {
                 this.level = newLevel;
-                // Speed up: reduce interval by ~15% per level, minimum 100ms
-                this.dropInterval = Math.max(100, 800 - (this.level - 1) * 75);
+                this.dropInterval = levelInterval(this.level);
             }
 
-            this.levelText.setText(`Level: ${this.level}`);
-            this.linesText.setText(`Lines: ${this.linesCleared}`);
+            this.levelText.setText(`${this.level}`);
+            this.linesText.setText(`${this.linesCleared}`);
         }
 
         this.activePiece = null;
@@ -524,8 +536,10 @@ export class TetrisScene extends Phaser.Scene {
         const previewCellSize = 22;
 
         // Draw preview background
-        this.graphics.fillStyle(0x222222, 0.8);
-        this.graphics.fillRect(previewX - 5, previewY - 5, previewCellSize * 4 + 10, previewCellSize * 4 + 10);
+        this.graphics.fillStyle(0x181828, 1);
+        this.graphics.fillRoundedRect(previewX - 8, previewY - 8, previewCellSize * 4 + 16, previewCellSize * 4 + 16, 4);
+        this.graphics.lineStyle(1, 0xffffff, 0.08);
+        this.graphics.strokeRoundedRect(previewX - 8, previewY - 8, previewCellSize * 4 + 16, previewCellSize * 4 + 16, 4);
 
         if (this.nextPieceType) {
             const shape = TETROMINOES[this.nextPieceType].shape[0];
@@ -540,6 +554,109 @@ export class TetrisScene extends Phaser.Scene {
             }
         }
     }
+
+    // ─── game over overlay ────────────────────────────────────────────────────
+
+    private saveHighScore() {
+        if (this.score > this.highScore) {
+            this.highScore = this.score;
+            localStorage.setItem('highScore_Tetris', String(this.highScore));
+        }
+    }
+
+    private showGameOver() {
+        this.saveHighScore();
+        // Also emit so GameContainer header score stays correct
+        this.game.events.emit('scoreUpdate', this.score);
+
+        const cx = CANVAS_WIDTH / 2;
+        const cy = CANVAS_HEIGHT / 2;
+        const panelW = 300;
+        const panelH = 280;
+        const panelLeft = cx - panelW / 2;
+        const panelTop = cy - panelH / 2;
+        const accentColor = 0x00ccff; // I-piece cyan
+
+        // Full-screen dim
+        this.overlayObjects.push(
+            this.add.rectangle(cx, cy, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.86)
+        );
+
+        // Card background
+        const g = this.add.graphics();
+        g.fillStyle(0x0c0c1a, 0.98);
+        g.fillRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
+        g.lineStyle(1, 0xffffff, 0.1);
+        g.strokeRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
+        // Accent bar
+        g.fillStyle(accentColor, 1);
+        g.fillRect(panelLeft, panelTop, panelW, 3);
+        this.overlayObjects.push(g);
+
+        // Title
+        this.overlayObjects.push(
+            this.add.text(cx, panelTop + 28, 'GAME OVER', {
+                fontFamily: 'NectoMono-Regular', fontSize: '32px',
+                color: '#00ccff', letterSpacing: 3,
+            }).setOrigin(0.5, 0)
+        );
+
+        // Stats
+        const stats: { label: string; value: string; dim?: boolean }[] = [
+            { label: `Level ${this.level}`, value: '' },
+            { label: `Score: ${this.score}`, value: '' },
+            { label: `High Score: ${this.highScore}`, value: '', dim: true },
+        ];
+        let y = panelTop + 88;
+        stats.forEach(({ label, dim }, i) => {
+            if (dim) {
+                // Separator
+                const sep = this.add.graphics();
+                sep.lineStyle(1, 0xffffff, 0.08);
+                sep.lineBetween(panelLeft + 24, y + 6, panelLeft + panelW - 24, y + 6);
+                this.overlayObjects.push(sep);
+                y += 22;
+            }
+            this.overlayObjects.push(
+                this.add.text(cx, y, label, {
+                    fontFamily: 'NectoMono-Regular',
+                    fontSize: i === 0 ? '20px' : '17px',
+                    color: dim ? '#55556a' : i === 0 ? '#c8c8e0' : '#ddddef',
+                    letterSpacing: i === 0 ? 2 : 0,
+                }).setOrigin(0.5, 0)
+            );
+            y += dim ? 42 : 38;
+        });
+
+        // Single centred Retry button — close the dialog via the X in the header
+        const btnW = 140;
+        const btnH = 36;
+        const by = panelTop + panelH - 30;
+        this.makeTetrisButton(cx, by, btnW, btnH, 'Play Again', accentColor, () => this.scene.restart());
+    }
+
+    private makeTetrisButton(cx: number, cy: number, w: number, h: number, label: string, accentColor: number, onClick: () => void) {
+        const hex = '#' + accentColor.toString(16).padStart(6, '0');
+        const rect = this.add.rectangle(cx, cy, w, h, 0x000000, 0)
+            .setStrokeStyle(1, 0xffffff, 0.18)
+            .setInteractive({ useHandCursor: true });
+        const txt = this.add.text(cx, cy, label, {
+            fontFamily: 'NectoMono-Regular', fontSize: '13px',
+            color: '#aaaabc', letterSpacing: 1,
+        }).setOrigin(0.5);
+        rect.on('pointerover', () => {
+            rect.setFillStyle(accentColor, 0.12);
+            rect.setStrokeStyle(1.5, accentColor, 0.8);
+            txt.setColor(hex);
+        });
+        rect.on('pointerout', () => {
+            rect.setFillStyle(0x000000, 0);
+            rect.setStrokeStyle(1, 0xffffff, 0.18);
+            txt.setColor('#aaaabc');
+        });
+        rect.on('pointerdown', onClick);
+        this.overlayObjects.push(rect, txt);
+    }
 }
 
 export const createTetrisGameConfig = (): Omit<Phaser.Types.Core.GameConfig, 'parent'> => {
@@ -547,7 +664,7 @@ export const createTetrisGameConfig = (): Omit<Phaser.Types.Core.GameConfig, 'pa
         type: Phaser.AUTO,
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#16161f',
         scene: TetrisScene,
     };
 };
