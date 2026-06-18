@@ -22,10 +22,12 @@ const BRICK_WIDTH = (CANVAS_WIDTH - BRICK_SIDE_MARGIN * 2 - BRICK_GAP * (BRICK_C
 const SERVE_DELAY = 1200;
 const START_LIVES = 3;
 const MAX_LIVES = 5;
+const START_AMMO = 3;
+const MAX_AMMO = 6;
 
 const DROP_SPEED = 200;
 const DROP_WIDTH = 30;
-const DROP_HEIGHT = 16;
+const DROP_RADIUS = DROP_WIDTH / 2;  // 15 px — circle drops
 const DROP_CHANCE = 0.16;
 
 const UNLOCK_KEY = 'brickbreak_highest_completed';
@@ -49,22 +51,22 @@ function isUnlocked(level: number): boolean {
 
 // ─── powerups / debuffs ────────────────────────────────────────────────────
 
-type EffectKind = 'expand' | 'multi' | 'slow' | 'life' | 'shrink' | 'fast';
+type EffectKind = 'expand' | 'multi' | 'slow' | 'life' | 'shrink' | 'fast' | 'ammo';
 
 interface PowerDef {
-    label: string;
     color: number;
     good: boolean;
     weight: number;
 }
 
 const POWER_DEFS: Record<EffectKind, PowerDef> = {
-    expand: { label: 'E', color: 0x5ad65a, good: true, weight: 3 },
-    multi: { label: 'M', color: 0x4dd6d6, good: true, weight: 2 },
-    slow: { label: 'S', color: 0x4d8cff, good: true, weight: 2 },
-    life: { label: '+', color: 0xff6fae, good: true, weight: 1 },
-    shrink: { label: 'H', color: 0xff5252, good: false, weight: 2 },
-    fast: { label: 'F', color: 0xff9d2e, good: false, weight: 2 },
+    expand: { color: 0x5ad65a, good: true,  weight: 3 },
+    multi:  { color: 0x4dd6d6, good: true,  weight: 2 },
+    slow:   { color: 0x4d8cff, good: true,  weight: 2 },
+    life:   { color: 0xff6fae, good: true,  weight: 1 },
+    ammo:   { color: 0xffd700, good: true,  weight: 2 },
+    shrink: { color: 0xff5252, good: false, weight: 2 },
+    fast:   { color: 0xff9d2e, good: false, weight: 2 },
 };
 
 // ─── internal types ────────────────────────────────────────────────────────
@@ -82,6 +84,8 @@ interface Ball {
     obj: Phaser.GameObjects.Arc;
     vx: number;
     vy: number;
+    stuck: boolean;       // true while held on paddle awaiting release
+    stickOffset: number;  // x offset from paddle centre when stuck
 }
 
 interface BrickObj {
@@ -92,8 +96,7 @@ interface BrickObj {
 }
 
 interface Drop {
-    rect: Phaser.GameObjects.Rectangle;
-    text: Phaser.GameObjects.Text;
+    gfx: Phaser.GameObjects.Graphics;
     kind: EffectKind;
 }
 
@@ -106,6 +109,62 @@ function darken(color: number, factor: number): number {
 
 function hexStr(color: number): string {
     return '#' + color.toString(16).padStart(6, '0');
+}
+
+// Draws a filled circle with a white vector icon, all relative to (0, 0).
+// Attach to a Graphics object whose x/y is the drop centre.
+function drawDropIcon(g: Phaser.GameObjects.Graphics, kind: EffectKind, bgColor: number): void {
+    // Background circle
+    g.fillStyle(bgColor, 0.92);
+    g.fillCircle(0, 0, DROP_RADIUS);
+    g.lineStyle(1.5, 0xffffff, 0.45);
+    g.strokeCircle(0, 0, DROP_RADIUS);
+
+    g.fillStyle(0xffffff, 0.95);
+
+    switch (kind) {
+        case 'expand':
+            // ← · → outward arrows
+            g.fillTriangle(-9, 0, -4, -4, -4, 4);   // left arrow (tip left)
+            g.fillTriangle(9, 0, 4, -4, 4, 4);       // right arrow (tip right)
+            g.fillRect(-4, -1.5, 8, 3);              // centre bar
+            break;
+        case 'shrink':
+            // → · ← inward arrows (no bar — gap shows compression)
+            g.fillTriangle(-2, 0, -8, -4, -8, 4);   // left side, tip toward centre
+            g.fillTriangle(2, 0, 8, -4, 8, 4);       // right side, tip toward centre
+            break;
+        case 'multi':
+            // Three balls arranged in a triangle
+            g.fillCircle(-5, 4, 3.5);
+            g.fillCircle(5, 4, 3.5);
+            g.fillCircle(0, -4, 3.5);
+            break;
+        case 'slow':
+            // ↓ downward arrow
+            g.fillRect(-2, -7, 4, 8);                // shaft (y -7 → 1)
+            g.fillTriangle(0, 8, -6, 1, 6, 1);      // arrowhead
+            break;
+        case 'fast':
+            // ⚡ lightning bolt — two triangles forming a Z
+            g.fillTriangle(5, -8, -3, 0, 5, 0);     // upper half
+            g.fillTriangle(-5, 0, 3, 0, -5, 8);     // lower half
+            break;
+        case 'life':
+            // ♥ heart
+            g.fillCircle(-3.5, -1.5, 4.5);          // left lobe
+            g.fillCircle(3.5, -1.5, 4.5);           // right lobe
+            g.fillTriangle(0, 8, -7, 0, 7, 0);      // bottom point
+            break;
+        case 'ammo':
+            // ⊕ crosshair reticle
+            g.fillCircle(0, 0, 2);                   // centre dot
+            g.fillRect(-10, -1.5, 6, 3);             // left bar
+            g.fillRect(4, -1.5, 6, 3);               // right bar
+            g.fillRect(-1.5, -10, 3, 6);             // top bar
+            g.fillRect(-1.5, 4, 3, 6);               // bottom bar
+            break;
+    }
 }
 
 export class BrickBreakScene extends Phaser.Scene {
@@ -127,11 +186,18 @@ export class BrickBreakScene extends Phaser.Scene {
     private paddleWidth = PADDLE_WIDTH;
     private paddleEffectTimer = 0;
     private serveTimer = 0;
+    private ammo = START_AMMO;
 
     private primaryColor = 0xa8d67e;
 
     private keysHeld = new Set<string>();
-    private onKeyDown = (e: KeyboardEvent) => this.keysHeld.add(e.code);
+    private onKeyDown = (e: KeyboardEvent) => {
+        this.keysHeld.add(e.code);
+        // One-shot release — only in Playing state, ignore key-repeat
+        if (!e.repeat && e.code === 'Space' && this.state === BBState.Playing) {
+            this.releaseStuckBalls();
+        }
+    };
     private onKeyUp = (e: KeyboardEvent) => this.keysHeld.delete(e.code);
 
     private hudText?: Phaser.GameObjects.Text;
@@ -179,6 +245,7 @@ export class BrickBreakScene extends Phaser.Scene {
 
         this.input.on('pointerdown', () => {
             if (this.state === BBState.Serving) this.launchBalls();
+            else if (this.state === BBState.Playing) this.releaseStuckBalls();
         });
 
         // Volume reactivity
@@ -237,7 +304,7 @@ export class BrickBreakScene extends Phaser.Scene {
         this.balls = [];
         this.bricks.forEach(b => b.rect.destroy());
         this.bricks = [];
-        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops.forEach(d => d.gfx.destroy());
         this.drops = [];
         this.paddle?.destroy();
         this.paddle = undefined;
@@ -340,6 +407,7 @@ export class BrickBreakScene extends Phaser.Scene {
         this.speedEffectTimer = 0;
         this.paddleWidth = PADDLE_WIDTH;
         this.paddleEffectTimer = 0;
+        this.ammo = START_AMMO;
 
         this.buildLevel(level);
         this.applyPaddleWidth();
@@ -386,7 +454,7 @@ export class BrickBreakScene extends Phaser.Scene {
     private spawnBallOnPaddle() {
         const px = this.paddle?.x ?? CANVAS_WIDTH / 2;
         const obj = this.add.circle(px, PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_RADIUS, BALL_RADIUS, 0xffffff);
-        this.balls.push({ obj, vx: 0, vy: 0 });
+        this.balls.push({ obj, vx: 0, vy: 0, stuck: false, stickOffset: 0 });
     }
 
     private launchBalls() {
@@ -398,6 +466,25 @@ export class BrickBreakScene extends Phaser.Scene {
         for (const b of this.balls) {
             b.vx = Math.sin(angle) * speed;
             b.vy = -Math.cos(angle) * speed;
+            b.stuck = false;
+        }
+    }
+
+    // Release all stuck balls with an aiming angle derived from their position
+    // on the paddle. Costs 1 ammo. No-ops when no stuck balls or ammo = 0.
+    private releaseStuckBalls() {
+        const stuck = this.balls.filter(b => b.stuck);
+        if (stuck.length === 0 || this.ammo <= 0) return;
+        this.ammo = Math.max(0, this.ammo - 1);
+        this.updateHud();
+        const speed = this.currentSpeed();
+        const half = this.paddleWidth / 2;
+        for (const b of stuck) {
+            const t = Phaser.Math.Clamp(b.stickOffset / half, -1, 1);
+            const angle = t * Phaser.Math.DegToRad(60);
+            b.vx = Math.sin(angle) * speed;
+            b.vy = -Math.cos(angle) * speed;
+            b.stuck = false;
         }
     }
 
@@ -406,7 +493,8 @@ export class BrickBreakScene extends Phaser.Scene {
     }
 
     private updateHud() {
-        this.hudText?.setText(`LEVEL ${this.level}    LIVES ${this.lives}`);
+        const ammoPips = '●'.repeat(this.ammo) + '○'.repeat(Math.max(0, MAX_AMMO - this.ammo));
+        this.hudText?.setText(`LEVEL ${this.level}    LIVES ${this.lives}    ${ammoPips}`);
     }
 
     // ─── main loop ──────────────────────────────────────────────────────────
@@ -476,6 +564,16 @@ export class BrickBreakScene extends Phaser.Scene {
         const survivors: Ball[] = [];
 
         for (const b of this.balls) {
+            // Stuck balls sit on the paddle and wait for releaseStuckBalls()
+            if (b.stuck) {
+                if (this.paddle) {
+                    b.obj.x = this.paddle.x + b.stickOffset;
+                    b.obj.y = this.paddle.y - PADDLE_HEIGHT / 2 - BALL_RADIUS;
+                }
+                survivors.push(b);
+                continue;
+            }
+
             b.obj.x += b.vx * dt;
             b.obj.y += b.vy * dt;
 
@@ -530,6 +628,23 @@ export class BrickBreakScene extends Phaser.Scene {
             b.obj.x >= this.paddle.x - half &&
             b.obj.x <= this.paddle.x + half;
         if (!within) return;
+
+        // Stick the ball to the paddle when ammo is available.
+        // When ammo = 0 balls bounce freely — preserves playability and
+        // prevents any softlock from balls being stuck with no way to release.
+        if (this.ammo > 0) {
+            b.stuck = true;
+            b.stickOffset = Phaser.Math.Clamp(
+                b.obj.x - this.paddle.x,
+                -(half - BALL_RADIUS),
+                half - BALL_RADIUS,
+            );
+            b.obj.y = top - BALL_RADIUS;
+            b.vx = 0;
+            b.vy = 0;
+            this.wallHitSound?.play();
+            return;
+        }
 
         const t = Phaser.Math.Clamp((b.obj.x - this.paddle.x) / half, -1, 1);
         const tilt = t * Phaser.Math.DegToRad(60);
@@ -627,12 +742,11 @@ export class BrickBreakScene extends Phaser.Scene {
     private spawnDrop(x: number, y: number) {
         const kind = this.pickPower();
         const def = POWER_DEFS[kind];
-        const rect = this.add.rectangle(x, y, DROP_WIDTH, DROP_HEIGHT, def.color, 0.9)
-            .setStrokeStyle(1, 0xffffff, 0.5);
-        const text = this.add.text(x, y, def.label, {
-            fontFamily: 'NectoMono-Regular', fontSize: '13px', color: '#101018',
-        }).setOrigin(0.5);
-        this.drops.push({ rect, text, kind });
+        const gfx = this.add.graphics();
+        drawDropIcon(gfx, kind, def.color);
+        gfx.x = x;
+        gfx.y = y;
+        this.drops.push({ gfx, kind });
     }
 
     private updateDrops(delta: number) {
@@ -642,24 +756,23 @@ export class BrickBreakScene extends Phaser.Scene {
         const survivors: Drop[] = [];
 
         for (const d of this.drops) {
-            d.rect.y += DROP_SPEED * dt;
-            d.text.y = d.rect.y;
+            d.gfx.y += DROP_SPEED * dt;
 
+            const cx = d.gfx.x;
+            const cy = d.gfx.y;
             const caught =
-                d.rect.y + DROP_HEIGHT / 2 >= this.paddle.y - PADDLE_HEIGHT / 2 &&
-                d.rect.y - DROP_HEIGHT / 2 <= this.paddle.y + PADDLE_HEIGHT / 2 &&
-                d.rect.x >= this.paddle.x - half &&
-                d.rect.x <= this.paddle.x + half;
+                cy + DROP_RADIUS >= this.paddle.y - PADDLE_HEIGHT / 2 &&
+                cy - DROP_RADIUS <= this.paddle.y + PADDLE_HEIGHT / 2 &&
+                cx >= this.paddle.x - half - DROP_RADIUS &&
+                cx <= this.paddle.x + half + DROP_RADIUS;
 
             if (caught) {
                 this.applyEffect(d.kind);
-                d.rect.destroy();
-                d.text.destroy();
+                d.gfx.destroy();
                 continue;
             }
-            if (d.rect.y > CANVAS_HEIGHT + DROP_HEIGHT) {
-                d.rect.destroy();
-                d.text.destroy();
+            if (cy > CANVAS_HEIGHT + DROP_RADIUS) {
+                d.gfx.destroy();
                 continue;
             }
             survivors.push(d);
@@ -694,6 +807,10 @@ export class BrickBreakScene extends Phaser.Scene {
             case 'multi':
                 this.spawnMultiball();
                 break;
+            case 'ammo':
+                this.ammo = Math.min(MAX_AMMO, this.ammo + 2);
+                this.updateHud();
+                break;
         }
         this.playBreak();
     }
@@ -711,6 +828,8 @@ export class BrickBreakScene extends Phaser.Scene {
                 obj,
                 vx: Math.cos(baseAngle) * speed,
                 vy: Math.sin(baseAngle) * speed,
+                stuck: false,
+                stickOffset: 0,
             });
         }
     }
@@ -728,7 +847,7 @@ export class BrickBreakScene extends Phaser.Scene {
         }
 
         // Clear drops + active effects, re-serve a single ball
-        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops.forEach(d => d.gfx.destroy());
         this.drops = [];
         this.paddleWidth = PADDLE_WIDTH;
         this.paddleEffectTimer = 0;
@@ -754,7 +873,7 @@ export class BrickBreakScene extends Phaser.Scene {
         this.state = BBState.LevelComplete;
         this.balls.forEach(b => b.obj.destroy());
         this.balls = [];
-        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops.forEach(d => d.gfx.destroy());
         this.drops = [];
 
         markCompleted(this.level);
@@ -780,7 +899,7 @@ export class BrickBreakScene extends Phaser.Scene {
         this.state = BBState.GameOver;
         this.balls.forEach(b => b.obj.destroy());
         this.balls = [];
-        this.drops.forEach(d => { d.rect.destroy(); d.text.destroy(); });
+        this.drops.forEach(d => d.gfx.destroy());
         this.drops = [];
 
         this.saveHighScore();
@@ -868,10 +987,12 @@ export class BrickBreakScene extends Phaser.Scene {
             y += isHighScore ? 48 : 44;
         }
 
-        // Buttons anchored to panel bottom
-        const btnW = 148;
-        const btnH = 38;
+        // Buttons anchored to panel bottom.
+        // Width is derived from available panel space so any number of buttons fits.
         const gap = 14;
+        const sideMargin = 28;
+        const btnH = 38;
+        const btnW = Math.min(148, (panelW - sideMargin * 2 - gap * (buttons.length - 1)) / buttons.length);
         const totalW = buttons.length * btnW + (buttons.length - 1) * gap;
         let bx = px - totalW / 2 + btnW / 2;
         const by = panelTop + panelH - 36;
