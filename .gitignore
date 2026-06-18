@@ -28,6 +28,9 @@ dist-ssr
 # C++ native build artifacts
 cpp/**/*.exe
 cpp/**/*.o
+
+# Large video assets (hosted externally)
+src/assets/*.mp4
 cpp/**/*.obj
 
 # Generated WASM (commit .js/.wasm if you want Netlify to serve them without a build step)
