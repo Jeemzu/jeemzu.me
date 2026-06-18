@@ -16,7 +16,7 @@ const ExperiencePage = () => {
                     color: theme.palette.primaryGreen.main,
                 }}
             >
-                Journey
+                Experience
             </Typography>
             <Typography
                 fontFamily={FONTS.NECTO_MONO}
