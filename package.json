@@ -9,7 +9,8 @@
     "build:wasm": "powershell -File cpp/build-all.ps1",
     "build:all": "npm run build:wasm && npm run build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -47,6 +48,7 @@
     "globals": "^16.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.5.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
