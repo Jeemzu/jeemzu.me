@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import {
-    Box, Container, Typography, Chip, Slider,
+    Box, Typography, Chip, Slider,
     CircularProgress, LinearProgress, IconButton,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -55,12 +55,8 @@ const SIZE_VALUES = [8, 16, 32, 64, 128];
 const SIZE_LABELS = ['Very Small', 'Small', 'Medium', 'Large', 'Very Large'];
 const SIZE_MARKS = SIZE_VALUES.map((v, i) => ({ value: i, label: String(v) }));
 
-const SPEED_MARKS = [
-    { value: 0.25, label: '¼×' },
-    { value: 1, label: '1×' },
-    { value: 4, label: '4×' },
-    { value: 16, label: '16×' },
-];
+const SPEED_STEPS  = [0.25, 1, 4, 16];
+const SPEED_MARKS  = SPEED_STEPS.map((v, i) => ({ value: i, label: v === 0.25 ? '¼×' : `${v}×` }));
 
 const LEGEND = [
     { color: '#3a6ea0', label: 'Default' },
@@ -145,15 +141,16 @@ export default function AlgoVizPage() {
     // ── Shared ────────────────────────────────────────────────────────────
     const [speedVal, setSpeedVal] = useState(1);
     const [error, setError] = useState<string | null>(null);
-    const [backHover, setBackHover] = useState(false);
 
     // Stable refs for async closures
     const selAlgoRef = useRef(selAlgo);
     const sizeIdxRef = useRef(sizeIdx);
     const cmpAlgoRef = useRef(cmpSelAlgo);
-    useEffect(() => { selAlgoRef.current = selAlgo; }, [selAlgo]);
-    useEffect(() => { sizeIdxRef.current = sizeIdx; }, [sizeIdx]);
+    const speedRef   = useRef(speedVal);
+    useEffect(() => { selAlgoRef.current = selAlgo;    }, [selAlgo]);
+    useEffect(() => { sizeIdxRef.current = sizeIdx;    }, [sizeIdx]);
     useEffect(() => { cmpAlgoRef.current = cmpSelAlgo; }, [cmpSelAlgo]);
+    useEffect(() => { speedRef.current   = speedVal;   }, [speedVal]);
 
     // ── Cleanup on unmount ────────────────────────────────────────────────
     useEffect(() => {
@@ -262,11 +259,13 @@ export default function AlgoVizPage() {
                 setStepTotal2((getTotal() as number) || 1);
 
                 // Reset & restart primary so both run from the same starting point
-                (ctrl1Ref.current?.reset as (() => void) | undefined)?.();
+                (ctrl1Ref.current?.reset    as (() => void)        | undefined)?.();
+                (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(speedRef.current);
                 setRunState(0); setComparisons(0); setMoves(0); setStepCur(0);
 
+                (ctrl2Ref.current.setSpeed as (s: number) => void)(speedRef.current);
                 (ctrl1Ref.current?.start as (() => void) | undefined)?.();
-                (ctrl2Ref.current.start as () => void)();
+                (ctrl2Ref.current.start  as () => void)();
 
                 poll2Ref.current = window.setInterval(() => {
                     setRunState2(getState() as number);
@@ -312,9 +311,12 @@ export default function AlgoVizPage() {
             (ctrl1Ref.current?.pause as (() => void) | undefined)?.();
             if (cmpPhase === 'active') (ctrl2Ref.current?.pause as (() => void) | undefined)?.();
         } else {
-            if (runState === 2) (ctrl1Ref.current?.resume as (() => void) | undefined)?.();
-            if (cmpPhase === 'active' && runState2 === 2)
-                (ctrl2Ref.current?.resume as (() => void) | undefined)?.();
+            if (runState === 0)      (ctrl1Ref.current?.start  as (() => void) | undefined)?.();
+            else if (runState === 2) (ctrl1Ref.current?.resume as (() => void) | undefined)?.();
+            if (cmpPhase === 'active') {
+                if (runState2 === 0)      (ctrl2Ref.current?.start  as (() => void) | undefined)?.();
+                else if (runState2 === 2) (ctrl2Ref.current?.resume as (() => void) | undefined)?.();
+            }
         }
     }, [runState, runState2, cmpPhase]);
 
@@ -332,13 +334,6 @@ export default function AlgoVizPage() {
         }
     }, [cmpPhase]);
 
-    const handleSpeed = useCallback((_: Event, val: number | number[]) => {
-        const s = val as number;
-        setSpeedVal(s);
-        (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
-        if (cmpPhase === 'active') (ctrl2Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
-    }, [cmpPhase]);
-
     // ── Derived ───────────────────────────────────────────────────────────
 
     const algos = category === 'sort' ? SORT_ALGOS : SEARCH_ALGOS;
@@ -351,8 +346,8 @@ export default function AlgoVizPage() {
     const tgt2Missing = isSearch && target2 > maxSizeN;
     const eitherRunning = runState === 1 || (cmpPhase === 'active' && runState2 === 1);
     const canPlayPause = cmpPhase === 'active'
-        ? (runState === 1 || runState === 2 || runState2 === 1 || runState2 === 2)
-        : (runState === 1 || runState === 2);
+        ? (runState === 0 || runState === 1 || runState === 2 || runState2 === 0 || runState2 === 1 || runState2 === 2)
+        : (runState === 0 || runState === 1 || runState === 2);
     const canStep = cmpPhase === 'active'
         ? !((runState === 1 || runState2 === 1) || (runState === 3 && runState2 === 3))
         : !(runState === 1 || runState === 3);
@@ -366,19 +361,27 @@ export default function AlgoVizPage() {
                 VIZ / LOADING PHASE
                 ═══════════════════════════════════════════════════════ */}
             {phase !== 'wizard' && (
-                <Box sx={{ width: '100%' }}>
+                <Box sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 }, py: 2, boxSizing: 'border-box' }}>
 
                     {/* Canvas row */}
                     <Box sx={{
                         display: 'flex',
-                        maxWidth: cmpPhase === 'active' ? '100%' : 1100,
+                        maxWidth: cmpPhase === 'active' ? 1600 : 1100,
                         mx: 'auto',
-                        gap: cmpPhase === 'active' ? '2px' : 0,
-                        bgcolor: '#0a0a19',
+                        gap: cmpPhase === 'active' ? 2 : 0,
+                        alignItems: 'flex-start',
                     }}>
 
                         {/* ── Primary canvas ── */}
-                        <Box sx={{ flex: 1, position: 'relative', aspectRatio: '960/720', minWidth: 0 }}>
+                        <Box sx={
+                            cmpPhase === 'active'
+                                ? {
+                                    flex: 1, position: 'relative', aspectRatio: '960/720', minWidth: 0,
+                                    borderRadius: 2, overflow: 'hidden',
+                                    boxShadow: `0 0 0 1px ${GOLD}30, 0 8px 32px rgba(0,0,0,0.5)`,
+                                }
+                                : { flex: 1, position: 'relative', aspectRatio: '960/720', minWidth: 0 }
+                        }>
                             <canvas
                                 ref={canvas1Ref}
                                 width={960}
@@ -405,9 +408,10 @@ export default function AlgoVizPage() {
                             {phase === 'viz' && (
                                 <Box sx={{
                                     position: 'absolute', top: 0, left: 0, right: 0,
-                                    px: 2.5, py: 1,
+                                    px: 3, py: 1,
                                     display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                                    bgcolor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+                                    bgcolor: '#0d0d20',
+                                    borderBottom: '1px solid rgba(255,255,255,0.07)',
                                 }}>
                                     <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {selAlgo?.name}
@@ -439,7 +443,8 @@ export default function AlgoVizPage() {
                             <Box sx={{
                                 flex: 1, position: 'relative',
                                 aspectRatio: '960/720', minWidth: 0,
-                                borderLeft: '2px solid #1a1a30',
+                                borderRadius: 2, overflow: 'hidden',
+                                boxShadow: `0 0 0 1px ${GREEN}30, 0 8px 32px rgba(0,0,0,0.5)`,
                             }}>
                                 <canvas
                                     ref={canvas2Ref}
@@ -466,9 +471,10 @@ export default function AlgoVizPage() {
                                     <>
                                         <Box sx={{
                                             position: 'absolute', top: 0, left: 0, right: 0,
-                                            px: 2.5, py: 1,
+                                            px: 3, py: 1,
                                             display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                                            bgcolor: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+                                            bgcolor: '#0d0d20',
+                                            borderBottom: '1px solid rgba(255,255,255,0.07)',
                                         }}>
                                             <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {cmpSelAlgo?.name}
@@ -496,8 +502,9 @@ export default function AlgoVizPage() {
                     {/* ── Controls bar ─────────────────────────────────── */}
                     {phase === 'viz' && (
                         <Box sx={{
-                            maxWidth: cmpPhase === 'active' ? '100%' : 1100,
+                            maxWidth: cmpPhase === 'active' ? 1600 : 1100,
                             mx: 'auto', px: 3, py: 2,
+                            mt: 2,
                             bgcolor: '#0e0e1e',
                             borderTop: `1px solid ${GOLD}22`,
                             display: 'flex', flexDirection: 'column', gap: 2,
@@ -610,19 +617,30 @@ export default function AlgoVizPage() {
 
                                     <Box sx={{ flex: 1 }} />
 
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: '#777', mr: 0.5, whiteSpace: 'nowrap' }}>
-                                        Speed
-                                    </Typography>
-                                    <Box sx={{ width: 180, mr: 2 }}>
-                                        <Slider
-                                            value={speedVal} min={0.25} max={16} step={null}
-                                            marks={SPEED_MARKS} onChange={handleSpeed}
-                                            sx={{
-                                                color: GOLD,
-                                                '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
-                                                '& .MuiSlider-thumb': { bgcolor: GOLD },
-                                            }}
-                                        />
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mr: 2 }}>
+                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555', mb: 0.25 }}>
+                                            Speed
+                                        </Typography>
+                                        <Box sx={{ width: 240 }}>
+                                            <Slider
+                                                value={SPEED_STEPS.indexOf(speedVal)}
+                                                min={0} max={3} step={1}
+                                                marks={SPEED_MARKS}
+                                                onChange={(_, idx) => {
+                                                    const s = SPEED_STEPS[idx as number];
+                                                    setSpeedVal(s);
+                                                    (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
+                                                    if (cmpPhase === 'active') (ctrl2Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
+                                                }}
+                                                sx={{
+                                                    color: GOLD,
+                                                    '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
+                                                    '& .MuiSlider-markLabel:first-child': { transform: 'translateX(0%)' },
+                                                    '& .MuiSlider-markLabel:last-child':  { transform: 'translateX(-100%)' },
+                                                    '& .MuiSlider-thumb': { bgcolor: GOLD },
+                                                }}
+                                            />
+                                        </Box>
                                     </Box>
 
                                     <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -671,130 +689,154 @@ export default function AlgoVizPage() {
                 WIZARD PHASE
                 ═══════════════════════════════════════════════════════ */}
             {phase === 'wizard' && (
-                <Box sx={{ minHeight: '100vh', display: 'flex' }}>
+                <Box sx={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6, px: { xs: 2, sm: 3 } }}>
 
-                    {/* Large nav arrow — vertically centered full-height column */}
-                    <Box
+                    {/* Circular back button — floats to the left of the hero card */}
+                    <IconButton
                         onClick={() => navigate('/games')}
-                        onMouseEnter={() => setBackHover(true)}
-                        onMouseLeave={() => setBackHover(false)}
                         sx={{
-                            width: 80, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
-                            borderRight: '1px solid rgba(255,255,255,0.04)',
-                            bgcolor: backHover ? `${GOLD}06` : 'transparent',
-                            transition: 'background 0.2s',
+                            position: 'absolute',
+                            left: { xs: 12, sm: 20, md: 32 },
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 48, height: 48,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: '#555',
+                            '&:hover': { borderColor: GOLD, color: GOLD, bgcolor: `${GOLD}10` },
+                            transition: 'all 0.2s',
                         }}
                     >
-                        <ArrowBackIcon sx={{
-                            fontSize: 44,
-                            color: backHover ? GOLD : '#252540',
-                            transition: 'color 0.2s',
-                        }} />
-                    </Box>
+                        <ArrowBackIcon sx={{ fontSize: 22 }} />
+                    </IconButton>
 
-                    {/* Main content — vertically centered */}
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <Container maxWidth="md" sx={{ py: 7 }}>
+                    {/* Hero card — centered, inner content left-aligned */}
+                    <Box sx={{
+                        width: '100%',
+                        maxWidth: 680,
+                        bgcolor: '#141428',
+                        borderRadius: 2,
+                        p: { xs: 3, md: 5 },
+                        boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                    }}>
+                        {/* Page header */}
+                        <Typography variant="h3" sx={{
+                            fontFamily: FONTS.NECTO_MONO, color: GOLD,
+                            mb: 1, textAlign: 'left',
+                        }}>
+                            Algorithm Visualizer
+                        </Typography>
+                        <Typography variant="h6" sx={{
+                            fontFamily: FONTS.NECTO_MONO, fontWeight: 400,
+                            color: '#666', mb: 4, textAlign: 'left',
+                        }}>
+                            Watch sorting &amp; searching algorithms execute step by step.
+                        </Typography>
 
-                            <Typography variant="h3" sx={{ fontFamily: FONTS.NECTO_MONO, color: GOLD, mb: 1.5 }}>
-                                Algorithm Visualizer
+                        {/* Divider */}
+                        <Box sx={{ height: '1px', bgcolor: 'rgba(255,255,255,0.06)', mb: 4 }} />
+
+                        {error && (
+                            <Typography sx={{
+                                color: '#d73737', mb: 3,
+                                fontSize: '0.95rem', fontFamily: FONTS.NECTO_MONO,
+                                textAlign: 'left',
+                            }}>
+                                ⚠ {error}
                             </Typography>
-                            <Typography variant="h6" sx={{ fontFamily: FONTS.NECTO_MONO, fontWeight: 400, color: '#888', mb: 5 }}>
-                                Watch sorting &amp; searching algorithms execute step by step.
-                            </Typography>
+                        )}
 
-                            {error && (
-                                <Typography sx={{ color: '#d73737', mb: 3, fontSize: '0.95rem', fontFamily: FONTS.NECTO_MONO }}>
-                                    ⚠ {error}
+                        {/* Step 1: Category */}
+                        {wizStep === 1 && (
+                            <Box>
+                                <WizHeader step={1} label="What do you want to visualize?" />
+                                <Box sx={{ display: 'flex', gap: 2, mt: 2.5, flexWrap: 'wrap' }}>
+                                    <CategoryCard
+                                        emoji="📊" title="Sorting"
+                                        desc="Arrange elements in ascending order. Bubble, Merge, Quick, Heap, and more."
+                                        onSelect={() => { setCategory('sort'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
+                                    />
+                                    <CategoryCard
+                                        emoji="🔍" title="Searching"
+                                        desc="Locate a target value in an array. Linear, Binary, and Jump search."
+                                        onSelect={() => { setCategory('search'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
+                                    />
+                                </Box>
+                            </Box>
+                        )}
+
+                        {/* Step 2: Complexity filter */}
+                        {wizStep === 2 && category && (
+                            <Box>
+                                <WizHeader step={2} label="Filter by time complexity (optional)" />
+                                <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mt: 2.5 }}>
+                                    <FilterChip label="All" active={cpxFilter === null} onClick={() => setCpxFilter(null)} />
+                                    {uniqCpx(algos).map(c => (
+                                        <FilterChip key={c} label={c} active={cpxFilter === c}
+                                            onClick={() => setCpxFilter(cpxFilter === c ? null : c)} />
+                                    ))}
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1.25, mt: 3.5 }}>
+                                    <WizBack onClick={() => setWizStep(1)} />
+                                    <WizNext onClick={() => setWizStep(3)} />
+                                </Box>
+                            </Box>
+                        )}
+
+                        {/* Step 3: Algorithm */}
+                        {wizStep === 3 && (
+                            <Box>
+                                <WizHeader step={3} label="Choose an algorithm" />
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2.5 }}>
+                                    {filtered.map(algo => (
+                                        <AlgoCard
+                                            key={algo.id} algo={algo}
+                                            selected={selAlgo?.id === algo.id}
+                                            onSelect={() => { setSelAlgo(algo); setWizStep(4); }}
+                                        />
+                                    ))}
+                                </Box>
+                                <Box sx={{ mt: 2.5 }}>
+                                    <WizBack onClick={() => setWizStep(2)} />
+                                </Box>
+                            </Box>
+                        )}
+
+                        {/* Step 4: Size + launch */}
+                        {wizStep === 4 && selAlgo && (
+                            <Box>
+                                <WizHeader step={4} label="Choose input size" />
+                                <Typography sx={{
+                                    fontFamily: FONTS.NECTO_MONO, color: '#666',
+                                    fontSize: '0.9rem', mt: 1, mb: 3.5, textAlign: 'left',
+                                }}>
+                                    Larger inputs reveal how the algorithm scales with n.
                                 </Typography>
-                            )}
-
-                            {/* Step 1: Category */}
-                            {wizStep === 1 && (
-                                <Box>
-                                    <WizHeader step={1} label="What do you want to visualize?" />
-                                    <Box sx={{ display: 'flex', gap: 2.5, mt: 2.5, flexWrap: 'wrap' }}>
-                                        <CategoryCard
-                                            emoji="📊" title="Sorting"
-                                            desc="Arrange elements in ascending order. Bubble, Merge, Quick, Heap, and more."
-                                            onSelect={() => { setCategory('sort'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
-                                        />
-                                        <CategoryCard
-                                            emoji="🔍" title="Searching"
-                                            desc="Locate a target value in an array. Linear, Binary, and Jump search."
-                                            onSelect={() => { setCategory('search'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
-                                        />
-                                    </Box>
+                                <Box sx={{ mb: 1 }}>
+                                    <Slider
+                                        value={sizeIdx} min={0} max={4} step={1}
+                                        marks={SIZE_MARKS}
+                                        onChange={(_, v) => setSizeIdx(v as number)}
+                                        sx={{
+                                            color: GOLD,
+                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: '#666' },
+                                            '& .MuiSlider-thumb': { bgcolor: GOLD },
+                                        }}
+                                    />
                                 </Box>
-                            )}
-
-                            {/* Step 2: Complexity filter */}
-                            {wizStep === 2 && category && (
-                                <Box>
-                                    <WizHeader step={2} label="Filter by time complexity (optional)" />
-                                    <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mt: 2.5 }}>
-                                        <FilterChip label="All" active={cpxFilter === null} onClick={() => setCpxFilter(null)} />
-                                        {uniqCpx(algos).map(c => (
-                                            <FilterChip key={c} label={c} active={cpxFilter === c}
-                                                onClick={() => setCpxFilter(cpxFilter === c ? null : c)} />
-                                        ))}
-                                    </Box>
-                                    <Box sx={{ display: 'flex', gap: 1.25, mt: 3.5 }}>
-                                        <WizBack onClick={() => setWizStep(1)} />
-                                        <WizNext onClick={() => setWizStep(3)} />
-                                    </Box>
+                                <Typography sx={{
+                                    fontFamily: FONTS.NECTO_MONO, fontSize: '1rem',
+                                    color: GOLD, mb: 6, textAlign: 'left',
+                                }}>
+                                    {SIZE_LABELS[sizeIdx]} — {SIZE_VALUES[sizeIdx]} elements
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                    <WizBack onClick={() => setWizStep(3)} />
+                                    <LaunchBtn onClick={() => setPhase('loading')} />
                                 </Box>
-                            )}
+                            </Box>
+                        )}
 
-                            {/* Step 3: Algorithm */}
-                            {wizStep === 3 && (
-                                <Box>
-                                    <WizHeader step={3} label="Choose an algorithm" />
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 2.5 }}>
-                                        {filtered.map(algo => (
-                                            <AlgoCard
-                                                key={algo.id} algo={algo}
-                                                selected={selAlgo?.id === algo.id}
-                                                onSelect={() => { setSelAlgo(algo); setWizStep(4); }}
-                                            />
-                                        ))}
-                                    </Box>
-                                    <WizBack onClick={() => setWizStep(2)} sx={{ mt: 2.5 }} />
-                                </Box>
-                            )}
-
-                            {/* Step 4: Size + launch */}
-                            {wizStep === 4 && selAlgo && (
-                                <Box>
-                                    <WizHeader step={4} label="Choose input size" />
-                                    <Typography variant="body1" sx={{ color: '#777', mt: 0.75, mb: 3.5 }}>
-                                        Larger inputs reveal how the algorithm scales with n.
-                                    </Typography>
-                                    <Box sx={{ maxWidth: 520, mb: 2.5 }}>
-                                        <Slider
-                                            value={sizeIdx} min={0} max={4} step={1}
-                                            marks={SIZE_MARKS}
-                                            onChange={(_, v) => setSizeIdx(v as number)}
-                                            sx={{
-                                                color: GOLD,
-                                                '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: '#888' },
-                                                '& .MuiSlider-thumb': { bgcolor: GOLD },
-                                            }}
-                                        />
-                                    </Box>
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: GOLD, mb: 4 }}>
-                                        {SIZE_LABELS[sizeIdx]} — {SIZE_VALUES[sizeIdx]} elements
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        <WizBack onClick={() => setWizStep(3)} />
-                                        <LaunchBtn onClick={() => setPhase('loading')} />
-                                    </Box>
-                                </Box>
-                            )}
-
-                        </Container>
                     </Box>
                 </Box>
             )}
@@ -839,10 +881,10 @@ function CategoryCard({ emoji, title, desc, onSelect }: {
             }}
         >
             <Box sx={{ fontSize: '2.5rem', lineHeight: 1 }}>{emoji}</Box>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', color: '#e8e8e8', display: 'block' }}>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', color: '#e8e8e8', display: 'block', textAlign: 'left' }}>
                 {title}
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, display: 'block' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, display: 'block', textAlign: 'left' }}>
                 {desc}
             </Typography>
         </Box>
@@ -876,7 +918,7 @@ function AlgoCard({ algo, selected, onSelect, compact = false }: {
                 p: compact ? 1.75 : 2.5, borderRadius: 2, cursor: 'pointer',
                 border: `1px solid ${selected ? GOLD : 'rgba(255,255,255,0.08)'}`,
                 bgcolor: selected ? `${GOLD}0d` : '#161624',
-                display: 'flex', flexDirection: 'column', gap: compact ? 0.5 : 0.75,
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: compact ? 0.5 : 0.75,
                 transition: 'all 0.15s ease',
                 '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}08` },
             }}
@@ -889,7 +931,7 @@ function AlgoCard({ algo, selected, onSelect, compact = false }: {
                 <InfoChip label={`Space: ${algo.spaceComplexity}`} color="#888" bg="#12121e" />
             </Box>
             {!compact && (
-                <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7 }}>
+                <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, textAlign: 'left' }}>
                     {algo.description}
                 </Typography>
             )}

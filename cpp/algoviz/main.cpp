@@ -457,8 +457,8 @@ static void render()
     }
 
     const int MX = 20;          // horizontal margin
-    const int BTOP = 80;        // top of bar area
-    const int BBOT = 660;       // bottom of bar area
+    const int BTOP = 80;        // top of bar area (React overlay covers 0-46px)
+    const int BBOT = 700;       // bottom of bar area (extended now bottom bar removed)
     const int BH = BBOT - BTOP; // 580 px
     const int BW = SW - 2 * MX; // 920 px
 
@@ -511,23 +511,6 @@ static void render()
         SDL_Rect top{bx, by, bw, 2};
         SDL_RenderFillRect(G.ren, &top);
     }
-
-    // Thin progress bar at bottom
-    if (!G.steps.empty())
-    {
-        fill(0, SH - 14, SW, 14, {18, 18, 40});
-        float pct = (float)G.step_idx / (float)G.steps.size();
-        Color pc = (G.run_state == RunState::DONE) ? Color{46, 204, 113}
-                                                   : Color{100, 180, 255};
-        fill(0, SH - 14, (int)(pct * (float)SW), 14, pc);
-    }
-
-    // State indicator — thin stripe at very top
-    Color sc = (G.run_state == RunState::RUNNING)  ? Color{20, 90, 20}
-               : (G.run_state == RunState::PAUSED) ? Color{90, 70, 0}
-               : (G.run_state == RunState::DONE)   ? Color{0, 80, 50}
-                                                   : Color{20, 20, 70};
-    fill(0, 0, SW, 6, sc);
 
     SDL_RenderPresent(G.ren);
 }
