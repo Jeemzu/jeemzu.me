@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import GameContainer from '../../components/GameContainer';
 import WasmGameContainer from '../../components/WasmGameContainer';
 import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
@@ -29,6 +30,7 @@ export const useGameLauncher = () => {
         showColorOption?: boolean;
     } | null>(null);
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
+    const [, navigate] = useLocation();
     const [platformerOpen, setPlatformerOpen] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
@@ -66,6 +68,10 @@ export const useGameLauncher = () => {
     const launchPlatformer = () => {
         setSelectedLevel(null);
         setPlatformerOpen(true);
+    };
+
+    const launchAlgoViz = () => {
+        navigate('/algoviz');
     };
 
     const showComingSoon = (gameTitle: string) => {
@@ -120,7 +126,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
+    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, launchAlgoViz, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions
@@ -130,6 +136,7 @@ export const createGameData = (launchers: {
     launchBrickBreak: () => void;
     launchTetris: () => void;
     launchPlatformer: () => void;
+    launchAlgoViz: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
         {
@@ -140,6 +147,15 @@ export const createGameData = (launchers: {
             gameplayGif: platformerpng,
             genre: 'Native',
             onPlay: launchers.launchPlatformer,
+        },
+        {
+            id: 'algoviz',
+            title: 'Algorithm Visualizer',
+            description: 'Watch sorting and searching algorithms execute step by step. Compare O(n²) vs O(n log n) and see the difference.',
+            thumbnail: comingSoonpng,
+            gameplayGif: comingSoonpng,
+            genre: 'Native',
+            onPlay: launchers.launchAlgoViz,
         },
         {
             id: 'zaim',

@@ -5,8 +5,8 @@ import GameCard from "./GameCard";
 
 const GamesPage = () => {
     const theme = useTheme();
-    const { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal } = useGameLauncher();
-    const gameData = createGameData({ launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon });
+    const { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, launchAlgoViz, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal } = useGameLauncher();
+    const gameData = createGameData({ launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, launchAlgoViz, showComingSoon });
 
     return (
         <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>

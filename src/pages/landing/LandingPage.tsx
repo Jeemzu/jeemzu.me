@@ -1,5 +1,5 @@
 import { Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal } from "@mui/material";
-import { FaDice, FaEnvelope, FaFile, FaCode, FaRoad } from "react-icons/fa6";
+import { FaDice, FaEnvelope, FaFile, FaCode, FaRoad, FaChartSimple } from "react-icons/fa6";
 import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
@@ -150,6 +150,31 @@ const LandingPage = () => {
                                     }}
                                 >
                                     Games
+                                </Button>
+                            </Link>
+
+                            <Link href="/algoviz">
+                                <Button
+                                    variant="contained"
+                                    size="medium"
+                                    startIcon={<FaChartSimple />}
+                                    sx={{
+                                        backgroundColor: theme.palette.primaryGreen.main,
+                                        color: theme.palette.background.default,
+                                        fontFamily: FONTS.NECTO_MONO,
+                                        px: 3,
+                                        py: 1,
+                                        fontSize: '1rem',
+                                        whiteSpace: 'nowrap',
+                                        transition: EFFECTS.TRANSITION,
+                                        '&:hover': {
+                                            backgroundColor: theme.palette.softGreen.main,
+                                            transform: EFFECTS.HOVER_SCALE,
+                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+                                        }
+                                    }}
+                                >
+                                    Visualizer
                                 </Button>
                             </Link>
 
