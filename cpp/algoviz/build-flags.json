@@ -1,0 +1,6 @@
+{
+    "extra_flags": [
+        "-s",
+        "USE_SDL=2"
+    ]
+}
