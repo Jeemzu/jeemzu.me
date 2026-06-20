@@ -1,6 +1,6 @@
 import { Button, CircularProgress, Grid, Box, Typography, Container } from '@mui/material'
 import './App.css'
-import { lazy, Suspense, type JSX } from 'react';
+import { lazy, Suspense, useEffect, type JSX } from 'react';
 import { Route, Router, Switch } from "wouter";
 import Footer from './components/shared/Footer';
 import Navigation from './components/shared/Navigation';
@@ -8,6 +8,7 @@ import PageTransition from './components/shared/PageTransition';
 import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/shared/ErrorBoundary';
+import { useAuthStore } from './stores/authStore';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -138,6 +139,10 @@ export function Routes() {
 }
 
 function App() {
+  useEffect(() => {
+    // Attempt a silent token refresh on load to restore any active admin session.
+    void useAuthStore.getState().initialize();
+  }, []);
   return (
     <ErrorBoundary>
       <Box sx={{

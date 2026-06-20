@@ -60,13 +60,13 @@ interface PowerDef {
 }
 
 const POWER_DEFS: Record<EffectKind, PowerDef> = {
-    expand: { color: 0x5ad65a, good: true,  weight: 3 },
-    multi:  { color: 0x4dd6d6, good: true,  weight: 2 },
-    slow:   { color: 0x4d8cff, good: true,  weight: 2 },
-    life:   { color: 0xff6fae, good: true,  weight: 1 },
-    ammo:   { color: 0xffd700, good: true,  weight: 2 },
+    expand: { color: 0x5ad65a, good: true, weight: 3 },
+    multi: { color: 0x4dd6d6, good: true, weight: 2 },
+    slow: { color: 0x4d8cff, good: true, weight: 2 },
+    life: { color: 0xff6fae, good: true, weight: 1 },
+    ammo: { color: 0xffd700, good: true, weight: 2 },
     shrink: { color: 0xff5252, good: false, weight: 2 },
-    fast:   { color: 0xff9d2e, good: false, weight: 2 },
+    fast: { color: 0xff9d2e, good: false, weight: 2 },
 };
 
 // ─── internal types ────────────────────────────────────────────────────────
@@ -903,13 +903,13 @@ export class BrickBreakScene extends Phaser.Scene {
         this.drops = [];
 
         this.saveHighScore();
-        this.showOverlay(
-            ['GAME OVER', `Level ${this.level}`, `Score: ${this.score}`, `High Score: ${this.highScore}`],
-            [
-                { label: 'Retry', onClick: () => this.startLevel(this.level, true) },
-                { label: 'Level Select', onClick: () => this.showLevelSelect() },
+        // Hand off to the shared React GameOverOverlay via GameContainer
+        this.game.events.emit('gameOver', {
+            score: this.score,
+            stats: [
+                { label: 'Level', value: this.level },
             ],
-        );
+        });
     }
 
     // ─── overlay UI ─────────────────────────────────────────────────────────

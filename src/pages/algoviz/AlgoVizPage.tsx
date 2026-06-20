@@ -55,8 +55,8 @@ const SIZE_VALUES = [8, 16, 32, 64, 128];
 const SIZE_LABELS = ['Very Small', 'Small', 'Medium', 'Large', 'Very Large'];
 const SIZE_MARKS = SIZE_VALUES.map((v, i) => ({ value: i, label: String(v) }));
 
-const SPEED_STEPS  = [0.25, 1, 4, 16];
-const SPEED_MARKS  = SPEED_STEPS.map((v, i) => ({ value: i, label: v === 0.25 ? '¼×' : `${v}×` }));
+const SPEED_STEPS = [0.25, 1, 4, 16];
+const SPEED_MARKS = SPEED_STEPS.map((v, i) => ({ value: i, label: v === 0.25 ? '¼×' : `${v}×` }));
 
 const LEGEND = [
     { color: '#3a6ea0', label: 'Default' },
@@ -146,11 +146,11 @@ export default function AlgoVizPage() {
     const selAlgoRef = useRef(selAlgo);
     const sizeIdxRef = useRef(sizeIdx);
     const cmpAlgoRef = useRef(cmpSelAlgo);
-    const speedRef   = useRef(speedVal);
-    useEffect(() => { selAlgoRef.current = selAlgo;    }, [selAlgo]);
-    useEffect(() => { sizeIdxRef.current = sizeIdx;    }, [sizeIdx]);
+    const speedRef = useRef(speedVal);
+    useEffect(() => { selAlgoRef.current = selAlgo; }, [selAlgo]);
+    useEffect(() => { sizeIdxRef.current = sizeIdx; }, [sizeIdx]);
     useEffect(() => { cmpAlgoRef.current = cmpSelAlgo; }, [cmpSelAlgo]);
-    useEffect(() => { speedRef.current   = speedVal;   }, [speedVal]);
+    useEffect(() => { speedRef.current = speedVal; }, [speedVal]);
 
     // ── Cleanup on unmount ────────────────────────────────────────────────
     useEffect(() => {
@@ -259,13 +259,13 @@ export default function AlgoVizPage() {
                 setStepTotal2((getTotal() as number) || 1);
 
                 // Reset & restart primary so both run from the same starting point
-                (ctrl1Ref.current?.reset    as (() => void)        | undefined)?.();
+                (ctrl1Ref.current?.reset as (() => void) | undefined)?.();
                 (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(speedRef.current);
                 setRunState(0); setComparisons(0); setMoves(0); setStepCur(0);
 
                 (ctrl2Ref.current.setSpeed as (s: number) => void)(speedRef.current);
                 (ctrl1Ref.current?.start as (() => void) | undefined)?.();
-                (ctrl2Ref.current.start  as () => void)();
+                (ctrl2Ref.current.start as () => void)();
 
                 poll2Ref.current = window.setInterval(() => {
                     setRunState2(getState() as number);
@@ -311,10 +311,10 @@ export default function AlgoVizPage() {
             (ctrl1Ref.current?.pause as (() => void) | undefined)?.();
             if (cmpPhase === 'active') (ctrl2Ref.current?.pause as (() => void) | undefined)?.();
         } else {
-            if (runState === 0)      (ctrl1Ref.current?.start  as (() => void) | undefined)?.();
+            if (runState === 0) (ctrl1Ref.current?.start as (() => void) | undefined)?.();
             else if (runState === 2) (ctrl1Ref.current?.resume as (() => void) | undefined)?.();
             if (cmpPhase === 'active') {
-                if (runState2 === 0)      (ctrl2Ref.current?.start  as (() => void) | undefined)?.();
+                if (runState2 === 0) (ctrl2Ref.current?.start as (() => void) | undefined)?.();
                 else if (runState2 === 2) (ctrl2Ref.current?.resume as (() => void) | undefined)?.();
             }
         }
@@ -636,7 +636,7 @@ export default function AlgoVizPage() {
                                                     color: GOLD,
                                                     '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
                                                     '& .MuiSlider-markLabel:first-child': { transform: 'translateX(0%)' },
-                                                    '& .MuiSlider-markLabel:last-child':  { transform: 'translateX(-100%)' },
+                                                    '& .MuiSlider-markLabel:last-child': { transform: 'translateX(-100%)' },
                                                     '& .MuiSlider-thumb': { bgcolor: GOLD },
                                                 }}
                                             />
@@ -691,24 +691,6 @@ export default function AlgoVizPage() {
             {phase === 'wizard' && (
                 <Box sx={{ minHeight: '100vh', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6, px: { xs: 2, sm: 3 } }}>
 
-                    {/* Circular back button — floats to the left of the hero card */}
-                    <IconButton
-                        onClick={() => navigate('/games')}
-                        sx={{
-                            position: 'absolute',
-                            left: { xs: 12, sm: 20, md: 32 },
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            width: 48, height: 48,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            color: '#555',
-                            '&:hover': { borderColor: GOLD, color: GOLD, bgcolor: `${GOLD}10` },
-                            transition: 'all 0.2s',
-                        }}
-                    >
-                        <ArrowBackIcon sx={{ fontSize: 22 }} />
-                    </IconButton>
-
                     {/* Hero card — centered, inner content left-aligned */}
                     <Box sx={{
                         width: '100%',
@@ -719,6 +701,20 @@ export default function AlgoVizPage() {
                         boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
                         border: '1px solid rgba(255,255,255,0.06)',
                     }}>
+                        {/* Back button — inside the card so it tracks with it */}
+                        <IconButton
+                            onClick={() => navigate('/games')}
+                            sx={{
+                                mb: 2, ml: -1,
+                                width: 40, height: 40,
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#555',
+                                '&:hover': { borderColor: GOLD, color: GOLD, bgcolor: `${GOLD}10` },
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            <ArrowBackIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
                         {/* Page header */}
                         <Typography variant="h3" sx={{
                             fontFamily: FONTS.NECTO_MONO, color: GOLD,

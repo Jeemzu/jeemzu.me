@@ -112,7 +112,6 @@ export class TetrisScene extends Phaser.Scene {
     private dropTimer: number = 0;
     private dropInterval: number = 800; // ms per drop
     private graphics!: Phaser.GameObjects.Graphics;
-    private overlayObjects: Phaser.GameObjects.GameObject[] = [];
     private keysHeld = new Set<string>();
     private onKeyDown = (e: KeyboardEvent) => {
         this.keysHeld.add(e.code);
@@ -146,10 +145,6 @@ export class TetrisScene extends Phaser.Scene {
         this.dropInterval = levelInterval(1);
         this.activePiece = null;
         this.softDropping = false;
-        this.dasTimer = 0;
-        this.dasDirection = '';
-        this.dasActive = false;
-        this.overlayObjects = [];
         this.highScore = parseInt(localStorage.getItem('highScore_Tetris') ?? '0', 10);
 
         // Initialize empty board
@@ -417,8 +412,8 @@ export class TetrisScene extends Phaser.Scene {
                 this.dropInterval = levelInterval(this.level);
             }
 
-            this.levelText.setText(`${this.level}`);
-            this.linesText.setText(`${this.linesCleared}`);
+            this.levelText.setText(`Level: ${this.level}`);
+            this.linesText.setText(`Lines: ${this.linesCleared}`);
         }
 
         this.activePiece = null;
@@ -555,7 +550,7 @@ export class TetrisScene extends Phaser.Scene {
         }
     }
 
-    // ─── game over overlay ────────────────────────────────────────────────────
+    // ─── game over ────────────────────────────────────────────────────────────
 
     private saveHighScore() {
         if (this.score > this.highScore) {
@@ -566,96 +561,16 @@ export class TetrisScene extends Phaser.Scene {
 
     private showGameOver() {
         this.saveHighScore();
-        // Also emit so GameContainer header score stays correct
+        // Keep the header score in sync
         this.game.events.emit('scoreUpdate', this.score);
-
-        const cx = CANVAS_WIDTH / 2;
-        const cy = CANVAS_HEIGHT / 2;
-        const panelW = 300;
-        const panelH = 280;
-        const panelLeft = cx - panelW / 2;
-        const panelTop = cy - panelH / 2;
-        const accentColor = 0x00ccff; // I-piece cyan
-
-        // Full-screen dim
-        this.overlayObjects.push(
-            this.add.rectangle(cx, cy, CANVAS_WIDTH, CANVAS_HEIGHT, 0x000000, 0.86)
-        );
-
-        // Card background
-        const g = this.add.graphics();
-        g.fillStyle(0x0c0c1a, 0.98);
-        g.fillRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
-        g.lineStyle(1, 0xffffff, 0.1);
-        g.strokeRoundedRect(panelLeft, panelTop, panelW, panelH, 6);
-        // Accent bar
-        g.fillStyle(accentColor, 1);
-        g.fillRect(panelLeft, panelTop, panelW, 3);
-        this.overlayObjects.push(g);
-
-        // Title
-        this.overlayObjects.push(
-            this.add.text(cx, panelTop + 28, 'GAME OVER', {
-                fontFamily: 'NectoMono-Regular', fontSize: '32px',
-                color: '#00ccff', letterSpacing: 3,
-            }).setOrigin(0.5, 0)
-        );
-
-        // Stats
-        const stats: { label: string; value: string; dim?: boolean }[] = [
-            { label: `Level ${this.level}`, value: '' },
-            { label: `Score: ${this.score}`, value: '' },
-            { label: `High Score: ${this.highScore}`, value: '', dim: true },
-        ];
-        let y = panelTop + 88;
-        stats.forEach(({ label, dim }, i) => {
-            if (dim) {
-                // Separator
-                const sep = this.add.graphics();
-                sep.lineStyle(1, 0xffffff, 0.08);
-                sep.lineBetween(panelLeft + 24, y + 6, panelLeft + panelW - 24, y + 6);
-                this.overlayObjects.push(sep);
-                y += 22;
-            }
-            this.overlayObjects.push(
-                this.add.text(cx, y, label, {
-                    fontFamily: 'NectoMono-Regular',
-                    fontSize: i === 0 ? '20px' : '17px',
-                    color: dim ? '#55556a' : i === 0 ? '#c8c8e0' : '#ddddef',
-                    letterSpacing: i === 0 ? 2 : 0,
-                }).setOrigin(0.5, 0)
-            );
-            y += dim ? 42 : 38;
+        // Hand off to the shared React GameOverOverlay via GameContainer
+        this.game.events.emit('gameOver', {
+            score: this.score,
+            stats: [
+                { label: 'Level', value: this.level },
+                { label: 'Lines', value: this.linesCleared },
+            ],
         });
-
-        // Single centred Retry button — close the dialog via the X in the header
-        const btnW = 140;
-        const btnH = 36;
-        const by = panelTop + panelH - 30;
-        this.makeTetrisButton(cx, by, btnW, btnH, 'Play Again', accentColor, () => this.scene.restart());
-    }
-
-    private makeTetrisButton(cx: number, cy: number, w: number, h: number, label: string, accentColor: number, onClick: () => void) {
-        const hex = '#' + accentColor.toString(16).padStart(6, '0');
-        const rect = this.add.rectangle(cx, cy, w, h, 0x000000, 0)
-            .setStrokeStyle(1, 0xffffff, 0.18)
-            .setInteractive({ useHandCursor: true });
-        const txt = this.add.text(cx, cy, label, {
-            fontFamily: 'NectoMono-Regular', fontSize: '13px',
-            color: '#aaaabc', letterSpacing: 1,
-        }).setOrigin(0.5);
-        rect.on('pointerover', () => {
-            rect.setFillStyle(accentColor, 0.12);
-            rect.setStrokeStyle(1.5, accentColor, 0.8);
-            txt.setColor(hex);
-        });
-        rect.on('pointerout', () => {
-            rect.setFillStyle(0x000000, 0);
-            rect.setStrokeStyle(1, 0xffffff, 0.18);
-            txt.setColor('#aaaabc');
-        });
-        rect.on('pointerdown', onClick);
-        this.overlayObjects.push(rect, txt);
     }
 }
 

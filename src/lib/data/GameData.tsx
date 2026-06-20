@@ -24,6 +24,7 @@ import comingSoonpng from "../../assets/images/comingsoon.png";
 
 export const useGameLauncher = () => {
     const [currentGame, setCurrentGame] = useState<{
+        id: string;
         title: string;
         config: ReturnType<typeof createSnakeGameConfig> | ReturnType<typeof createZAimGameConfig>;
         showColorOption?: boolean;
@@ -34,6 +35,7 @@ export const useGameLauncher = () => {
 
     const launchSnake = () => {
         setCurrentGame({
+            id: 'snake',
             title: 'Snake',
             config: createSnakeGameConfig(),
             showColorOption: true,
@@ -42,6 +44,7 @@ export const useGameLauncher = () => {
 
     const launchZAim = () => {
         setCurrentGame({
+            id: 'zaim',
             title: 'zAim',
             config: createZAimGameConfig(),
             showColorOption: true,
@@ -50,6 +53,7 @@ export const useGameLauncher = () => {
 
     const launchBrickBreak = () => {
         setCurrentGame({
+            id: 'brickbreak',
             title: 'Brick Break',
             config: createBrickBreakGameConfig(),
             showColorOption: true,
@@ -58,6 +62,7 @@ export const useGameLauncher = () => {
 
     const launchTetris = () => {
         setCurrentGame({
+            id: 'tetris',
             title: 'Tetris',
             config: createTetrisGameConfig(),
         });
@@ -85,6 +90,7 @@ export const useGameLauncher = () => {
             open={!!currentGame}
             onClose={closeGame}
             gameTitle={currentGame.title}
+            gameId={currentGame.id}
             gameConfig={currentGame.config}
             showColorOption={currentGame.showColorOption}
         />

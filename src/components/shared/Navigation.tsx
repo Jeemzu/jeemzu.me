@@ -1,15 +1,19 @@
-import { AppBar, Toolbar, Button, Stack, useTheme, useMediaQuery, IconButton, Drawer, Box } from "@mui/material";
+import { AppBar, Toolbar, Button, Stack, useTheme, useMediaQuery, IconButton, Drawer, Box, Chip, Tooltip } from "@mui/material";
 import { Link, useLocation } from "wouter";
 import { FONTS, LINKS } from "../../lib/globals";
-import { FaGithub, FaLinkedin, FaBars, FaTimes } from "react-icons/fa";
+import { FaGithub, FaLinkedin, FaBars, FaTimes, FaUnlock } from "react-icons/fa";
 import { useState } from "react";
 import { onClickUrl } from "../../utils/openInNewTab";
+import { useAuthStore } from "../../stores/authStore";
+import UserAuthModal from "./UserAuthModal";
 
 const Navigation = () => {
     const theme = useTheme();
     const [location] = useLocation();
     const isMobile = useMediaQuery('(max-width:900px)');
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [loginOpen, setLoginOpen] = useState(false);
+    const { isAuthenticated, username, role, logout } = useAuthStore();
 
     const navItems = [
         { label: "Home", path: "/" },
@@ -174,6 +178,57 @@ const Navigation = () => {
                                     <FaLinkedin size={20} />
                                 </IconButton>
                             </Stack>
+
+                            {/* Auth — visible only to the site owner */}
+                            {isAuthenticated ? (
+                                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ ml: 1 }}>
+                                    <Chip
+                                        label={role === 'Admin' ? `${username} · Admin` : `${username}`}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: 'rgba(168, 214, 126, 0.12)',
+                                            color: 'primaryGreen.main',
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            fontSize: '0.7rem',
+                                            border: '1px solid rgba(168, 214, 126, 0.25)',
+                                        }}
+                                    />
+                                    <Tooltip title="Sign out">
+                                        <IconButton
+                                            onClick={() => void logout()}
+                                            sx={{
+                                                color: 'rgba(255,255,255,0.35)',
+                                                '&:hover': { color: '#f44336' },
+                                            }}
+                                        >
+                                            <FaUnlock size={14} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Stack>
+                            ) : (
+                                <Button
+                                    onClick={() => setLoginOpen(true)}
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{
+                                        ml: 1,
+                                        color: theme.palette.textSecondary.main,
+                                        borderColor: 'rgba(255,255,255,0.2)',
+                                        fontFamily: FONTS.NECTO_MONO,
+                                        fontSize: '0.75rem',
+                                        px: 1.5,
+                                        py: 0.5,
+                                        minWidth: 'auto',
+                                        '&:hover': {
+                                            borderColor: theme.palette.primaryGreen.main,
+                                            color: theme.palette.primaryGreen.main,
+                                            bgcolor: 'rgba(168, 214, 126, 0.06)',
+                                        },
+                                    }}
+                                >
+                                    Login
+                                </Button>
+                            )}
                         </Stack>
                     ) : (
                         /* Mobile Menu Button */
@@ -191,6 +246,8 @@ const Navigation = () => {
 
             {/* Mobile Drawer */}
             {isMobile && <MobileDrawer />}
+
+            <UserAuthModal open={loginOpen} onClose={() => setLoginOpen(false)} defaultTab="login" />
         </>
     );
 };

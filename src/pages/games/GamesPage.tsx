@@ -2,6 +2,7 @@ import { Container, Typography, Box, useTheme } from "@mui/material";
 import { FONTS } from "../../lib/globals";
 import { createGameData, useGameLauncher } from "../../lib/data/GameData";
 import GameCard from "./GameCard";
+import AuthPromptToast from "../../components/shared/AuthPromptToast";
 
 const GamesPage = () => {
     const theme = useTheme();
@@ -54,6 +55,7 @@ const GamesPage = () => {
             {RPGModal}
             {LevelSelectModal}
             {WasmModal}
+            <AuthPromptToast />
         </Container>
     );
 };
