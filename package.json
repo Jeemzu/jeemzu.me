@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate-api-types && tsc -b && vite build",
+    "build": "npm run generate-api-types:prod && tsc -b && vite build",
     "build:cpp": "powershell -File cpp/build-all.ps1",
     "build:all": "npm run build:cpp && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts"
+    "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts",
+    "generate-api-types:prod": "openapi-typescript https://jeemzu-prod-eza9c8edcdhhbqhw.canadaeast-01.azurewebsites.net/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
