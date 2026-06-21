@@ -13,6 +13,13 @@ import { useAuthStore } from '../stores/authStore';
 
 type ApiSchemas = components['schemas'];
 
+/** Combined result from GET /api/scores/{gameId}/summary.
+ *  personalBest is 0 when the request is unauthenticated or the user has no score yet. */
+export interface GameSummary {
+    allTimeHigh: { score: number; username: string } | null;
+    personalBest: number;
+}
+
 /** Returns the Authorization header when the user is logged in, otherwise {}. */
 function authHeader(): Record<string, string> {
     const token = useAuthStore.getState().accessToken;
@@ -21,7 +28,7 @@ function authHeader(): Record<string, string> {
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    'https://jeemzu-dev-chf0dke2c7gmhhgc.canadaeast-01.azurewebsites.net/api';
+    'http://localhost:5000/api';
 
 /**
  * Submit a score. Username comes from the authenticated JWT on the server —
@@ -70,6 +77,31 @@ export async function getHighScores(gameId: string, limit = 10): Promise<GameHig
     } catch (error) {
         console.error('Error fetching high scores:', error);
         return [];
+    }
+}
+
+/**
+ * Fetch the all-time high score and the requesting user's personal best in a
+ * single call. Sends the auth header when available so the server can resolve
+ * personalBest from the JWT; personalBest is 0 when unauthenticated.
+ */
+export async function getGameSummary(gameId: string): Promise<GameSummary> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/scores/${gameId}/summary`, {
+            headers: { ...authHeader() },
+        });
+        if (!response.ok) throw new Error('Failed to fetch game summary');
+        const data = (await response.json()) as ApiSchemas['GameSummaryResponse'];
+        const rec = data.allTimeRecord;
+        return {
+            allTimeHigh: rec?.score != null && rec.username != null
+                ? { score: rec.score, username: rec.username }
+                : null,
+            personalBest: data.personalBest ?? 0,
+        };
+    } catch (error) {
+        console.error('Error fetching game summary:', error);
+        return { allTimeHigh: null, personalBest: 0 };
     }
 }
 

@@ -21,7 +21,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import Phaser from 'phaser';
 import { FONTS } from '../lib/globals';
-import { saveHighScore, getHighScores, getUserData } from '../utils/gameApi';
+import { saveHighScore, getHighScores, getGameSummary } from '../utils/gameApi';
 import type { GameHighScore, GameStat } from '../lib/GameTypes';
 import { useAuthStore } from '../stores/authStore';
 import { GameOverOverlay } from './shared/GameOverOverlay';
@@ -54,6 +54,12 @@ const GameContainer = ({
     const autoSubmitRef = useRef(false);
     /** Mirror of highScore state, readable inside Phaser callbacks without stale-closure issues. */
     const highScoreRef = useRef(0);
+    /** Mirror of currentScore state, readable inside effects without stale-closure issues. */
+    const currentScoreRef = useRef(0);
+    /** Mirror of allTimeHigh state so the Phaser gameOver callback can compare without stale closures. */
+    const allTimeHighRef = useRef<{ score: number; username: string } | null>(null);
+    /** Mirror of authUsername so the Phaser gameOver callback can read it without stale closures. */
+    const authUsernameRef = useRef<string | null>(null);
     const [isPaused, setIsPaused] = useState(false);
     const [currentScore, setCurrentScore] = useState(0);
     const [gameOver, setGameOver] = useState(false);
@@ -66,6 +72,7 @@ const GameContainer = ({
     const [leaderboardScores, setLeaderboardScores] = useState<GameHighScore[]>([]);
     const [leaderboardLoading, setLeaderboardLoading] = useState(false);
     const [allTimeHigh, setAllTimeHigh] = useState<{ score: number; username: string } | null>(null);
+    const [isNewAllTimeHigh, setIsNewAllTimeHigh] = useState(false);
     const [gameOverStats, setGameOverStats] = useState<GameStat[]>([]);
     const [showSubmitFailModal, setShowSubmitFailModal] = useState(false);
     const [failedScore, setFailedScore] = useState(0);
@@ -74,33 +81,48 @@ const GameContainer = ({
 
     // Keep highScoreRef in sync so Phaser event callbacks can compare without stale state
     useEffect(() => { highScoreRef.current = highScore; }, [highScore]);
+    // Keep currentScoreRef in sync so effects can read the latest score without stale closures
+    useEffect(() => { currentScoreRef.current = currentScore; }, [currentScore]);
+    // Keep allTimeHighRef and authUsernameRef in sync for use inside Phaser callbacks
+    useEffect(() => { allTimeHighRef.current = allTimeHigh; }, [allTimeHigh]);
+    useEffect(() => { authUsernameRef.current = authUsername ?? null; }, [authUsername]);
 
-    // Fetch personal best from the DB whenever the authenticated user changes.
-    // Falls back to 0 on network error or if not signed in.
+    // Fetch both all-time high and personal best in a single /summary call when the modal opens.
+    // The endpoint returns personalBest only when an auth token is present.
+    // On close, reset scores and leaderboard cache so data is always fresh on next open.
     useEffect(() => {
-        if (!isAuthenticated || !authUsername) {
+        if (!open) {
+            setAllTimeHigh(null);
+            setLeaderboardScores([]);
             setHighScore(0);
             highScoreRef.current = 0;
             return;
         }
         const gid = (gameId ?? gameTitle.toLowerCase().replace(/\s+/g, '')).toLowerCase();
-        getUserData(authUsername)
-            .then(data => {
-                const best = data?.highScores?.[gid] ?? 0;
-                setHighScore(best);
-                highScoreRef.current = best;
+        getGameSummary(gid)
+            .then(summary => {
+                setAllTimeHigh(summary.allTimeHigh);
+                setHighScore(summary.personalBest);
+                highScoreRef.current = summary.personalBest;
             })
             .catch(() => {
+                setAllTimeHigh(null);
                 setHighScore(0);
                 highScoreRef.current = 0;
             });
-    }, [isAuthenticated, authUsername, gameId, gameTitle]);
+    }, [open, isAuthenticated, gameId, gameTitle]);
 
     // Auto-submit when a new personal best is set and the user is signed in
     useEffect(() => {
         if (!gameOver || !isAuthenticated || !autoSubmitRef.current) return;
         autoSubmitRef.current = false;
-        void handleSubmitScore();
+        void (async () => {
+            const ok = await handleSubmitScore();
+            if (ok) {
+                // Invalidate leaderboard cache so it re-fetches on next view
+                setLeaderboardScores([]);
+            }
+        })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameOver, isAuthenticated]);
 
@@ -137,11 +159,12 @@ const GameContainer = ({
                                 highScoreRef.current = finalScore;
                                 autoSubmitRef.current = true;
                             }
-                            // Fetch all-time high for comparison on game-over screen
-                            const gid = (gameId ?? gameTitle.toLowerCase().replace(/\s+/g, '')).toLowerCase();
-                            getHighScores(gid, 1).then((top) => {
-                                if (top.length > 0) setAllTimeHigh({ score: top[0].score, username: top[0].username });
-                            }).catch(() => { /* silently ignore */ });
+                            // Check for new all-time high and update display immediately (no API delay)
+                            const prevAllTimeHigh = allTimeHighRef.current?.score ?? 0;
+                            if (finalScore > prevAllTimeHigh) {
+                                setIsNewAllTimeHigh(true);
+                                setAllTimeHigh({ score: finalScore, username: authUsernameRef.current ?? 'you' });
+                            }
                         });
 
                         // Pass game settings to the scene
@@ -203,7 +226,7 @@ const GameContainer = ({
                 setGameOver(false);
                 setCurrentScore(0);
                 setIsPaused(false);
-                setAllTimeHigh(null);
+                setIsNewAllTimeHigh(false);
                 autoSubmitRef.current = false;
             }
         }
@@ -217,23 +240,25 @@ const GameContainer = ({
         setGameOver(false);
         setCurrentScore(0);
         setIsPaused(false);
-        setAllTimeHigh(null);
+        setIsNewAllTimeHigh(false);
         autoSubmitRef.current = false;
         setMenuState('start');
     };
 
-    const handleSubmitScore = async () => {
+    const handleSubmitScore = async (): Promise<boolean> => {
         const resolvedGameId = gameId ?? gameTitle.toLowerCase().replace(/\s+/g, '');
-        const result = await saveHighScore(resolvedGameId, currentScore);
+        const scoreToSubmit = currentScoreRef.current;
+        const result = await saveHighScore(resolvedGameId, scoreToSubmit);
         if (!result.success) {
-            setFailedScore(currentScore);
+            setFailedScore(scoreToSubmit);
             setShowSubmitFailModal(true);
+            return false;
         }
+        return true;
     };
 
     const handleShowLeaderboard = async () => {
         setMenuState('leaderboard');
-        if (leaderboardScores.length > 0) return; // already cached
         setLeaderboardLoading(true);
         try {
             const gid = (gameId ?? gameTitle.toLowerCase().replace(/\s+/g, '')).toLowerCase();
@@ -705,6 +730,7 @@ const GameContainer = ({
                             stats={gameOverStats}
                             personalBest={highScore}
                             allTimeHigh={allTimeHigh}
+                            isNewAllTimeHigh={isNewAllTimeHigh}
                             onRetry={handleRestart}
                             onBackToMenu={handleBackToMenuFromGame}
                         />

@@ -13,7 +13,7 @@ type ApiSchemas = components['schemas'];
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    'https://jeemzu-dev-chf0dke2c7gmhhgc.canadaeast-01.azurewebsites.net/api';
+    'http://localhost:5000/api';
 
 /**
  * POST /api/auth/refresh
