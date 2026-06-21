@@ -10,7 +10,7 @@
     "build:all": "npm run build:cpp && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate-api-types": "openapi-typescript https://jeemzu-dev-chf0dke2c7gmhhgc.canadaeast-01.azurewebsites.net/swagger/v1/swagger.json -o src/types/api.generated.ts"
+    "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
