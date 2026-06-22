@@ -458,6 +458,7 @@ static void loop()
         for (auto &plat : G->platforms)
         {
             if (G->player.vy >= 0.0f &&
+                G->player.y < plat.y && // must be approaching from above, not running into the face
                 G->player.x + (float)PW > plat.x &&
                 G->player.x < plat.x + plat.w &&
                 G->player.y + (float)PH >= plat.y &&
@@ -526,9 +527,10 @@ static void loop()
             // Horizontal overlap: player right edge past platform left edge
             bool x_hit = G->player.x + (float)PW > plat.x &&
                          G->player.x < plat.x + plat.w;
-            // Vertical overlap: player box overlaps platform box (not just the surface)
-            bool y_hit = G->player.y + (float)PH > plat.y &&
-                         G->player.y < plat.y + plat.h;
+            // Vertical overlap: player box overlaps platform box (not just the surface).
+            // Use <= so a platform whose bottom edge exactly meets the player's top edge still kills.
+            bool y_hit = G->player.y + (float)PH > plat.y + 2.0f &&
+                         G->player.y <= plat.y + plat.h;
             // Only fatal when approaching from the left (platform left edge inside player)
             // and the player is not currently sitting on top of this platform
             bool on_top = G->player.y + (float)PH <= plat.y + 2.0f;
