@@ -2,7 +2,6 @@
 // Flow: wizard (4 steps) → loading → viz  [+ optional side-by-side comparison]
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'wouter';
 import {
     Box, Typography, Chip, Slider,
     CircularProgress, LinearProgress, IconButton,
@@ -11,7 +10,6 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { FONTS } from '../../lib/globals';
 import AVLVisualizer, { AVL_PRESETS } from './AVLVisualizer';
 
@@ -109,7 +107,6 @@ function ensureAlgovizScript(): Promise<void> {
 // ─── Page component ───────────────────────────────────────────────────────────
 
 export default function AlgoVizPage() {
-    const [, navigate] = useLocation();
 
     // ── Primary wizard ────────────────────────────────────────────────────
     const [phase, setPhase] = useState<Phase>('wizard');
