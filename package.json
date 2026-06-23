@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate-api-types:prod && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "build:cpp": "powershell -File cpp/build-all.ps1",
     "build:all": "npm run build:cpp && npm run build",
     "lint": "eslint .",
