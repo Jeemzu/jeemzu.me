@@ -1,4 +1,5 @@
 import websiteImg from '../../assets/images/website.png';
+import algovizImg from '../../assets/images/algoviz.png';
 import legendsImg from '../../assets/images/legends.webp';
 import mobvoteImg from '../../assets/images/mobvote.jpg';
 import nimzeyImg from '../../assets/images/nimzey.png';
@@ -10,10 +11,19 @@ export type ProjectDataProps = {
     img: string;
     description: string;
     link: string;
+    isInternal?: boolean;
     degrees?: number;
 }
 
 export const projectData: ProjectDataProps[] = [
+    {
+        img: algovizImg,
+        title: 'Algorithm Visualizer',
+        description: 'An interactive visualizer for sorting, searching, graph, and tree algorithms — powered by C++ and WebAssembly.',
+        link: '/algoviz',
+        isInternal: true,
+        degrees: 0,
+    },
     {
         title: 'This Website!',
         img: websiteImg,

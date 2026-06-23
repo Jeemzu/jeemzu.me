@@ -1,6 +1,7 @@
 import { Typography, Card, CardContent, CardMedia, useTheme, Box } from "@mui/material";
 import { projectData, type ProjectDataProps } from "../../lib/data/ProjectData";
 import { onClickUrl } from "../../utils/openInNewTab";
+import { useLocation } from "wouter";
 import { ANIMATIONS, EFFECTS, FONTS } from "../../lib/globals";
 import { useScrollAnimation } from "../../utils/useScrollAnimation";
 
@@ -84,6 +85,7 @@ const ProjectCard = ({
 };
 
 const Projects = () => {
+    const [, navigate] = useLocation();
     return (
         <Box
             sx={{
@@ -100,7 +102,9 @@ const Projects = () => {
             {projectData.map((project, idx) => (
                 <ProjectCard
                     key={idx}
-                    onClick={project.link && project.link !== '#' ? onClickUrl(project.link) : undefined}
+                    onClick={project.link && project.link !== '#'
+                        ? project.isInternal ? () => navigate(project.link) : onClickUrl(project.link)
+                        : undefined}
                     title={project.title}
                     img={project.img}
                     description={project.description}
