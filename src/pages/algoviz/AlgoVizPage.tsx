@@ -13,12 +13,13 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { FONTS } from '../../lib/globals';
+import AVLVisualizer, { AVL_PRESETS } from './AVLVisualizer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'wizard' | 'loading' | 'viz';
 type ComparePhase = 'idle' | 'configuring' | 'loading2' | 'active';
-type Category = 'sort' | 'search';
+type Category = 'sort' | 'search' | 'graph' | 'tree';
 
 interface AlgoInfo {
     id: number;
@@ -35,6 +36,14 @@ interface WasmModule {
 type WasmFactory = (opts: { canvas: HTMLCanvasElement }) => Promise<WasmModule>;
 
 // ─── Static data ──────────────────────────────────────────────────────────────
+
+const GRAPH_ALGOS: AlgoInfo[] = [
+    { id: 20, name: 'A* Pathfinding', complexity: 'O(E log V)', spaceComplexity: 'O(V)', description: 'Uses a heuristic (octile distance) to guide the frontier toward the goal, exploring far fewer nodes than Dijkstra on grid maps.' },
+];
+
+const TREE_ALGOS: AlgoInfo[] = [
+    { id: 30, name: 'AVL Tree', complexity: 'O(log n)', spaceComplexity: 'O(n)', description: 'Self-balancing BST that maintains a height difference ≤ 1 between subtrees via LL, RR, LR, and RL rotations after every insert.' },
+];
 
 const SORT_ALGOS: AlgoInfo[] = [
     { id: 0, name: 'Bubble Sort', complexity: 'O(n²)', spaceComplexity: 'O(1)', description: 'Repeatedly compares adjacent pairs and swaps them if out of order. Simple but slow for large inputs.' },
@@ -54,6 +63,9 @@ const SEARCH_ALGOS: AlgoInfo[] = [
 const SIZE_VALUES = [8, 16, 32, 64, 128];
 const SIZE_LABELS = ['Very Small', 'Small', 'Medium', 'Large', 'Very Large'];
 const SIZE_MARKS = SIZE_VALUES.map((v, i) => ({ value: i, label: String(v) }));
+
+// Grid [rows, cols] matching C++ GRID_ROWS/GRID_COLS constants
+const GRID_SIZES: [number, number][] = [[10, 16], [14, 22], [18, 28], [24, 38], [30, 48]];
 
 const SPEED_STEPS = [0.25, 1, 4, 16];
 const SPEED_MARKS = SPEED_STEPS.map((v, i) => ({ value: i, label: v === 0.25 ? '¼×' : `${v}×` }));
@@ -106,6 +118,11 @@ export default function AlgoVizPage() {
     const [cpxFilter, setCpxFilter] = useState<string | null>(null);
     const [selAlgo, setSelAlgo] = useState<AlgoInfo | null>(null);
     const [sizeIdx, setSizeIdx] = useState(2);
+    // AVL preset index (tree category)
+    const [avlPresetIdx, setAvlPresetIdx] = useState(0);
+    // Grid dimensions (populated from WASM after configure for graph category)
+    const [gridRows, setGridRows] = useState(0);
+    const [gridCols, setGridCols] = useState(0);
 
     // ── Primary WASM ──────────────────────────────────────────────────────
     const canvas1Ref = useRef<HTMLCanvasElement>(null);
@@ -164,6 +181,12 @@ export default function AlgoVizPage() {
     useEffect(() => {
         if (phase !== 'loading') return;
 
+        // Tree category: no WASM — jump straight to viz (AVLVisualizer handles itself)
+        if (category === 'tree') {
+            setPhase('viz');
+            return;
+        }
+
         const algo = selAlgoRef.current;
         const size = sizeIdxRef.current;
         if (!algo) { setError('No algorithm selected.'); setPhase('wizard'); return; }
@@ -187,6 +210,9 @@ export default function AlgoVizPage() {
                 const getTotal = bind('viz_get_total_steps', 'number', []);
                 const getTarget = bind('viz_get_target', 'number', []);
 
+                const getGridRows = bind('viz_get_grid_rows', 'number', []);
+                const getGridCols = bind('viz_get_grid_cols', 'number', []);
+
                 ctrl1Ref.current = {
                     start: bind('viz_start', null, []),
                     pause: bind('viz_pause', null, []),
@@ -199,6 +225,8 @@ export default function AlgoVizPage() {
                 configure(algo.id, size);
                 setTarget(getTarget() as number);
                 setStepTotal((getTotal() as number) || 1);
+                setGridRows(getGridRows() as number);
+                setGridCols(getGridCols() as number);
                 (ctrl1Ref.current.start as () => void)();
 
                 poll1Ref.current = window.setInterval(() => {
@@ -296,6 +324,7 @@ export default function AlgoVizPage() {
         setRunState(0); setComparisons(0); setMoves(0); setStepCur(0); setStepTotal(1);
         setRunState2(0); setComparisons2(0); setMoves2(0); setStepCur2(0); setStepTotal2(1);
         setSpeedVal(1); setError(null);
+        setGridRows(0); setGridCols(0);
     }, []);
 
     const handleRemoveCompare = useCallback(() => {
@@ -336,7 +365,10 @@ export default function AlgoVizPage() {
 
     // ── Derived ───────────────────────────────────────────────────────────
 
-    const algos = category === 'sort' ? SORT_ALGOS : SEARCH_ALGOS;
+    const algos = category === 'sort' ? SORT_ALGOS
+        : category === 'search' ? SEARCH_ALGOS
+            : category === 'graph' ? GRAPH_ALGOS
+                : TREE_ALGOS;
     const filtered = cpxFilter ? algos.filter(a => a.complexity === cpxFilter) : algos;
     const progress1 = (stepCur / stepTotal) * 100;
     const progress2 = (stepCur2 / stepTotal2) * 100;
@@ -360,7 +392,11 @@ export default function AlgoVizPage() {
             {/* ═══════════════════════════════════════════════════════════
                 VIZ / LOADING PHASE
                 ═══════════════════════════════════════════════════════ */}
-            {phase !== 'wizard' && (
+            {phase !== 'wizard' && category === 'tree' && phase === 'viz' && (
+                <AVLVisualizer presetIdx={avlPresetIdx} onBack={backToWizard} />
+            )}
+
+            {phase !== 'wizard' && category !== 'tree' && (
                 <Box sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 }, py: 2, boxSizing: 'border-box' }}>
 
                     {/* Canvas row */}
@@ -421,6 +457,7 @@ export default function AlgoVizPage() {
                                     <InfoChip label={`Space ${selAlgo?.spaceComplexity ?? ''}`} color="#aaa" bg="#141420" />
                                     {isSearch && !tgtMissing && <InfoChip label={`Target: ${target}`} color={GREEN} bg="#121e10" />}
                                     {isSearch && tgtMissing && <InfoChip label={`Target: ${target} (absent)`} color="#d73737" bg="#1e1010" />}
+                                    {category === 'graph' && gridRows > 0 && <InfoChip label={`Grid: ${gridRows}×${gridCols}`} color="#8ab4e8" bg="#0e1630" />}
                                 </Box>
                             )}
 
@@ -555,8 +592,8 @@ export default function AlgoVizPage() {
                                             }}>
                                                 <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.65rem', color: '#000', fontWeight: 700 }}>A</Typography>
                                             </Box>
-                                            <StatPill label="Comps" value={comparisons} />
-                                            <StatPill label="Moves" value={moves} />
+                                            <StatPill label={category === 'graph' ? 'Visited' : 'Comps'} value={comparisons} />
+                                            <StatPill label={category === 'graph' ? 'Path Len' : 'Moves'} value={moves} />
                                             <StatPill label="Step" value={`${stepCur}/${stepTotal}`} />
                                             <RunChip state={runState} />
                                         </Box>
@@ -579,8 +616,8 @@ export default function AlgoVizPage() {
                                     </Box>
                                 ) : (
                                     <Box sx={{ display: 'flex', gap: 3.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                                        <StatPill label="Comparisons" value={comparisons} />
-                                        <StatPill label="Moves" value={moves} />
+                                        <StatPill label={category === 'graph' ? 'Nodes Visited' : 'Comparisons'} value={comparisons} />
+                                        <StatPill label={category === 'graph' ? 'Path Length' : 'Moves'} value={moves} />
                                         <StatPill label="Step" value={`${stepCur} / ${stepTotal}`} />
                                         <Box sx={{ ml: 'auto' }}>
                                             <RunChip state={runState} />
@@ -661,22 +698,24 @@ export default function AlgoVizPage() {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 0.25 }}>
                                     <ActionBtn onClick={backToWizard} label="← Reconfigure" />
 
-                                    {cmpPhase === 'idle' ? (
-                                        <ActionBtn
-                                            onClick={() => setCmpPhase('configuring')}
-                                            label="⊕ Add Comparison"
-                                            color={GREEN}
-                                            borderColor={`${GREEN}40`}
-                                            hoverBg={`${GREEN}10`}
-                                        />
-                                    ) : (
-                                        <ActionBtn
-                                            onClick={handleRemoveCompare}
-                                            label="✕ Remove Comparison"
-                                            color="#d73737"
-                                            borderColor="rgba(215,55,55,0.4)"
-                                            hoverBg="rgba(215,55,55,0.08)"
-                                        />
+                                    {(category === 'sort' || category === 'search') && (
+                                        cmpPhase === 'idle' ? (
+                                            <ActionBtn
+                                                onClick={() => setCmpPhase('configuring')}
+                                                label="⊕ Add Comparison"
+                                                color={GREEN}
+                                                borderColor={`${GREEN}40`}
+                                                hoverBg={`${GREEN}10`}
+                                            />
+                                        ) : (
+                                            <ActionBtn
+                                                onClick={handleRemoveCompare}
+                                                label="✕ Remove Comparison"
+                                                color="#d73737"
+                                                borderColor="rgba(215,55,55,0.4)"
+                                                hoverBg="rgba(215,55,55,0.08)"
+                                            />
+                                        )
                                     )}
                                 </Box>
                             )}
@@ -701,20 +740,6 @@ export default function AlgoVizPage() {
                         boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
                         border: '1px solid rgba(255,255,255,0.06)',
                     }}>
-                        {/* Back button — inside the card so it tracks with it */}
-                        <IconButton
-                            onClick={() => navigate('/games')}
-                            sx={{
-                                mb: 2, ml: -1,
-                                width: 40, height: 40,
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                color: '#555',
-                                '&:hover': { borderColor: GOLD, color: GOLD, bgcolor: `${GOLD}10` },
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            <ArrowBackIcon sx={{ fontSize: 20 }} />
-                        </IconButton>
                         {/* Page header */}
                         <Typography variant="h3" sx={{
                             fontFamily: FONTS.NECTO_MONO, color: GOLD,
@@ -726,7 +751,7 @@ export default function AlgoVizPage() {
                             fontFamily: FONTS.NECTO_MONO, fontWeight: 400,
                             color: '#666', mb: 4, textAlign: 'left',
                         }}>
-                            Watch sorting &amp; searching algorithms execute step by step.
+                            Watch algorithms execute step by step — sorting, searching, graph pathfinding, and trees.
                         </Typography>
 
                         {/* Divider */}
@@ -756,6 +781,16 @@ export default function AlgoVizPage() {
                                         emoji="🔍" title="Searching"
                                         desc="Locate a target value in an array. Linear, Binary, and Jump search."
                                         onSelect={() => { setCategory('search'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
+                                    />
+                                    <CategoryCard
+                                        emoji="🗺️" title="Graph"
+                                        desc="Pathfinding on a 2-D grid. A* uses a heuristic to find the shortest path efficiently."
+                                        onSelect={() => { setCategory('graph'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
+                                    />
+                                    <CategoryCard
+                                        emoji="🌳" title="Tree"
+                                        desc="Self-balancing binary search trees. Watch AVL rotations keep the tree height-optimal."
+                                        onSelect={() => { setCategory('tree'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
                                     />
                                 </Box>
                             </Box>
@@ -798,15 +833,17 @@ export default function AlgoVizPage() {
                             </Box>
                         )}
 
-                        {/* Step 4: Size + launch */}
-                        {wizStep === 4 && selAlgo && (
+                        {/* Step 4: Size / preset + launch */}
+                        {wizStep === 4 && selAlgo && category !== 'tree' && (
                             <Box>
-                                <WizHeader step={4} label="Choose input size" />
+                                <WizHeader step={4} label={category === 'graph' ? 'Choose grid size' : 'Choose input size'} />
                                 <Typography sx={{
                                     fontFamily: FONTS.NECTO_MONO, color: '#666',
                                     fontSize: '0.9rem', mt: 1, mb: 3.5, textAlign: 'left',
                                 }}>
-                                    Larger inputs reveal how the algorithm scales with n.
+                                    {category === 'graph'
+                                        ? 'Larger grids make the search frontier more visible but slow playback.'
+                                        : 'Larger inputs reveal how the algorithm scales with n.'}
                                 </Typography>
                                 <Box sx={{ mb: 1 }}>
                                     <Slider
@@ -822,11 +859,60 @@ export default function AlgoVizPage() {
                                 </Box>
                                 <Typography sx={{
                                     fontFamily: FONTS.NECTO_MONO, fontSize: '1rem',
-                                    color: GOLD, mb: 6, textAlign: 'left',
+                                    color: GOLD, mb: 4, textAlign: 'left',
                                 }}>
-                                    {SIZE_LABELS[sizeIdx]} — {SIZE_VALUES[sizeIdx]} elements
+                                    {SIZE_LABELS[sizeIdx]} — {category === 'graph'
+                                        ? `${GRID_SIZES[sizeIdx][0]} × ${GRID_SIZES[sizeIdx][1]} grid`
+                                        : `${SIZE_VALUES[sizeIdx]} elements`}
                                 </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <WizBack onClick={() => setWizStep(3)} />
+                                    <LaunchBtn onClick={() => setPhase('loading')} />
+                                </Box>
+                            </Box>
+                        )}
+
+                        {/* Step 4: Tree preset picker */}
+                        {wizStep === 4 && selAlgo && category === 'tree' && (
+                            <Box>
+                                <WizHeader step={4} label="Choose a key sequence" />
+                                <Typography sx={{
+                                    fontFamily: FONTS.NECTO_MONO, color: '#666',
+                                    fontSize: '0.9rem', mt: 1, mb: 2.5, textAlign: 'left',
+                                }}>
+                                    Each preset inserts a different set of values — some trigger many rotations, others stay nearly balanced.
+                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    {AVL_PRESETS.map((p, i) => (
+                                        <Box
+                                            key={p.label}
+                                            onClick={() => setAvlPresetIdx(i)}
+                                            sx={{
+                                                p: 2.5, borderRadius: 2, cursor: 'pointer',
+                                                border: `1px solid ${avlPresetIdx === i ? GOLD : 'rgba(255,255,255,0.08)'}`,
+                                                bgcolor: avlPresetIdx === i ? `${GOLD}0d` : '#161624',
+                                                display: 'flex', flexDirection: 'column', gap: 0.75,
+                                                transition: 'all 0.15s ease',
+                                                '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}08` },
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8' }}>
+                                                    {p.label}
+                                                </Typography>
+                                                <Chip label={`${p.keys.length} keys`} size="small"
+                                                    sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: '#1e1a00', color: GOLD, height: 24 }} />
+                                            </Box>
+                                            <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, textAlign: 'left' }}>
+                                                {p.desc}
+                                            </Typography>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#555', mt: 0.25 }}>
+                                                [{p.keys.join(', ')}]
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 4, pt: 3, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                                     <WizBack onClick={() => setWizStep(3)} />
                                     <LaunchBtn onClick={() => setPhase('loading')} />
                                 </Box>

@@ -9,6 +9,7 @@ import confusedTravolta from './assets/images/confused-john-travolta.gif';
 import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
+import ChatBot from './components/ChatBot';
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
 
@@ -175,6 +176,9 @@ function App() {
             </Grid>
           </Grid>
         </Box>
+
+        {/* Floating chatbot — accessible on every page */}
+        <ChatBot />
       </Box>
     </ErrorBoundary>
   )

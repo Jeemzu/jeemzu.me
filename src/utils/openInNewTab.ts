@@ -1,6 +1,8 @@
 export const openInNewTab = (url: string): void => {
     if (url.startsWith('mailto:')) {
-        window.location.href = url;
+        const a = document.createElement('a');
+        a.href = url;
+        a.click();
         return;
     }
     const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
