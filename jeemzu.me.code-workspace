@@ -1,0 +1,54 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../jeemzu.api"
+		}
+	],
+	"settings": {
+		"typescript.tsdk": "node_modules/typescript/lib"
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Frontend: Dev Server",
+				"type": "shell",
+				"command": "npm run dev",
+				"options": {
+					"cwd": "${workspaceFolder:jeemzu.me}"
+				},
+				"runOptions": {
+					"runOn": "folderOpen"
+				},
+				"isBackground": true,
+				"problemMatcher": [],
+				"presentation": {
+					"panel": "new",
+					"reveal": "always",
+					"tab": "Frontend: Dev Server"
+				}
+			},
+			{
+				"label": "API: Dev Server",
+				"type": "shell",
+				"command": "dotnet run --launch-profile Development",
+				"options": {
+					"cwd": "${workspaceFolder:jeemzu.api}/src/JeemzuApi"
+				},
+				"runOptions": {
+					"runOn": "folderOpen"
+				},
+				"isBackground": true,
+				"problemMatcher": [],
+				"presentation": {
+					"panel": "new",
+					"reveal": "always",
+					"tab": "API: Dev Server"
+				}
+			}
+		]
+	}
+}

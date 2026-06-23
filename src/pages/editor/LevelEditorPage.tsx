@@ -12,6 +12,7 @@ import WasmGameContainer from '../../components/WasmGameContainer';
 import { type LevelFile, type LevelCell, type CellType } from '../../lib/LevelSchema';
 import { FONTS } from '../../lib/globals';
 import { saveCustomLevel } from '../../utils/customLevels';
+import { RoleGuard } from '../../components/shared/RoleGuard';
 
 // --- Grid constants (must match cpp/platformer/main.cpp)
 
@@ -426,20 +427,22 @@ const LevelEditorPage = () => {
                 <Divider orientation="vertical" flexItem sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
 
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <TextField
-                        size="medium"
-                        label="Level #"
-                        type="number"
-                        value={levelNumberInput}
-                        onChange={e => setLevelNumberInput(e.target.value)}
-                        onBlur={() => {
-                            const clamped = Math.max(1, parseInt(levelNumberInput) || 1);
-                            setLevelNumber(clamped);
-                            setLevelNumberInput(String(clamped));
-                        }}
-                        sx={{ width: 150, ...inputSx }}
-                        inputProps={{ min: 1 }}
-                    />
+                    <RoleGuard roles="Admin">
+                        <TextField
+                            size="medium"
+                            label="Level #"
+                            type="number"
+                            value={levelNumberInput}
+                            onChange={e => setLevelNumberInput(e.target.value)}
+                            onBlur={() => {
+                                const clamped = Math.max(1, parseInt(levelNumberInput) || 1);
+                                setLevelNumber(clamped);
+                                setLevelNumberInput(String(clamped));
+                            }}
+                            sx={{ width: 150, ...inputSx }}
+                            inputProps={{ min: 1 }}
+                        />
+                    </RoleGuard>
                     <TextField size="medium" label="Name" value={levelName}
                         onChange={e => setLevelName(e.target.value)}
                         placeholder={`Level ${levelNumber}`}
@@ -517,12 +520,14 @@ const LevelEditorPage = () => {
                             {savedMsg ? 'Saved!' : 'Save'}
                         </Button>
                     </Tooltip>
-                    <Tooltip title="Download the level as a JSON file — add it to public/levels/ and manifest.json to include it as an official level" {...tooltipSx}>
-                        <Button size="medium" startIcon={<DownloadIcon />} onClick={handleExport}
-                            variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
-                            Export
-                        </Button>
-                    </Tooltip>
+                    <RoleGuard roles="Admin">
+                        <Tooltip title="Download the level as a JSON file — add it to public/levels/ and manifest.json to include it as an official level" {...tooltipSx}>
+                            <Button size="medium" startIcon={<DownloadIcon />} onClick={handleExport}
+                                variant="outlined" sx={{ color: 'rgba(255,255,255,0.6)', borderColor: 'rgba(255,255,255,0.15)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
+                                Export
+                            </Button>
+                        </Tooltip>
+                    </RoleGuard>
                     <Button size="medium" variant="contained" startIcon={<PlayArrowIcon />} onClick={handlePlay}
                         sx={{ bgcolor: '#ffd740', color: '#0a0a19', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', letterSpacing: 1, '&:hover': { bgcolor: '#e6c235' } }}>
                         Play

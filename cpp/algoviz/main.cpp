@@ -1,11 +1,13 @@
 // Algorithm Visualizer — Emscripten/SDL2 WASM module
 // Pre-computes all algorithm steps, then plays them back at configurable speed.
 // Rendered bars are colored by state: default, comparing, moved, pivot, done, found.
+// Graph algorithms (A*) render a 2-D grid instead of bars.
 
 #include <SDL2/SDL.h>
 #include <emscripten/emscripten.h>
 #include <algorithm>
 #include <cmath>
+#include <queue>
 #include <random>
 #include <vector>
 
@@ -14,7 +16,7 @@
 static constexpr int SW = 960;
 static constexpr int SH = 720;
 
-// Algorithm IDs (kept sparse so sort/search ranges don't overlap)
+// Algorithm IDs (kept sparse so ranges don't overlap)
 static constexpr int ALGO_BUBBLE = 0;
 static constexpr int ALGO_SELECTION = 1;
 static constexpr int ALGO_INSERTION = 2;
@@ -24,24 +26,45 @@ static constexpr int ALGO_HEAP = 5;
 static constexpr int ALGO_LINEAR = 10;
 static constexpr int ALGO_BINARY = 11;
 static constexpr int ALGO_JUMP = 12;
+static constexpr int ALGO_ASTAR = 20; // Graph range: 20+
 
 // Input sizes indexed 0-4: Very Small → Very Large
 static constexpr int INPUT_SIZES[5] = {8, 16, 32, 64, 128};
+
+// Grid sizes [rows][cols] for A* — fits nicely in 960×720
+static constexpr int GRID_ROWS[5] = {10, 14, 18, 24, 30};
+static constexpr int GRID_COLS[5] = {16, 22, 28, 38, 48};
+
+// Grid cell states (stored in grid[] vector, rendered each frame)
+static constexpr int GCELL_EMPTY = 0;
+static constexpr int GCELL_WALL = 1;
+static constexpr int GCELL_START = 2;
+static constexpr int GCELL_END = 3;
+static constexpr int GCELL_OPEN = 4;    // in open set
+static constexpr int GCELL_CLOSED = 5;  // already expanded
+static constexpr int GCELL_CURRENT = 6; // node being expanded this step
+static constexpr int GCELL_PATH = 7;    // final path
 
 // ─── Step system ─────────────────────────────────────────────────────────────
 
 enum class StepType : uint8_t
 {
-    COMPARE,     // highlight two indices (or one vs target when j == -1)
-    SWAP,        // swap arr[i] ↔ arr[j], count as 1 move
-    INSERT,      // write arr[i] = extra, count as 1 move
-    SET_PIVOT,   // mark index i as pivot
-    CLEAR_PIVOT, // unmark pivot
-    MARK_DONE,   // mark index i as sorted/complete
-    MARK_RANGE,  // mark [i, j] inclusive as sorted/complete
-    FOUND,       // search: target found at index i
-    NOT_FOUND,   // search: target absent
-    SEARCH_RANGE // binary/jump search: update active search window [i, j]
+    COMPARE,      // highlight two indices (or one vs target when j == -1)
+    SWAP,         // swap arr[i] ↔ arr[j], count as 1 move
+    INSERT,       // write arr[i] = extra, count as 1 move
+    SET_PIVOT,    // mark index i as pivot
+    CLEAR_PIVOT,  // unmark pivot
+    MARK_DONE,    // mark index i as sorted/complete
+    MARK_RANGE,   // mark [i, j] inclusive as sorted/complete
+    FOUND,        // search: target found at index i
+    NOT_FOUND,    // search: target absent
+    SEARCH_RANGE, // binary/jump search: update active search window [i, j]
+    // ── Grid (A*) step types ─────────────────────────────────────────────
+    GRID_OPEN,    // add cell to open set:   i=row, j=col
+    GRID_CLOSE,   // move cell to closed set: i=row, j=col
+    GRID_CURRENT, // cell being expanded:     i=row, j=col
+    GRID_PATH,    // trace final path cell:   i=row, j=col
+    GRID_DONE,    // path found/not found (extra=1 found, 0 not found)
 };
 
 struct Step
@@ -68,7 +91,7 @@ struct Viz
     SDL_Window *win = nullptr;
     SDL_Renderer *ren = nullptr;
 
-    // Array data
+    // Array data (sort / search)
     int n = 0;
     std::vector<int> arr;    // display array, modified during playback
     std::vector<int> orig;   // immutable copy for reset
@@ -99,6 +122,12 @@ struct Viz
     float accum = 0.0f;
     float base_sps = 20.0f; // steps-per-second at speed == 1.0
     Uint32 last_tick = 0;
+
+    // ── Grid fields (A* and future graph algorithms) ──────────────────────
+    int grid_rows = 0;
+    int grid_cols = 0;
+    std::vector<int> grid;      // flat [row * cols + col], cell state GCELL_*
+    std::vector<int> grid_orig; // initial state for reset
 };
 
 static Viz G;
@@ -376,8 +405,125 @@ static void record_jump(std::vector<int> a, int target, Rec &r)
     r.not_found();
 }
 
-// ─── Step application ─────────────────────────────────────────────────────────
+// ─── A* Pathfinding ───────────────────────────────────────────────────────────
 
+struct AStarNode
+{
+    int row, col;
+    float g, f;
+    bool operator>(const AStarNode &o) const { return f > o.f; }
+};
+
+static float heuristic(int r, int c, int er, int ec)
+{
+    // Octile distance — correct for 8-directional movement
+    float dr = (float)std::abs(r - er);
+    float dc = (float)std::abs(c - ec);
+    return (dr + dc) + (1.4142f - 2.0f) * std::min(dr, dc);
+}
+
+static void record_astar(int rows, int cols, std::vector<int> &grid, Rec &r)
+{
+    // Start: top-left area, End: bottom-right area (with small margin)
+    const int sr = 1, sc = 1;
+    const int er = rows - 2, ec = cols - 2;
+
+    grid[sr * cols + sc] = GCELL_START;
+    grid[er * cols + ec] = GCELL_END;
+
+    const int INF = 1e9;
+    std::vector<float> g_cost(rows * cols, (float)INF);
+    std::vector<int> parent(rows * cols, -1);
+    std::priority_queue<AStarNode, std::vector<AStarNode>, std::greater<AStarNode>> open;
+
+    g_cost[sr * cols + sc] = 0.0f;
+    open.push({sr, sc, 0.0f, heuristic(sr, sc, er, ec)});
+
+    // 8-directional movement
+    const int DR[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    const int DC[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+
+    bool found = false;
+
+    while (!open.empty())
+    {
+        AStarNode cur = open.top();
+        open.pop();
+        int cr = cur.row, cc = cur.col;
+        int idx = cr * cols + cc;
+
+        if (g_cost[idx] < cur.g - 0.001f)
+            continue; // stale entry
+
+        // Emit CURRENT step (mark as being expanded)
+        if (grid[idx] != GCELL_START && grid[idx] != GCELL_END)
+        {
+            r.s.push_back({StepType::GRID_CURRENT, cr, cc});
+            grid[idx] = GCELL_CURRENT;
+        }
+
+        if (cr == er && cc == ec)
+        {
+            found = true;
+            break;
+        }
+
+        // Move to closed
+        if (grid[idx] != GCELL_START && grid[idx] != GCELL_END)
+        {
+            r.s.push_back({StepType::GRID_CLOSE, cr, cc});
+            grid[idx] = GCELL_CLOSED;
+        }
+
+        for (int d = 0; d < 8; ++d)
+        {
+            int nr = cr + DR[d], nc = cc + DC[d];
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols)
+                continue;
+            int nidx = nr * cols + nc;
+            if (grid[nidx] == GCELL_WALL || grid[nidx] == GCELL_CLOSED)
+                continue;
+
+            // Diagonal movement costs √2
+            float move_cost = (DR[d] != 0 && DC[d] != 0) ? 1.4142f : 1.0f;
+            float tentative = g_cost[idx] + move_cost;
+
+            if (tentative < g_cost[nidx] - 0.001f)
+            {
+                g_cost[nidx] = tentative;
+                parent[nidx] = idx;
+                float f = tentative + heuristic(nr, nc, er, ec);
+                open.push({nr, nc, tentative, f});
+
+                if (grid[nidx] != GCELL_START && grid[nidx] != GCELL_END)
+                {
+                    r.s.push_back({StepType::GRID_OPEN, nr, nc});
+                    grid[nidx] = GCELL_OPEN;
+                }
+            }
+        }
+    }
+
+    // Trace back the path
+    if (found)
+    {
+        int cur = er * cols + ec;
+        while (cur != -1)
+        {
+            int row = cur / cols, col = cur % cols;
+            if (grid[row * cols + col] != GCELL_START && grid[row * cols + col] != GCELL_END)
+            {
+                r.s.push_back({StepType::GRID_PATH, row, col});
+                grid[row * cols + col] = GCELL_PATH;
+            }
+            cur = parent[cur];
+        }
+    }
+
+    r.s.push_back({StepType::GRID_DONE, 0, 0, found ? 1 : 0});
+}
+
+// ─── Step application ─────────────────────────────────────────────────────────
 static void apply_step(const Step &s)
 {
     // Reset transient single-frame highlights before each step
@@ -426,6 +572,31 @@ static void apply_step(const Step &s)
     case StepType::SEARCH_RANGE:
         G.search_lo = s.i;
         G.search_hi = s.j;
+        break;
+    case StepType::GRID_OPEN:
+        if (G.grid[s.i * G.grid_cols + s.j] != GCELL_START &&
+            G.grid[s.i * G.grid_cols + s.j] != GCELL_END)
+            G.grid[s.i * G.grid_cols + s.j] = GCELL_OPEN;
+        ++G.comparisons; // treat nodes visited as "comparisons"
+        break;
+    case StepType::GRID_CLOSE:
+        if (G.grid[s.i * G.grid_cols + s.j] != GCELL_START &&
+            G.grid[s.i * G.grid_cols + s.j] != GCELL_END)
+            G.grid[s.i * G.grid_cols + s.j] = GCELL_CLOSED;
+        break;
+    case StepType::GRID_CURRENT:
+        if (G.grid[s.i * G.grid_cols + s.j] != GCELL_START &&
+            G.grid[s.i * G.grid_cols + s.j] != GCELL_END)
+            G.grid[s.i * G.grid_cols + s.j] = GCELL_CURRENT;
+        break;
+    case StepType::GRID_PATH:
+        if (G.grid[s.i * G.grid_cols + s.j] != GCELL_START &&
+            G.grid[s.i * G.grid_cols + s.j] != GCELL_END)
+            G.grid[s.i * G.grid_cols + s.j] = GCELL_PATH;
+        ++G.moves; // treat path length as "moves"
+        break;
+    case StepType::GRID_DONE:
+        G.not_found = (s.extra == 0);
         break;
     }
 }
@@ -515,7 +686,78 @@ static void render()
     SDL_RenderPresent(G.ren);
 }
 
-// ─── Configuration ────────────────────────────────────────────────────────────
+// ─── Grid renderer (A* and future graph algorithms) ───────────────────────────
+
+static void render_grid()
+{
+    SDL_SetRenderDrawColor(G.ren, 10, 10, 25, 255);
+    SDL_RenderClear(G.ren);
+
+    if (!G.configured || G.grid_rows == 0)
+    {
+        SDL_RenderPresent(G.ren);
+        return;
+    }
+
+    const int MX = 16; // horizontal margin
+    const int MY = 56; // vertical margin (leaves room for React overlay)
+    const int GW = SW - 2 * MX;
+    const int GH = SH - MY - 16;
+
+    // Cell size (same w/h so cells are square)
+    int cw = GW / G.grid_cols;
+    int ch = GH / G.grid_rows;
+    int cs = std::min(cw, ch); // uniform cell size
+    if (cs < 2)
+        cs = 2;
+
+    // Center the grid
+    int ox = MX + (GW - cs * G.grid_cols) / 2;
+    int oy = MY + (GH - cs * G.grid_rows) / 2;
+    int gap = (cs >= 6) ? 1 : 0;
+
+    for (int r = 0; r < G.grid_rows; ++r)
+    {
+        for (int c = 0; c < G.grid_cols; ++c)
+        {
+            int state = G.grid[r * G.grid_cols + c];
+            Color col;
+            switch (state)
+            {
+            case GCELL_WALL:
+                col = {30, 30, 40};
+                break; // dark gray
+            case GCELL_START:
+                col = {168, 214, 126};
+                break; // site green
+            case GCELL_END:
+                col = {215, 55, 55};
+                break; // red
+            case GCELL_OPEN:
+                col = {58, 110, 200};
+                break; // blue (frontier)
+            case GCELL_CLOSED:
+                col = {40, 60, 120};
+                break; // dark blue (visited)
+            case GCELL_CURRENT:
+                col = {255, 215, 64};
+                break; // gold (expanding)
+            case GCELL_PATH:
+                col = {197, 232, 164};
+                break; // soft green (path)
+            default:
+                col = {18, 18, 36};
+                break; // empty — near black
+            }
+            int x = ox + c * cs + gap;
+            int y = oy + r * cs + gap;
+            int sz = cs - gap;
+            fill(x, y, sz, sz, col);
+        }
+    }
+
+    SDL_RenderPresent(G.ren);
+}
 
 static void do_configure(int algo_id, int size_idx)
 {
@@ -525,7 +767,6 @@ static void do_configure(int algo_id, int size_idx)
         size_idx = 4;
 
     G.algo_id = algo_id;
-    G.n = INPUT_SIZES[size_idx];
     G.steps.clear();
     G.step_idx = 0;
     G.comparisons = 0;
@@ -535,12 +776,63 @@ static void do_configure(int algo_id, int size_idx)
     G.not_found = false;
     G.run_state = RunState::IDLE;
     G.accum = 0.0f;
-    // Scale base speed with n so animations take similar wall-clock time across sizes
-    G.base_sps = (float)G.n * 2.5f;
 
     std::mt19937 rng(SDL_GetTicks() ^ 0xdeadbeefU);
 
-    // Build array 1..n
+    // ── Graph algorithms ──────────────────────────────────────────────────
+    if (algo_id == ALGO_ASTAR)
+    {
+        G.grid_rows = GRID_ROWS[size_idx];
+        G.grid_cols = GRID_COLS[size_idx];
+        int total = G.grid_rows * G.grid_cols;
+
+        const int sr = 1, sc = 1;
+        const int er = G.grid_rows - 2, ec = G.grid_cols - 2;
+
+        // Generate maze: ~28% wall density, solid border
+        std::uniform_real_distribution<float> rd(0.0f, 1.0f);
+        G.grid.assign(total, GCELL_EMPTY);
+        for (int r = 0; r < G.grid_rows; ++r)
+            for (int c = 0; c < G.grid_cols; ++c)
+            {
+                bool border = (r == 0 || r == G.grid_rows - 1 || c == 0 || c == G.grid_cols - 1);
+                if (border)
+                {
+                    G.grid[r * G.grid_cols + c] = GCELL_WALL;
+                    continue;
+                }
+                // Never wall start/end cells or their immediate neighbours
+                if (std::abs(r - sr) <= 1 && std::abs(c - sc) <= 1)
+                    continue;
+                if (std::abs(r - er) <= 1 && std::abs(c - ec) <= 1)
+                    continue;
+                if (rd(rng) < 0.28f)
+                    G.grid[r * G.grid_cols + c] = GCELL_WALL;
+            }
+
+        G.grid[sr * G.grid_cols + sc] = GCELL_START;
+        G.grid[er * G.grid_cols + ec] = GCELL_END;
+        G.grid_orig = G.grid;
+        G.n = 0;
+        G.base_sps = 30.0f + (float)(G.grid_rows * G.grid_cols) * 0.08f;
+
+        // Record A* steps against a working copy of the grid
+        std::vector<int> work_grid = G.grid;
+        Rec rec{G.steps};
+        record_astar(G.grid_rows, G.grid_cols, work_grid, rec);
+
+        // Reset to initial state — playback applies steps from orig
+        G.grid = G.grid_orig;
+        G.configured = true;
+        return;
+    }
+
+    // ── Array algorithms (sort / search) ─────────────────────────────────
+    G.grid_rows = G.grid_cols = 0;
+    G.grid.clear();
+    G.n = INPUT_SIZES[size_idx];
+    G.base_sps = (float)G.n * 2.5f;
+
     G.arr.resize(G.n);
     for (int i = 0; i < G.n; ++i)
         G.arr[i] = i + 1;
@@ -550,12 +842,10 @@ static void do_configure(int algo_id, int size_idx)
                       algo_id == ALGO_JUMP);
     if (is_search)
     {
-        // Keep sorted (required by binary/jump; linear can use unsorted too)
         std::uniform_int_distribution<int> td(1, G.n);
         G.target_val = td(rng);
-        // 20% chance the target is missing
         if (std::uniform_int_distribution<int>(1, 5)(rng) == 1)
-            G.target_val = G.n + 1; // value not in [1..n]
+            G.target_val = G.n + 1;
         if (algo_id == ALGO_LINEAR)
             std::shuffle(G.arr.begin(), G.arr.end(), rng);
     }
@@ -568,7 +858,6 @@ static void do_configure(int algo_id, int size_idx)
     G.orig = G.arr;
     G.done.assign(G.n, false);
 
-    // Record all steps against a working copy
     Rec rec{G.steps};
     std::vector<int> work = G.arr;
 
@@ -636,17 +925,26 @@ static void main_loop()
             if (G.step_idx >= (int)G.steps.size())
             {
                 G.run_state = RunState::DONE;
-                // Ensure everything is marked done on completion
-                for (int k = 0; k < G.n; ++k)
-                    G.done[k] = true;
-                G.hi_a = G.hi_b = G.sw_a = G.sw_b = G.pivot = -1;
+                if (G.algo_id == ALGO_ASTAR)
+                {
+                    // nothing extra needed — grid cells are already coloured
+                }
+                else
+                {
+                    for (int k = 0; k < G.n; ++k)
+                        G.done[k] = true;
+                    G.hi_a = G.hi_b = G.sw_a = G.sw_b = G.pivot = -1;
+                }
                 break;
             }
             apply_step(G.steps[G.step_idx++]);
         }
     }
 
-    render();
+    if (G.algo_id == ALGO_ASTAR)
+        render_grid();
+    else
+        render();
 }
 
 // ─── Exported API (called from JavaScript via cwrap) ─────────────────────────
@@ -695,27 +993,33 @@ extern "C"
         if (G.step_idx >= (int)G.steps.size())
         {
             G.run_state = RunState::DONE;
-            for (int k = 0; k < G.n; ++k)
-                G.done[k] = true;
+            if (G.algo_id != ALGO_ASTAR)
+                for (int k = 0; k < G.n; ++k)
+                    G.done[k] = true;
         }
     }
 
-    // Reset to the initial unsorted/unsearched state.
+    // Reset to the initial state.
     EMSCRIPTEN_KEEPALIVE void viz_reset()
     {
         if (!G.configured)
             return;
-        G.arr = G.orig;
         G.step_idx = 0;
         G.comparisons = 0;
         G.moves = 0;
         G.hi_a = G.hi_b = G.sw_a = G.sw_b = G.pivot = G.found_idx = -1;
         G.search_lo = G.search_hi = -1;
         G.not_found = false;
-        G.done.assign(G.n, false);
         G.accum = 0.0f;
         G.run_state = RunState::IDLE;
+        if (G.algo_id == ALGO_ASTAR)
+            G.grid = G.grid_orig;
+        else
+            G.arr = G.orig, G.done.assign(G.n, false);
     }
+
+    EMSCRIPTEN_KEEPALIVE int viz_get_grid_rows() { return G.grid_rows; }
+    EMSCRIPTEN_KEEPALIVE int viz_get_grid_cols() { return G.grid_cols; }
 
     // Set playback speed multiplier (0.1 – 32×).
     EMSCRIPTEN_KEEPALIVE void viz_set_speed(float s)

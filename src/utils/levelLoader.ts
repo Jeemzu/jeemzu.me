@@ -109,8 +109,8 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
         }
     }
 
-    // ── Pits (row 10 — contiguous cols merged into one pit each) 
-    const pitCols = colsAtRow(level.cells, 'pit', 10);
+    // ── Pits (ground row = GROUND_Y / TILE = 20 — contiguous cols merged into one pit each)
+    const pitCols = colsAtRow(level.cells, 'pit', GROUND_Y / TILE);
     for (const span of mergeContiguous(pitCols)) {
         cmds.push({
             cmd: 'pit',
