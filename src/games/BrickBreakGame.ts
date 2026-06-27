@@ -22,8 +22,6 @@ const BRICK_WIDTH = (CANVAS_WIDTH - BRICK_SIDE_MARGIN * 2 - BRICK_GAP * (BRICK_C
 const SERVE_DELAY = 1200;
 const START_LIVES = 3;
 const MAX_LIVES = 5;
-const START_AMMO = 3;
-const MAX_AMMO = 6;
 
 const DROP_SPEED = 200;
 const DROP_WIDTH = 30;
@@ -51,7 +49,7 @@ function isUnlocked(level: number): boolean {
 
 // ─── powerups / debuffs ────────────────────────────────────────────────────
 
-type EffectKind = 'expand' | 'multi' | 'slow' | 'life' | 'shrink' | 'fast' | 'ammo';
+type EffectKind = 'expand' | 'multi' | 'slow' | 'life' | 'shrink' | 'fast' | 'sticky';
 
 interface PowerDef {
     color: number;
@@ -62,11 +60,11 @@ interface PowerDef {
 const POWER_DEFS: Record<EffectKind, PowerDef> = {
     expand: { color: 0x5ad65a, good: true, weight: 3 },
     multi: { color: 0x4dd6d6, good: true, weight: 2 },
-    slow: { color: 0x4d8cff, good: true, weight: 2 },
+    slow: { color: 0x4d8cff, good: true, weight: 1 },
     life: { color: 0xff6fae, good: true, weight: 1 },
-    ammo: { color: 0xffd700, good: true, weight: 2 },
+    sticky: { color: 0xffd700, good: true, weight: 2 },
     shrink: { color: 0xff5252, good: false, weight: 2 },
-    fast: { color: 0xff9d2e, good: false, weight: 2 },
+    fast: { color: 0xff9d2e, good: false, weight: 1 },
 };
 
 // ─── internal types ────────────────────────────────────────────────────────
@@ -156,13 +154,13 @@ function drawDropIcon(g: Phaser.GameObjects.Graphics, kind: EffectKind, bgColor:
             g.fillCircle(3.5, -1.5, 4.5);           // right lobe
             g.fillTriangle(0, 8, -7, 0, 7, 0);      // bottom point
             break;
-        case 'ammo':
-            // ⊕ crosshair reticle
-            g.fillCircle(0, 0, 2);                   // centre dot
-            g.fillRect(-10, -1.5, 6, 3);             // left bar
-            g.fillRect(4, -1.5, 6, 3);               // right bar
-            g.fillRect(-1.5, -10, 3, 6);             // top bar
-            g.fillRect(-1.5, 4, 3, 6);               // bottom bar
+        case 'sticky':
+            // Magnet/sticky icon — U-shape magnet
+            g.fillRect(-8, -8, 4, 14);               // left arm
+            g.fillRect(4, -8, 4, 14);                // right arm
+            g.fillRect(-8, -8, 16, 4);               // top bar
+            g.fillCircle(-6, 6, 3);                  // left pole
+            g.fillCircle(6, 6, 3);                   // right pole
             break;
     }
 }
@@ -186,9 +184,12 @@ export class BrickBreakScene extends Phaser.Scene {
     private paddleWidth = PADDLE_WIDTH;
     private paddleEffectTimer = 0;
     private serveTimer = 0;
-    private ammo = START_AMMO;
+    private hasSticky = false;
+    private aimAngle = 0;          // radians, 0 = straight up
+    private aimArrow?: Phaser.GameObjects.Graphics;
 
     private primaryColor = 0xa8d67e;
+    private cameraZoom = 1;
 
     private keysHeld = new Set<string>();
     private onKeyDown = (e: KeyboardEvent) => {
@@ -221,13 +222,18 @@ export class BrickBreakScene extends Phaser.Scene {
     }
 
     create() {
+        // Camera zoom for crisp rendering at any viewport size
+        const zoom = Math.min(this.scale.width / CANVAS_WIDTH, this.scale.height / CANVAS_HEIGHT);
+        this.cameraZoom = zoom;
+        this.cameras.main.setZoom(zoom);
+        this.cameras.main.centerOn(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+        this.cameras.main.setBackgroundColor('#16161f');
+
         const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
         this.primaryColor = parseInt(primaryColorHex.replace('#', ''), 16);
 
         const volume = this.registry.get('volume') ?? 0.5;
         this.initSounds(volume);
-
-        this.cameras.main.setBackgroundColor('#16161f');
 
         // Boundary frame
         const frame = this.add.graphics();
@@ -312,6 +318,8 @@ export class BrickBreakScene extends Phaser.Scene {
         this.hudText = undefined;
         this.centerText?.destroy();
         this.centerText = undefined;
+        this.aimArrow?.destroy();
+        this.aimArrow = undefined;
     }
 
     // ─── level select ───────────────────────────────────────────────────────
@@ -322,10 +330,10 @@ export class BrickBreakScene extends Phaser.Scene {
         this.clearTransient();
 
         const title = this.add.text(CANVAS_WIDTH / 2, 70, 'SELECT LEVEL', {
-            fontFamily: 'NectoMono-Regular', fontSize: '40px', color: hexStr(this.primaryColor),
+            fontFamily: 'NectoMono-Regular', fontSize: '40px', color: hexStr(this.primaryColor), resolution: this.cameraZoom,
         }).setOrigin(0.5);
         const hint = this.add.text(CANVAS_WIDTH / 2, 112, 'Clear a level to unlock the next', {
-            fontFamily: 'NectoMono-Regular', fontSize: '15px', color: '#7a7a88',
+            fontFamily: 'NectoMono-Regular', fontSize: '15px', color: '#7a7a88', resolution: this.cameraZoom,
         }).setOrigin(0.5);
         this.transient.push(title, hint);
 
@@ -357,7 +365,7 @@ export class BrickBreakScene extends Phaser.Scene {
             if (unlocked) {
                 const numText = this.add.text(cx, cy + (completed ? 4 : 0), String(n), {
                     fontFamily: 'NectoMono-Regular', fontSize: '34px',
-                    color: completed ? hexStr(this.primaryColor) : '#dddddd',
+                    color: completed ? hexStr(this.primaryColor) : '#dddddd', resolution: this.cameraZoom,
                 }).setOrigin(0.5);
                 this.transient.push(numText);
 
@@ -407,19 +415,20 @@ export class BrickBreakScene extends Phaser.Scene {
         this.speedEffectTimer = 0;
         this.paddleWidth = PADDLE_WIDTH;
         this.paddleEffectTimer = 0;
-        this.ammo = START_AMMO;
+        this.hasSticky = false;
+        this.aimAngle = 0;
 
         this.buildLevel(level);
         this.applyPaddleWidth();
         this.spawnBallOnPaddle();
 
         this.hudText = this.add.text(14, 12, '', {
-            fontFamily: 'NectoMono-Regular', fontSize: '16px', color: '#9aa0a6',
+            fontFamily: 'NectoMono-Regular', fontSize: '16px', color: '#9aa0a6', resolution: this.cameraZoom,
         }).setOrigin(0, 0);
         this.updateHud();
 
         this.centerText = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 60, 'Get Ready...', {
-            fontFamily: 'NectoMono-Regular', fontSize: '24px', color: '#aaaaaa',
+            fontFamily: 'NectoMono-Regular', fontSize: '24px', color: '#aaaaaa', resolution: this.cameraZoom,
         }).setOrigin(0.5);
 
         this.state = BBState.Serving;
@@ -470,22 +479,18 @@ export class BrickBreakScene extends Phaser.Scene {
         }
     }
 
-    // Release all stuck balls with an aiming angle derived from their position
-    // on the paddle. Costs 1 ammo. No-ops when no stuck balls or ammo = 0.
+    // Release all stuck balls at the current aim angle.
     private releaseStuckBalls() {
         const stuck = this.balls.filter(b => b.stuck);
-        if (stuck.length === 0 || this.ammo <= 0) return;
-        this.ammo = Math.max(0, this.ammo - 1);
-        this.updateHud();
+        if (stuck.length === 0) return;
         const speed = this.currentSpeed();
-        const half = this.paddleWidth / 2;
         for (const b of stuck) {
-            const t = Phaser.Math.Clamp(b.stickOffset / half, -1, 1);
-            const angle = t * Phaser.Math.DegToRad(60);
-            b.vx = Math.sin(angle) * speed;
-            b.vy = -Math.cos(angle) * speed;
+            b.vx = Math.sin(this.aimAngle) * speed;
+            b.vy = -Math.cos(this.aimAngle) * speed;
             b.stuck = false;
         }
+        this.aimAngle = 0;
+        this.destroyAimArrow();
     }
 
     private currentSpeed(): number {
@@ -493,8 +498,8 @@ export class BrickBreakScene extends Phaser.Scene {
     }
 
     private updateHud() {
-        const ammoPips = '●'.repeat(this.ammo) + '○'.repeat(Math.max(0, MAX_AMMO - this.ammo));
-        this.hudText?.setText(`LEVEL ${this.level}    LIVES ${this.lives}    ${ammoPips}`);
+        const stickyLabel = this.hasSticky ? '  STICKY ●' : '';
+        this.hudText?.setText(`LEVEL ${this.level}    LIVES ${this.lives}${stickyLabel}`);
     }
 
     // ─── main loop ──────────────────────────────────────────────────────────
@@ -517,6 +522,7 @@ export class BrickBreakScene extends Phaser.Scene {
         if (this.state !== BBState.Playing) return;
 
         this.movePaddle(delta);
+        this.updateAimArrow(delta);
         this.updateEffects(delta);
         this.updateBalls(delta);
         this.updateDrops(delta);
@@ -532,6 +538,8 @@ export class BrickBreakScene extends Phaser.Scene {
 
     private movePaddle(delta: number) {
         if (!this.paddle) return;
+        // When a ball is stuck, left/right controls the aim arrow instead
+        if (this.balls.some(b => b.stuck)) return;
         const half = this.paddleWidth / 2;
         const step = PADDLE_SPEED * (delta / 1000);
         const left = this.keysHeld.has('ArrowLeft') || this.keysHeld.has('KeyA');
@@ -541,6 +549,65 @@ export class BrickBreakScene extends Phaser.Scene {
             this.paddle.x = Math.max(half, this.paddle.x - step);
         } else if (right) {
             this.paddle.x = Math.min(CANVAS_WIDTH - half, this.paddle.x + step);
+        }
+    }
+
+    private updateAimArrow(delta: number) {
+        const hasStuck = this.balls.some(b => b.stuck);
+        if (!hasStuck) {
+            this.destroyAimArrow();
+            return;
+        }
+
+        // Continuous aim rotation while holding Q/E
+        const aimSpeed = Phaser.Math.DegToRad(120) * (delta / 1000);
+        if (this.keysHeld.has('KeyQ') || this.keysHeld.has('ArrowLeft') || this.keysHeld.has('KeyA')) {
+            this.aimAngle = Math.max(-Phaser.Math.DegToRad(80), this.aimAngle - aimSpeed);
+        }
+        if (this.keysHeld.has('KeyE') || this.keysHeld.has('ArrowRight') || this.keysHeld.has('KeyD')) {
+            this.aimAngle = Math.min(Phaser.Math.DegToRad(80), this.aimAngle + aimSpeed);
+        }
+
+        this.drawAimArrow();
+    }
+
+    private drawAimArrow() {
+        if (!this.paddle) return;
+        if (!this.aimArrow) {
+            this.aimArrow = this.add.graphics().setDepth(500);
+        }
+        this.aimArrow.clear();
+
+        const px = this.paddle.x;
+        const py = PADDLE_Y - PADDLE_HEIGHT / 2 - BALL_RADIUS * 2 - 10;
+        const len = 60;
+        const tipX = px + Math.sin(this.aimAngle) * len;
+        const tipY = py - Math.cos(this.aimAngle) * len;
+
+        // Arrow shaft
+        this.aimArrow.lineStyle(3, this.primaryColor, 0.8);
+        this.aimArrow.beginPath();
+        this.aimArrow.moveTo(px, py);
+        this.aimArrow.lineTo(tipX, tipY);
+        this.aimArrow.strokePath();
+
+        // Arrow head
+        const headLen = 10;
+        const headAngle = Phaser.Math.DegToRad(25);
+        const baseAngle = Math.atan2(tipY - py, tipX - px);
+        this.aimArrow.fillStyle(this.primaryColor, 0.8);
+        this.aimArrow.fillTriangle(
+            tipX, tipY,
+            tipX - Math.cos(baseAngle - headAngle) * headLen,
+            tipY - Math.sin(baseAngle - headAngle) * headLen,
+            tipX - Math.cos(baseAngle + headAngle) * headLen,
+            tipY - Math.sin(baseAngle + headAngle) * headLen,
+        );
+    }
+
+    private destroyAimArrow() {
+        if (this.aimArrow) {
+            this.aimArrow.clear();
         }
     }
 
@@ -629,10 +696,10 @@ export class BrickBreakScene extends Phaser.Scene {
             b.obj.x <= this.paddle.x + half;
         if (!within) return;
 
-        // Stick the ball to the paddle when ammo is available.
-        // When ammo = 0 balls bounce freely — preserves playability and
-        // prevents any softlock from balls being stuck with no way to release.
-        if (this.ammo > 0) {
+        // Stick the ball to the paddle when sticky power-up is active.
+        if (this.hasSticky) {
+            this.hasSticky = false;
+            this.updateHud();
             b.stuck = true;
             b.stickOffset = Phaser.Math.Clamp(
                 b.obj.x - this.paddle.x,
@@ -642,6 +709,7 @@ export class BrickBreakScene extends Phaser.Scene {
             b.obj.y = top - BALL_RADIUS;
             b.vx = 0;
             b.vy = 0;
+            this.aimAngle = 0;
             this.wallHitSound?.play();
             return;
         }
@@ -794,11 +862,11 @@ export class BrickBreakScene extends Phaser.Scene {
                 break;
             case 'slow':
                 this.speedMultiplier = 0.6;
-                this.speedEffectTimer = 9000;
+                this.speedEffectTimer = Math.min(this.speedEffectTimer + 5000, 7000);
                 break;
             case 'fast':
                 this.speedMultiplier = 1.5;
-                this.speedEffectTimer = 8000;
+                this.speedEffectTimer = Math.min(this.speedEffectTimer + 5000, 7000);
                 break;
             case 'life':
                 this.lives = Math.min(MAX_LIVES, this.lives + 1);
@@ -807,8 +875,8 @@ export class BrickBreakScene extends Phaser.Scene {
             case 'multi':
                 this.spawnMultiball();
                 break;
-            case 'ammo':
-                this.ammo = Math.min(MAX_AMMO, this.ammo + 2);
+            case 'sticky':
+                this.hasSticky = true;
                 this.updateHud();
                 break;
         }
@@ -954,6 +1022,7 @@ export class BrickBreakScene extends Phaser.Scene {
                 fontSize: '38px',
                 color: hexStr(this.primaryColor),
                 letterSpacing: 3,
+                resolution: this.cameraZoom,
             }).setOrigin(0.5, 0)
         );
         y += 74;
@@ -982,6 +1051,7 @@ export class BrickBreakScene extends Phaser.Scene {
                     fontSize: isLevelLine ? '22px' : '19px',
                     color: isHighScore ? '#6a6a80' : isLevelLine ? '#c8c8e0' : '#ddddef',
                     letterSpacing: isLevelLine ? 2 : 0,
+                    resolution: this.cameraZoom,
                 }).setOrigin(0.5, 0)
             );
             y += isHighScore ? 48 : 44;
@@ -1011,6 +1081,7 @@ export class BrickBreakScene extends Phaser.Scene {
             fontSize: '14px',
             color: '#bbbbcc',
             letterSpacing: 1,
+            resolution: this.cameraZoom,
         }).setOrigin(0.5);
         rect.on('pointerover', () => {
             rect.setFillStyle(this.primaryColor, 0.12);

@@ -26,7 +26,7 @@ const PageTransition = ({ children }: PageTransitionProps) => {
         <Box
             sx={{
                 opacity: isTransitioning ? 0 : 1,
-                transform: isTransitioning ? 'translateY(20px)' : 'translateY(0)',
+                transform: isTransitioning ? 'translateY(20px)' : 'none',
                 transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
             }}
         >

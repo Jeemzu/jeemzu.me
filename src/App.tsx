@@ -117,6 +117,7 @@ const ExperiencePage = LC(lazy(() => import("./pages/experience/ExperiencePage")
 const LevelEditorPage = LC(lazy(() => import("./pages/editor/LevelEditorPage")));
 const MemorialPage = LC(lazy(() => import("./pages/memorial/MemorialPage")));
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
+const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 
 export function Routes() {
   return (
@@ -125,6 +126,7 @@ export function Routes() {
         <Switch>
           <Route path="/" component={LandingPage} />
           <Route path="/projects" component={ProjectsPage} />
+          <Route path="/games/:id" component={GamePage} />
           <Route path="/games" component={GamesPage} />
           <Route path="/experience" component={ExperiencePage} />
           <Route path="/editor" component={LevelEditorPage} />

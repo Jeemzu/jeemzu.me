@@ -8,15 +8,15 @@ const CANVAS_HEIGHT = CELL_SIZE * ROWS;
 const BOARD_OFFSET_X = 0;
 const BOARD_OFFSET_Y = 0;
 
-// Drop interval per level in ms, derived from NES Tetris frame counts at 60fps.
+// Drop interval per level in ms — gentler ramp than NES Tetris.
 // Each entry corresponds to levels 1, 2, 3, … 29+ (index = level - 1, capped).
 const LEVEL_INTERVALS: number[] = [
-    800, 717, 633, 550, 467, // 1-5
-    383, 300, 217, 133, 100, // 6-10  (level 9 is where NES gets scary)
-    83, 83, 83, 67, 67, // 11-15
-    67, 50, 50, 50, 33, // 16-20
-    33, 33, 33, 33, 33, // 21-25
-    33, 33, 33, 33, 17, // 26-30+ (level 30 is essentially unplayable)
+    900, 817, 750, 683, 617, // 1-5
+    550, 483, 417, 350, 300, // 6-10
+    250, 217, 183, 150, 133, // 11-15
+    117, 100, 83, 67, 50, // 16-20
+    50, 50, 50, 33, 33, // 21-25
+    33, 33, 33, 33, 17, // 26-30+
 ];
 
 function levelInterval(level: number): number {
@@ -130,12 +130,20 @@ export class TetrisScene extends Phaser.Scene {
     private dropSound?: Phaser.Sound.BaseSound;
     private levelText!: Phaser.GameObjects.Text;
     private linesText!: Phaser.GameObjects.Text;
+    private cameraZoom = 1;
 
     constructor() {
         super({ key: 'TetrisScene' });
     }
 
     create() {
+        // Camera zoom for crisp rendering at any viewport size
+        const zoom = Math.min(this.scale.width / CANVAS_WIDTH, this.scale.height / CANVAS_HEIGHT);
+        this.cameraZoom = zoom;
+        this.cameras.main.setZoom(zoom);
+        this.cameras.main.centerOn(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+        this.cameras.main.setBackgroundColor('#1a1a1a');
+
         // Reset state
         this.score = 0;
         this.level = 1;
@@ -153,7 +161,6 @@ export class TetrisScene extends Phaser.Scene {
             this.board.push(new Array(COLS).fill(null));
         }
 
-        this.cameras.main.setBackgroundColor('#1a1a1a');
         this.graphics = this.add.graphics();
 
         // Keyboard — window-level listeners so key state is never stuck
@@ -173,18 +180,21 @@ export class TetrisScene extends Phaser.Scene {
             fontFamily: 'NectoMono-Regular',
             color: '#888888',
             fontStyle: 'bold',
+            resolution: this.cameraZoom,
         });
 
         this.levelText = this.add.text(panelX, 160, `Level: ${this.level}`, {
             fontSize: '18px',
             fontFamily: 'NectoMono-Regular',
             color: '#888888',
+            resolution: this.cameraZoom,
         });
 
         this.linesText = this.add.text(panelX, 190, `Lines: ${this.linesCleared}`, {
             fontSize: '18px',
             fontFamily: 'NectoMono-Regular',
             color: '#888888',
+            resolution: this.cameraZoom,
         });
 
         // Emit initial score
@@ -224,6 +234,13 @@ export class TetrisScene extends Phaser.Scene {
                 if (!this.movePiece(1, 0)) {
                     // Can't move down - lock the piece
                     this.lockPiece();
+                } else {
+                    // After a successful drop, retry held horizontal direction
+                    // so the player doesn't have to wait for the next DAS tick.
+                    if (this.dasDirection) {
+                        const colDelta = this.dasDirection === 'left' ? -1 : 1;
+                        this.movePiece(0, colDelta);
+                    }
                 }
             }
         }
@@ -256,7 +273,10 @@ export class TetrisScene extends Phaser.Scene {
             this.dasTimer += delta;
             if (!this.dasActive && this.dasTimer >= this.dasDelay) {
                 this.dasActive = true;
-                this.dasTimer = this.dasDelay; // Reset to start of repeat
+                this.dasTimer = this.dasDelay;
+                // Fire immediately on DAS activation
+                const colDelta = currentDir === 'left' ? -1 : 1;
+                this.movePiece(0, colDelta);
             }
             if (this.dasActive) {
                 // Auto-repeat
@@ -406,7 +426,7 @@ export class TetrisScene extends Phaser.Scene {
             this.game.events.emit('scoreUpdate', this.score);
 
             // Level up every 10 lines (classic rule)
-            const newLevel = Math.floor(this.linesCleared / 10) + 1;
+            const newLevel = Math.floor(this.linesCleared / 15) + 1;
             if (newLevel > this.level) {
                 this.level = newLevel;
                 this.dropInterval = levelInterval(this.level);

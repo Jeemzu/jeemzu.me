@@ -1,12 +1,8 @@
 import { useState } from 'react';
-import GameContainer from '../../components/GameContainer';
+import { useLocation } from 'wouter';
 import WasmGameContainer from '../../components/WasmGameContainer';
 import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
 import ComingSoonModal from '../../components/ComingSoonModal';
-import { createSnakeGameConfig } from '../../games/SnakeGame';
-import { createZAimGameConfig } from '../../games/ZAimGame';
-import { createBrickBreakGameConfig } from '../../games/BrickBreakGame';
-import { createTetrisGameConfig } from '../../games/TetrisGame';
 import { type GameDataProps } from "../GameTypes";
 import { type LevelFile } from '../LevelSchema';
 import { markLevelCompleted } from '../../components/PlatformerLevelSelect';
@@ -23,50 +19,15 @@ import platformerpng from '../../assets/images/platformer.png';
 import comingSoonpng from "../../assets/images/comingsoon.png";
 
 export const useGameLauncher = () => {
-    const [currentGame, setCurrentGame] = useState<{
-        id: string;
-        title: string;
-        config: ReturnType<typeof createSnakeGameConfig> | ReturnType<typeof createZAimGameConfig>;
-        showColorOption?: boolean;
-    } | null>(null);
+    const [, navigate] = useLocation();
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
     const [platformerOpen, setPlatformerOpen] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
-    const launchSnake = () => {
-        setCurrentGame({
-            id: 'snake',
-            title: 'Snake',
-            config: createSnakeGameConfig(),
-            showColorOption: true,
-        });
-    };
-
-    const launchZAim = () => {
-        setCurrentGame({
-            id: 'zaim',
-            title: 'zAim',
-            config: createZAimGameConfig(),
-            showColorOption: true,
-        });
-    };
-
-    const launchBrickBreak = () => {
-        setCurrentGame({
-            id: 'brickbreak',
-            title: 'Brick Break',
-            config: createBrickBreakGameConfig(),
-            showColorOption: true,
-        });
-    };
-
-    const launchTetris = () => {
-        setCurrentGame({
-            id: 'tetris',
-            title: 'Tetris',
-            config: createTetrisGameConfig(),
-        });
-    };
+    const launchSnake = () => navigate('/games/snake');
+    const launchZAim = () => navigate('/games/zaim');
+    const launchBrickBreak = () => navigate('/games/brickbreak');
+    const launchTetris = () => navigate('/games/tetris');
 
     const launchPlatformer = () => {
         setSelectedLevel(null);
@@ -77,24 +38,11 @@ export const useGameLauncher = () => {
         setComingSoonGame(gameTitle);
     };
 
-    const closeGame = () => {
-        setCurrentGame(null);
-    };
-
     const closeComingSoon = () => {
         setComingSoonGame(null);
     };
 
-    const GameModal = currentGame ? (
-        <GameContainer
-            open={!!currentGame}
-            onClose={closeGame}
-            gameTitle={currentGame.title}
-            gameId={currentGame.id}
-            gameConfig={currentGame.config}
-            showColorOption={currentGame.showColorOption}
-        />
-    ) : null;
+    const GameModal = null;
 
     const ComingSoonGameModal = comingSoonGame ? (
         <ComingSoonModal

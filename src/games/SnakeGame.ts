@@ -33,6 +33,14 @@ export class SnakeScene extends Phaser.Scene {
     }
 
     create() {
+        // Camera zoom for crisp rendering at any viewport size
+        const W = GRID_SIZE * CELL_SIZE;
+        const H = GRID_SIZE * CELL_SIZE;
+        const zoom = Math.min(this.scale.width / W, this.scale.height / H);
+        this.cameras.main.setZoom(zoom);
+        this.cameras.main.centerOn(W / 2, H / 2);
+        this.cameras.main.setBackgroundColor('#1a1a1a');
+
         // Get color settings from registry
         const primaryColorHex = this.registry.get('primaryColor') || '#a8d67e';
         const baseColor = parseInt(primaryColorHex.replace('#', '0x'));

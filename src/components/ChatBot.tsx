@@ -262,8 +262,7 @@ const ChatBot = () => {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             disabled={loading}
-                            multiline
-                            maxRows={3}
+                            autoComplete="off"
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     fontFamily: FONTS.NECTO_MONO,
