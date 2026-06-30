@@ -17,9 +17,7 @@ const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
     'http://localhost:5000/api';
 
-const AGENT_URL =
-    import.meta.env.VITE_AGENT_URL ||
-    'http://localhost:8001';
+const AGENT_URL = import.meta.env.VITE_AGENT_URL || '';
 
 interface AgentChatResponse {
     answer: string;
@@ -30,26 +28,34 @@ interface AgentChatResponse {
 /**
  * POST /chat (agent service)
  * Sends a question to the multi-agent orchestration layer.
- * Falls back to the .NET RAG endpoint if the agent service is unreachable.
+ * Falls back to the .NET RAG endpoint if the agent service is unreachable or not configured.
  */
 export async function chatRequest(
     question: string,
     history: ConversationMessage[],
 ): Promise<string | null> {
-    // Try the agent service first
-    try {
-        const response = await fetch(`${AGENT_URL}/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, history }),
-        });
+    // Try the agent service if configured (5s timeout for cold starts)
+    if (AGENT_URL) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
 
-        if (response.ok) {
-            const data = (await response.json()) as AgentChatResponse;
-            return data.answer ?? null;
+            const response = await fetch(`${AGENT_URL}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question, history }),
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeout);
+
+            if (response.ok) {
+                const data = (await response.json()) as AgentChatResponse;
+                return data.answer ?? null;
+            }
+        } catch {
+            // Agent service unavailable or timed out — fall through to .NET fallback
         }
-    } catch {
-        // Agent service unavailable — fall through to .NET fallback
     }
 
     // Fallback: direct .NET RAG endpoint
