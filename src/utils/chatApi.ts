@@ -34,11 +34,11 @@ export async function chatRequest(
     question: string,
     history: ConversationMessage[],
 ): Promise<string | null> {
-    // Try the agent service if configured (5s timeout for cold starts)
+    // Try the agent service if configured (15s timeout for cold starts)
     if (AGENT_URL) {
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 5000);
+            const timeout = setTimeout(() => controller.abort(), 15000);
 
             const response = await fetch(`${AGENT_URL}/chat`, {
                 method: 'POST',
