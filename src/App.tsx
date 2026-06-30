@@ -10,7 +10,7 @@ import { FONTS } from './lib/globals';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
 
-type LazyComponentT = React.LazyExoticComponent<() => JSX.Element>;
+type LazyComponentT = React.LazyExoticComponent<() => JSX.Element | null>;
 
 // Enhanced Loading Component
 const LoadingSpinner = () => (
