@@ -1,7 +1,7 @@
 /**
  * Chat API Service
- * Calls the stateless RAG chatbot endpoint.
- * All types come from src/types/api.generated.ts.
+ * Calls the multi-agent orchestrated chatbot via the Python LangGraph service.
+ * Falls back to the .NET RAG endpoint if the agent service is unavailable.
  *
  * The server is fully stateless — the client is responsible for tracking
  * conversation history and sending it with each request.
@@ -17,15 +17,42 @@ const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
     'http://localhost:5000/api';
 
+const AGENT_URL =
+    import.meta.env.VITE_AGENT_URL ||
+    'http://localhost:8001';
+
+interface AgentChatResponse {
+    answer: string;
+    agents_used: string[];
+    used_web_search: boolean;
+}
+
 /**
- * POST /api/chat
- * Sends a question along with prior conversation history and returns the AI answer.
- * Returns null if the request fails so callers can show a graceful error.
+ * POST /chat (agent service)
+ * Sends a question to the multi-agent orchestration layer.
+ * Falls back to the .NET RAG endpoint if the agent service is unreachable.
  */
 export async function chatRequest(
     question: string,
     history: ConversationMessage[],
 ): Promise<string | null> {
+    // Try the agent service first
+    try {
+        const response = await fetch(`${AGENT_URL}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, history }),
+        });
+
+        if (response.ok) {
+            const data = (await response.json()) as AgentChatResponse;
+            return data.answer ?? null;
+        }
+    } catch {
+        // Agent service unavailable — fall through to .NET fallback
+    }
+
+    // Fallback: direct .NET RAG endpoint
     try {
         const body: ApiSchemas['ChatRequest'] = { question, history };
         const response = await fetch(`${API_BASE_URL}/chat`, {

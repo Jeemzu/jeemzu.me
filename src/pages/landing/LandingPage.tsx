@@ -3,13 +3,12 @@ import { FaDice, FaEnvelope, FaFile, FaCode, FaRoad, FaChartSimple } from "react
 import { onClickUrl } from "../../utils/openInNewTab";
 import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
-import AboutMe from "./AboutMe";
+import LandingChat from "./LandingChat";
 import { useState, useRef } from "react";
 
 const LandingPage = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery('(max-width:900px)');
-    const isWideScreen = useMediaQuery('(min-width:1400px)');
     const [openImage, setOpenImage] = useState<string | null>(null);
     const heroRef = useRef<HTMLDivElement>(null);
 
@@ -232,9 +231,9 @@ const LandingPage = () => {
                 </Box>
             </Box>
 
-            {/* About Me Section - Pass hideImages prop on wide screens */}
+            {/* Chat Section */}
             <Box sx={{ mt: { xs: 3, md: 4 } }}>
-                <AboutMe hideImages={isWideScreen} />
+                <LandingChat />
             </Box>
 
             {/* Image Modal */}
