@@ -25,6 +25,13 @@ export const projectData: ProjectDataProps[] = [
         degrees: 0,
     },
     {
+        img: websiteImg,
+        title: 'JeemzuAI',
+        description: 'A multi-agent AI assistant powered by LangGraph and GPT-4o-mini — routes queries across knowledge, game stats, and web search agents.',
+        link: 'https://github.com/Jeemzu/jeemzu.api',
+        degrees: 1,
+    },
+    {
         title: 'This Website!',
         img: websiteImg,
         description: 'My personal portfolio website built with React and TypeScript',

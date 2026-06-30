@@ -879,7 +879,7 @@ export default function AlgoVizPage() {
                                 }}>
                                     Each preset inserts a different set of values — some trigger many rotations, others stay nearly balanced.
                                 </Typography>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, paddingTop: 2 }}>
                                     {AVL_PRESETS.map((p, i) => (
                                         <Box
                                             key={p.label}
