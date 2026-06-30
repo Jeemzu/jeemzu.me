@@ -20,6 +20,7 @@ const Navigation = () => {
         { label: "Projects", path: "/projects" },
         { label: "Experience", path: "/experience" },
         { label: "Games", path: "/games" },
+        ...(role === 'Admin' ? [{ label: "Admin", path: "/admin" }] : []),
     ];
 
     const NavButton = ({ label, path, mobile = false }: { label: string; path: string; mobile?: boolean }) => {
