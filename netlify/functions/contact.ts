@@ -45,7 +45,7 @@ export const handler: Handler = async (event) => {
         .join("\n");
 
     const { error } = await resend.emails.send({
-        from: "Contact Form <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM_EMAIL ?? "Contact Form <onboarding@resend.dev>",
         to: RECIPIENT,
         replyTo,
         subject: `[jeemzu.me] ${subject.trim()}`,

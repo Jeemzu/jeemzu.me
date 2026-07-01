@@ -61,7 +61,11 @@ const ContactModal = ({ open, onClose }: ContactModalProps) => {
                 reset();
             } else {
                 const body = (await response.json()) as { error?: string };
-                setErrorMessage(body.error ?? "Something went wrong. Please try again.");
+                const msg =
+                    response.status === 502
+                        ? "Service temporarily unavailable. Please try again later."
+                        : (body.error ?? "Something went wrong. Please try again.");
+                setErrorMessage(msg);
                 setSubmitStatus("error");
             }
         } catch {
