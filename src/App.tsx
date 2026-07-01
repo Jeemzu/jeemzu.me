@@ -118,6 +118,7 @@ const MemorialPage = LC(lazy(() => import("./pages/memorial/MemorialPage")));
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
+const RPGPage = LC(lazy(() => import("./pages/rpg/RPGPage")));
 
 export function Routes() {
   return (
@@ -133,12 +134,13 @@ export function Routes() {
           <Route path="/memorial" component={MemorialPage} />
           <Route path="/algoviz" component={AlgoVizPage} />
           <Route path="/admin" component={AdminPage} />
+          <Route path="/rpg" component={RPGPage} />
           <Route>
             <Custom404 />
           </Route>
-        </Switch>
-      </PageTransition>
-    </Router>
+        </Switch >
+      </PageTransition >
+    </Router >
   );
 }
 
