@@ -169,7 +169,7 @@ const LandingChat = () => {
                                         color: '#666',
                                     }}
                                 >
-                                    Lil' Jay is thinking...
+                                    JeemzuAI is thinking...
                                 </Typography>
                             </Box>
                         </Box>
@@ -226,7 +226,7 @@ const LandingChat = () => {
                 <TextField
                     fullWidth
                     variant="standard"
-                    placeholder="Ask Lil' Jay anything about James..."
+                    placeholder="Ask JeemzuAI anything about James..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -274,7 +274,7 @@ const LandingChat = () => {
                     mt: 1.5,
                 }}
             >
-                Powered by Lil' Jay · Multi-agent AI
+                Powered by JeemzuAI · Multi-agent AI
             </Typography>
         </Box>
     );
