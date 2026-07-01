@@ -4,10 +4,12 @@ import { EFFECTS, FONTS, LINKS } from "../../lib/globals"
 import { FaGithub, FaLinkedin, FaEnvelope, FaPaw } from "react-icons/fa6"
 import { onClickUrl } from "../../utils/openInNewTab"
 import beansImg from '../../assets/images/beans.png'
+import ContactModal from "../ContactModal"
 
 const Footer = () => {
     const theme = useTheme();
     const [openImage, setOpenImage] = useState(false);
+    const [contactOpen, setContactOpen] = useState(false);
 
     return (
         <React.Fragment>
@@ -89,7 +91,7 @@ const Footer = () => {
                                     </IconButton>
                                     <IconButton
                                         size="small"
-                                        onClick={onClickUrl(LINKS.EMAIL)}
+                                        onClick={() => setContactOpen(true)}
                                         sx={{
                                             color: theme.palette.textSecondary.main,
                                             transition: EFFECTS.TRANSITION,
@@ -198,6 +200,7 @@ const Footer = () => {
                     />
                 </Box>
             </Modal>
+            <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
         </React.Fragment>
     )
 }

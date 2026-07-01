@@ -16,6 +16,7 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@marsidev/react-turnstile": "^1.5.3",
     "@microsoft/signalr": "^8.0.7",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.1.0",

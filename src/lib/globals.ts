@@ -11,7 +11,6 @@ export const LINKS = {
     LINKEDIN: 'https://www.linkedin.com/in/james-friedenberg-664643105',
     GITHUB: 'https://github.com/Jeemzu',
     MINECRAFT_CREDITS: 'https://www.minecraft.net/en-us/credits',
-    EMAIL: 'mailto:jamesfriedenberg@gmail.com?subject=Hello%20from%20your%20website!',
     RESUME: resumePdf,
 } as const;
 

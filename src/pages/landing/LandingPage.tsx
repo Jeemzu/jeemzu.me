@@ -5,11 +5,13 @@ import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
 import { Link } from "wouter";
 import LandingChat from "./LandingChat";
 import { useState, useRef } from "react";
+import ContactModal from "../../components/ContactModal";
 
 const LandingPage = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery('(max-width:900px)');
     const [openImage, setOpenImage] = useState<string | null>(null);
+    const [contactOpen, setContactOpen] = useState(false);
     const heroRef = useRef<HTMLDivElement>(null);
 
     return (
@@ -181,7 +183,7 @@ const LandingPage = () => {
                                 variant="contained"
                                 size="medium"
                                 startIcon={<FaEnvelope />}
-                                onClick={onClickUrl(LINKS.EMAIL)}
+                                onClick={() => setContactOpen(true)}
                                 sx={{
                                     backgroundColor: theme.palette.primaryGreen.main,
                                     color: theme.palette.background.default,
@@ -198,7 +200,7 @@ const LandingPage = () => {
                                     }
                                 }}
                             >
-                                Email
+                                Contact
                             </Button>
 
                             <Button
@@ -282,6 +284,7 @@ const LandingPage = () => {
                     )}
                 </Box>
             </Modal>
+            <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
         </Container>
     );
 };
