@@ -1,8 +1,9 @@
-import { Modal, Box, Typography, Stack, IconButton, useTheme, Tooltip } from "@mui/material";
-import { FaXmark, FaEnvelope, FaPhone, FaCopy } from "react-icons/fa6";
+import { Modal, Box, Typography, Stack, IconButton, useTheme, Tooltip, TextField, Button, Divider, CircularProgress } from "@mui/material";
+import { FaXmark, FaEnvelope, FaPhone, FaCopy, FaPaperPlane } from "react-icons/fa6";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useState } from "react";
 import { FONTS, EFFECTS } from "../lib/globals";
+import { sendContactEmail } from "../utils/contactApi";
 
 interface ContactModalProps {
     open: boolean;
@@ -42,10 +43,35 @@ const ContactRow = ({ icon, value }: { icon: React.ReactNode; value: string }) =
 const ContactModal = ({ open, onClose }: ContactModalProps) => {
     const theme = useTheme();
     const [verified, setVerified] = useState(false);
+    const [subject, setSubject] = useState('');
+    const [content, setContent] = useState('');
+    const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
 
     const handleClose = () => {
         setVerified(false);
+        setSubject('');
+        setContent('');
+        setSending(false);
+        setSent(false);
+        setSendError(null);
         onClose();
+    };
+
+    const handleSubmit = async () => {
+        if (!subject.trim() || !content.trim()) return;
+        setSending(true);
+        setSendError(null);
+        const result = await sendContactEmail({ subject: subject.trim(), content: content.trim() });
+        setSending(false);
+        if (result.success) {
+            setSent(true);
+            setSubject('');
+            setContent('');
+        } else {
+            setSendError(result.error ?? 'Something went wrong.');
+        }
     };
 
     return (
@@ -96,6 +122,93 @@ const ContactModal = ({ open, onClose }: ContactModalProps) => {
                     <Stack spacing={2.5}>
                         <ContactRow icon={<FaEnvelope size={18} />} value="jamesfriedenberg@gmail.com" />
                         <ContactRow icon={<FaPhone size={18} />} value="(425) 299-3262" />
+
+                        <Divider sx={{ borderColor: theme.palette.divider, my: 0.5 }} />
+
+                        <Typography
+                            fontFamily={FONTS.NECTO_MONO}
+                            sx={{ color: theme.palette.textSecondary.main, fontSize: '0.85rem' }}
+                        >
+                            Or send me a message:
+                        </Typography>
+
+                        {sent ? (
+                            <Typography
+                                fontFamily={FONTS.NECTO_MONO}
+                                sx={{ color: theme.palette.primaryGreen.main, fontSize: '0.9rem', textAlign: 'center' }}
+                            >
+                                Message sent!
+                            </Typography>
+                        ) : (
+                            <Stack spacing={1.5}>
+                                <TextField
+                                    label="Subject"
+                                    value={subject}
+                                    onChange={e => setSubject(e.target.value)}
+                                    inputProps={{ maxLength: 200 }}
+                                    size="small"
+                                    fullWidth
+                                    disabled={sending}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            '& fieldset': { borderColor: theme.palette.divider },
+                                            '&:hover fieldset': { borderColor: theme.palette.primaryGreen.main },
+                                            '&.Mui-focused fieldset': { borderColor: theme.palette.primaryGreen.main },
+                                        },
+                                        '& .MuiInputLabel-root': { fontFamily: FONTS.NECTO_MONO },
+                                        '& .MuiInputLabel-root.Mui-focused': { color: theme.palette.primaryGreen.main },
+                                    }}
+                                />
+                                <TextField
+                                    label="Message"
+                                    value={content}
+                                    onChange={e => setContent(e.target.value)}
+                                    inputProps={{ maxLength: 5000 }}
+                                    multiline
+                                    minRows={3}
+                                    maxRows={8}
+                                    size="small"
+                                    fullWidth
+                                    disabled={sending}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            fontFamily: FONTS.NECTO_MONO,
+                                            '& fieldset': { borderColor: theme.palette.divider },
+                                            '&:hover fieldset': { borderColor: theme.palette.primaryGreen.main },
+                                            '&.Mui-focused fieldset': { borderColor: theme.palette.primaryGreen.main },
+                                        },
+                                        '& .MuiInputLabel-root': { fontFamily: FONTS.NECTO_MONO },
+                                        '& .MuiInputLabel-root.Mui-focused': { color: theme.palette.primaryGreen.main },
+                                    }}
+                                />
+                                {sendError && (
+                                    <Typography
+                                        fontFamily={FONTS.NECTO_MONO}
+                                        sx={{ color: theme.palette.error.main, fontSize: '0.8rem' }}
+                                    >
+                                        {sendError}
+                                    </Typography>
+                                )}
+                                <Button
+                                    variant="outlined"
+                                    onClick={handleSubmit}
+                                    disabled={sending || !subject.trim() || !content.trim()}
+                                    startIcon={sending ? <CircularProgress size={14} color="inherit" /> : <FaPaperPlane size={14} />}
+                                    sx={{
+                                        fontFamily: FONTS.NECTO_MONO,
+                                        borderColor: theme.palette.primaryGreen.main,
+                                        color: theme.palette.primaryGreen.main,
+                                        transition: EFFECTS.TRANSITION,
+                                        '&:hover': { borderColor: theme.palette.softGreen.main, color: theme.palette.softGreen.main },
+                                        '&:disabled': { opacity: 0.5 },
+                                        alignSelf: 'flex-end',
+                                    }}
+                                >
+                                    {sending ? 'Sending...' : 'Send'}
+                                </Button>
+                            </Stack>
+                        )}
                     </Stack>
                 )}
             </Box>

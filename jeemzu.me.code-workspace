@@ -8,7 +8,7 @@
 		}
 	],
 	"settings": {
-		"typescript.tsdk": "node_modules/typescript/lib",
+		"js/ts.tsdk.path": "node_modules/typescript/lib",
 		"task.allowAutomaticTasks": "on"
 	},
 	"tasks": {
@@ -28,8 +28,7 @@
 				"problemMatcher": [],
 				"presentation": {
 					"panel": "new",
-					"reveal": "always",
-					"tab": "Frontend: Dev Server"
+					"reveal": "always"
 				}
 			},
 			{
@@ -46,8 +45,24 @@
 				"problemMatcher": [],
 				"presentation": {
 					"panel": "new",
-					"reveal": "always",
-					"tab": "API: Dev Server"
+					"reveal": "always"
+				}
+			},
+			{
+				"label": "Docker: Dev Services",
+				"type": "shell",
+				"command": "docker compose up agents",
+				"options": {
+					"cwd": "${workspaceFolder:jeemzu.api}"
+				},
+				"runOptions": {
+					"runOn": "folderOpen"
+				},
+				"isBackground": true,
+				"problemMatcher": [],
+				"presentation": {
+					"panel": "new",
+					"reveal": "always"
 				}
 			}
 		]
