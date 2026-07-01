@@ -19,40 +19,39 @@ export const modalStyle: SxProps = {
 
 export const cardData: JourneyCardModal[] = [
     {
-        milestoneLocation: "Mojang Studios",
+        milestoneLocation: "Microsoft (Mojang Studios)",
         milestoneTitle: "Software Engineer",
-        milestoneTimeline: "March 2022 - Present",
-        milestoneDescription: "At Mojang Studios, I collaborate with some of the world's best gameplay designers on Minecraft: Bedrock Edition!",
+        milestoneTimeline: "March 2022 - June 2026",
+        milestoneDescription: "At Mojang Studios (Microsoft), I worked alongside world-class gameplay designers and engineers on Minecraft: Bedrock Edition — building live event platforms, developer tooling, and cloud infrastructure at scale.",
         milestoneBullets: {
             "Minecraft Live Events": [
-                "Helped launch Minecraft's Live Events platform for the 2022 Mob Vote by pioneering the game's first automated multiplayer performance testing.",
-                "Designed and engineered the prototypes for several gameplay systems in the 2023 Minecraft Legends Live Event, launching an experience that was enjoyed by over 3 million players!",
-                "Provide ongoing Live Event support to third-party studios.",
+                "Engineered Minecraft's first automated multiplayer performance testing framework, achieving an 8x server capacity increase (10 → 80 players) and cutting Azure infrastructure costs by 88% (~$20k+ saved per event).",
+                "Developed the foundational prototype and gameplay systems for the Minecraft Legends promotional live event, reaching 3M+ players and driving an estimated $6M in franchise marketing value.",
             ],
             "Developer Tooling": [
-                "Rebuilt Live Events Management internal tooling as a React web application, integrating it into the Auger website to enable distribution to third - party creators and streamline the live events deployment process.",
-                "Transitioned to the MCTools platform team and modernized the TypeScript codebase to current standards; expanded content validators to reduce manual review workload for the Minecraft Vanilla team and external creators.",
-                "Built a telemetry framework using Application Insights with custom event logging and real - time issue detection, and developed a localization framework enabling MCTools in 20 + languages."
+                "Modernized the MCTools TypeScript codebase and expanded creator content validation suites, replacing manual workflows with automated pipelines that cut hundreds of engineering labor hours per release cycle.",
+                "Designed a telemetry and observability framework for MCTools using Azure Application Insights, enabling custom event instrumentation, real-time monitoring, and issue detection across the platform.",
+                "Developed a localization framework bringing MCTools into compliance with the minecraft.net domain and making it available in 20+ languages.",
             ],
-            "Teamwork and Collaboration": [
-                "I've only been part of 2 teams during my time at Mojang, but my work has spanned multiple disciplines such as gameplay design, UI/UX, and performance testing.",
-                "I've been able to work closely with some of the world's best designers, artists, testers, PM's, and other engineers in an Agile environment where communication and efficiency are key.",
+            "Leadership": [
+                "Mentored and onboarded new engineers to the Minecraft web and platform stack, providing guidance on React, TypeScript, deployment workflows, and telemetry tooling.",
             ],
         },
         degrees: 2,
     },
     {
         milestoneLocation: "DIGARC",
-        milestoneTitle: "QA Automation Engineer",
+        milestoneTitle: "Software Design Engineer in Test",
         milestoneTimeline: "March 2021 - March 2022",
-        milestoneDescription: "At DIGARC, I helped to create and support a scheduling tool that is used by over 100 colleges and universities across the US.",
+        milestoneDescription: "At DIGARC, I helped create and support a scheduling tool used by over 100 colleges and universities across the US.",
         milestoneBullets: {
             "Automated Testing": [
-                "As my team's sole QA Automation Engineer, I updated and maintained over 3000 Protractor automated tests, ensuring reliable frontend regression coverage.",
+                "Engineered and maintained several hundred automated E2E tests using Cypress and Vitest, ensuring reliable frontend regression coverage.",
+                "Spearheaded the adoption of modern testing frameworks (Vitest, Cypress) to replace legacy test infrastructure.",
             ],
             "Teamwork and Collaboration": [
-                "Often led team meetings that addressed product quality for production deployments.",
-                "Crafted test plans and coordinated development progress tracking across development and QA teams."
+                "Authored detailed test plans and tracked quality initiatives via Jira across an Agile team of developers, testers, and a PM.",
+                "Led team meetings to address product quality and coordinate deployment readiness.",
             ]
         },
         degrees: -2
@@ -61,13 +60,13 @@ export const cardData: JourneyCardModal[] = [
         milestoneLocation: "Andromeda Systems Inc.",
         milestoneTitle: "Software Design Engineer in Test",
         milestoneTimeline: "August 2019 - March 2021",
-        milestoneDescription: "At ASI, I developed tests and frontend features for a web application that is used by the US Navy to manage aircraft maintenance.",
+        milestoneDescription: "At ASI, I developed tests and frontend features for a web application used by the US Navy to manage aircraft maintenance.",
         milestoneBullets: {
             "Automated Testing": [
-                "Developed over 200 automated C# Selenium WebDriver tests for frontend systems, boosting test coverage and deployment confidence."
+                "Developed 500+ frontend automated tests for an inventory management application used by the U.S. Navy for aircraft maintenance tracking.",
             ],
             "Frontend Development": [
-                "Engineered Angular components for administrative tools, combining database queries with UX enhancements to improve client operations."
+                "Designed and built dozens of Angular components using TypeScript in an Agile environment, enhancing administrative tooling for client operations.",
             ],
         },
         degrees: 2
