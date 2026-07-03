@@ -4,8 +4,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
     Box, Typography, Chip, Slider,
-    CircularProgress, LinearProgress, IconButton,
+    CircularProgress, LinearProgress, IconButton, useMediaQuery, Collapse,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
@@ -155,6 +157,8 @@ export default function AlgoVizPage() {
     // ── Shared ────────────────────────────────────────────────────────────
     const [speedVal, setSpeedVal] = useState(1);
     const [error, setError] = useState<string | null>(null);
+    const [controlsExpanded, setControlsExpanded] = useState(false);
+    const isMobileViz = useMediaQuery('(max-width:768px)');
 
     // Stable refs for async closures
     const selAlgoRef = useRef(selAlgo);
@@ -409,44 +413,21 @@ export default function AlgoVizPage() {
                         <Box sx={
                             cmpPhase === 'active'
                                 ? {
-                                    flex: 1, position: 'relative', aspectRatio: '960/720', minWidth: 0,
+                                    flex: 1, position: 'relative', minWidth: 0,
                                     borderRadius: 2, overflow: 'hidden',
                                     boxShadow: `0 0 0 1px ${GOLD}30, 0 8px 32px rgba(0,0,0,0.5)`,
                                 }
-                                : { flex: 1, position: 'relative', aspectRatio: '960/720', minWidth: 0 }
+                                : { flex: 1, position: 'relative', minWidth: 0 }
                         }>
-                            <canvas
-                                ref={canvas1Ref}
-                                width={960}
-                                height={720}
-                                style={{ display: 'block', width: '100%', height: '100%' }}
-                            />
-
-                            {/* Loading overlay */}
-                            {phase === 'loading' && (
-                                <Box sx={{
-                                    position: 'absolute', inset: 0,
-                                    display: 'flex', flexDirection: 'column',
-                                    alignItems: 'center', justifyContent: 'center',
-                                    bgcolor: 'rgba(10,10,25,0.9)',
-                                }}>
-                                    <CircularProgress size={56} sx={{ color: GOLD, mb: 2 }} />
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#b0b0b0' }}>
-                                        Generating {selAlgo?.name ?? 'algorithm'}…
-                                    </Typography>
-                                </Box>
-                            )}
-
                             {/* Info strip */}
                             {phase === 'viz' && (
                                 <Box sx={{
-                                    position: 'absolute', top: 0, left: 0, right: 0,
-                                    px: 3, py: 1,
+                                    px: { xs: 1.5, sm: 3 }, py: 1,
                                     display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
                                     bgcolor: '#0d0d20',
                                     borderBottom: '1px solid rgba(255,255,255,0.07)',
                                 }}>
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '0.85rem', sm: '1rem' }, color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {selAlgo?.name}
                                         {cmpPhase === 'active' && <Box component="span" sx={{ color: GOLD, fontSize: '0.75rem', ml: 0.75 }}>(A)</Box>}
                                     </Typography>
@@ -464,53 +445,55 @@ export default function AlgoVizPage() {
                                     variant="determinate"
                                     value={progress1}
                                     sx={{
-                                        position: 'absolute', top: 46, left: 0, right: 0, height: 4,
+                                        height: 4,
                                         bgcolor: 'rgba(255,255,255,0.05)',
                                         '& .MuiLinearProgress-bar': { bgcolor: runState === 3 ? GREEN : GOLD },
                                     }}
                                 />
                             )}
-                        </Box>
 
-                        {/* ── Secondary canvas (compare) ── */}
-                        {(cmpPhase === 'loading2' || cmpPhase === 'active') && (
-                            <Box sx={{
-                                flex: 1, position: 'relative',
-                                aspectRatio: '960/720', minWidth: 0,
-                                borderRadius: 2, overflow: 'hidden',
-                                boxShadow: `0 0 0 1px ${GREEN}30, 0 8px 32px rgba(0,0,0,0.5)`,
-                            }}>
+                            <Box sx={{ position: 'relative', aspectRatio: '960/720' }}>
                                 <canvas
-                                    ref={canvas2Ref}
+                                    ref={canvas1Ref}
                                     width={960}
                                     height={720}
                                     style={{ display: 'block', width: '100%', height: '100%' }}
                                 />
 
-                                {cmpPhase === 'loading2' && (
+                                {/* Loading overlay */}
+                                {phase === 'loading' && (
                                     <Box sx={{
                                         position: 'absolute', inset: 0,
                                         display: 'flex', flexDirection: 'column',
                                         alignItems: 'center', justifyContent: 'center',
                                         bgcolor: 'rgba(10,10,25,0.9)',
                                     }}>
-                                        <CircularProgress size={48} sx={{ color: GREEN, mb: 2 }} />
+                                        <CircularProgress size={56} sx={{ color: GOLD, mb: 2 }} />
                                         <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#b0b0b0' }}>
-                                            Preparing comparison…
+                                            Generating {selAlgo?.name ?? 'algorithm'}…
                                         </Typography>
                                     </Box>
                                 )}
+                            </Box>
+                        </Box>
 
+                        {/* ── Secondary canvas (compare) ── */}
+                        {(cmpPhase === 'loading2' || cmpPhase === 'active') && (
+                            <Box sx={{
+                                flex: 1, position: 'relative',
+                                minWidth: 0,
+                                borderRadius: 2, overflow: 'hidden',
+                                boxShadow: `0 0 0 1px ${GREEN}30, 0 8px 32px rgba(0,0,0,0.5)`,
+                            }}>
                                 {cmpPhase === 'active' && (
                                     <>
                                         <Box sx={{
-                                            position: 'absolute', top: 0, left: 0, right: 0,
-                                            px: 3, py: 1,
+                                            px: { xs: 1.5, sm: 3 }, py: 1,
                                             display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
                                             bgcolor: '#0d0d20',
                                             borderBottom: '1px solid rgba(255,255,255,0.07)',
                                         }}>
-                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '0.85rem', sm: '1rem' }, color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {cmpSelAlgo?.name}
                                                 <Box component="span" sx={{ color: GREEN, fontSize: '0.75rem', ml: 0.75 }}>(B)</Box>
                                             </Typography>
@@ -522,13 +505,36 @@ export default function AlgoVizPage() {
                                             variant="determinate"
                                             value={progress2}
                                             sx={{
-                                                position: 'absolute', top: 46, left: 0, right: 0, height: 4,
+                                                height: 4,
                                                 bgcolor: 'rgba(255,255,255,0.05)',
                                                 '& .MuiLinearProgress-bar': { bgcolor: runState2 === 3 ? SOFT_GREEN : GREEN },
                                             }}
                                         />
                                     </>
                                 )}
+
+                                <Box sx={{ position: 'relative', aspectRatio: '960/720' }}>
+                                    <canvas
+                                        ref={canvas2Ref}
+                                        width={960}
+                                        height={720}
+                                        style={{ display: 'block', width: '100%', height: '100%' }}
+                                    />
+
+                                    {cmpPhase === 'loading2' && (
+                                        <Box sx={{
+                                            position: 'absolute', inset: 0,
+                                            display: 'flex', flexDirection: 'column',
+                                            alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: 'rgba(10,10,25,0.9)',
+                                        }}>
+                                            <CircularProgress size={48} sx={{ color: GREEN, mb: 2 }} />
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#b0b0b0' }}>
+                                                Preparing comparison…
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
                             </Box>
                         )}
                     </Box>
@@ -537,185 +543,208 @@ export default function AlgoVizPage() {
                     {phase === 'viz' && (
                         <Box sx={{
                             maxWidth: cmpPhase === 'active' ? 1600 : 1100,
-                            mx: 'auto', px: 3, py: 2,
+                            mx: 'auto', px: 3, py: isMobileViz ? 1 : 2,
                             mt: 2,
                             bgcolor: '#0e0e1e',
                             borderTop: `1px solid ${GOLD}22`,
-                            display: 'flex', flexDirection: 'column', gap: 2,
+                            display: 'flex', flexDirection: 'column', gap: isMobileViz && !controlsExpanded ? 0 : 2,
                         }}>
 
-                            {/* ─ Compare config panel ─ */}
-                            {cmpPhase === 'configuring' && (
-                                <ComparePicker
-                                    algos={algos}
-                                    primaryId={selAlgo?.id ?? -1}
-                                    sizeN={SIZE_VALUES[sizeIdx]}
-                                    cpxFilter={cmpCpxFilter}
-                                    setCpxFilter={setCmpCpxFilter}
-                                    selAlgo={cmpSelAlgo}
-                                    setSelAlgo={setCmpSelAlgo}
-                                    onConfirm={(algo) => {
-                                        setCmpSelAlgo(algo);
-                                        cmpAlgoRef.current = algo;
-                                        setCmpPhase('loading2');
+                            {/* Mobile collapse toggle */}
+                            {isMobileViz && (
+                                <Box
+                                    onClick={() => setControlsExpanded(v => !v)}
+                                    sx={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', py: 0.5, gap: 0.5,
+                                        color: GOLD, opacity: 0.7,
+                                        '&:hover': { opacity: 1 },
                                     }}
-                                    onCancel={() => {
-                                        setCmpPhase('idle');
-                                        setCmpSelAlgo(null);
-                                        setCmpCpxFilter(null);
-                                    }}
-                                />
-                            )}
-
-                            {/* ─ Loading compare spinner ─ */}
-                            {cmpPhase === 'loading2' && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 0.5 }}>
-                                    <CircularProgress size={20} sx={{ color: GREEN }} />
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: '#777' }}>
-                                        Initializing comparison…
+                                >
+                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem' }}>
+                                        {controlsExpanded ? 'Hide Controls' : 'Show Controls'}
                                     </Typography>
+                                    {controlsExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
                                 </Box>
                             )}
 
-                            {/* ─ Stats ─ */}
-                            {(cmpPhase === 'idle' || cmpPhase === 'active') && (
-                                cmpPhase === 'active' ? (
-                                    <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-                                        {/* Primary stats */}
-                                        <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flex: 1, minWidth: 200 }}>
-                                            <Box sx={{
-                                                width: 18, height: 18, borderRadius: '4px', flexShrink: 0,
-                                                bgcolor: GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            }}>
-                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.65rem', color: '#000', fontWeight: 700 }}>A</Typography>
+                            <Collapse in={!isMobileViz || controlsExpanded} timeout={200}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+                                    {/* ─ Compare config panel ─ */}
+                                    {cmpPhase === 'configuring' && (
+                                        <ComparePicker
+                                            algos={algos}
+                                            primaryId={selAlgo?.id ?? -1}
+                                            sizeN={SIZE_VALUES[sizeIdx]}
+                                            cpxFilter={cmpCpxFilter}
+                                            setCpxFilter={setCmpCpxFilter}
+                                            selAlgo={cmpSelAlgo}
+                                            setSelAlgo={setCmpSelAlgo}
+                                            onConfirm={(algo) => {
+                                                setCmpSelAlgo(algo);
+                                                cmpAlgoRef.current = algo;
+                                                setCmpPhase('loading2');
+                                            }}
+                                            onCancel={() => {
+                                                setCmpPhase('idle');
+                                                setCmpSelAlgo(null);
+                                                setCmpCpxFilter(null);
+                                            }}
+                                        />
+                                    )}
+
+                                    {/* ─ Loading compare spinner ─ */}
+                                    {cmpPhase === 'loading2' && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 0.5 }}>
+                                            <CircularProgress size={20} sx={{ color: GREEN }} />
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: '#777' }}>
+                                                Initializing comparison…
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {/* ─ Stats ─ */}
+                                    {(cmpPhase === 'idle' || cmpPhase === 'active') && (
+                                        cmpPhase === 'active' ? (
+                                            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                {/* Primary stats */}
+                                                <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flex: 1, minWidth: 200 }}>
+                                                    <Box sx={{
+                                                        width: 18, height: 18, borderRadius: '4px', flexShrink: 0,
+                                                        bgcolor: GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.65rem', color: '#000', fontWeight: 700 }}>A</Typography>
+                                                    </Box>
+                                                    <StatPill label={category === 'graph' ? 'Visited' : 'Comps'} value={comparisons} />
+                                                    <StatPill label={category === 'graph' ? 'Path Len' : 'Moves'} value={moves} />
+                                                    <StatPill label="Step" value={`${stepCur}/${stepTotal}`} />
+                                                    <RunChip state={runState} />
+                                                </Box>
+
+                                                <Box sx={{ width: '1px', bgcolor: 'rgba(255,255,255,0.07)', alignSelf: 'stretch' }} />
+
+                                                {/* Secondary stats */}
+                                                <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flex: 1, minWidth: 200 }}>
+                                                    <Box sx={{
+                                                        width: 18, height: 18, borderRadius: '4px', flexShrink: 0,
+                                                        bgcolor: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    }}>
+                                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.65rem', color: '#000', fontWeight: 700 }}>B</Typography>
+                                                    </Box>
+                                                    <StatPill label="Comps" value={comparisons2} />
+                                                    <StatPill label="Moves" value={moves2} />
+                                                    <StatPill label="Step" value={`${stepCur2}/${stepTotal2}`} />
+                                                    <RunChip state={runState2} />
+                                                </Box>
                                             </Box>
-                                            <StatPill label={category === 'graph' ? 'Visited' : 'Comps'} value={comparisons} />
-                                            <StatPill label={category === 'graph' ? 'Path Len' : 'Moves'} value={moves} />
-                                            <StatPill label="Step" value={`${stepCur}/${stepTotal}`} />
-                                            <RunChip state={runState} />
-                                        </Box>
-
-                                        <Box sx={{ width: '1px', bgcolor: 'rgba(255,255,255,0.07)', alignSelf: 'stretch' }} />
-
-                                        {/* Secondary stats */}
-                                        <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'center', flex: 1, minWidth: 200 }}>
-                                            <Box sx={{
-                                                width: 18, height: 18, borderRadius: '4px', flexShrink: 0,
-                                                bgcolor: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            }}>
-                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.65rem', color: '#000', fontWeight: 700 }}>B</Typography>
-                                            </Box>
-                                            <StatPill label="Comps" value={comparisons2} />
-                                            <StatPill label="Moves" value={moves2} />
-                                            <StatPill label="Step" value={`${stepCur2}/${stepTotal2}`} />
-                                            <RunChip state={runState2} />
-                                        </Box>
-                                    </Box>
-                                ) : (
-                                    <Box sx={{ display: 'flex', gap: 3.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                                        <StatPill label={category === 'graph' ? 'Nodes Visited' : 'Comparisons'} value={comparisons} />
-                                        <StatPill label={category === 'graph' ? 'Path Length' : 'Moves'} value={moves} />
-                                        <StatPill label="Step" value={`${stepCur} / ${stepTotal}`} />
-                                        <Box sx={{ ml: 'auto' }}>
-                                            <RunChip state={runState} />
-                                        </Box>
-                                    </Box>
-                                )
-                            )}
-
-                            {/* ─ Playback row ─ */}
-                            {(cmpPhase === 'idle' || cmpPhase === 'active') && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-                                    <IconButton size="medium" onClick={handleReset} title="Reset" sx={ctrlBtn}>
-                                        <ReplayIcon sx={{ fontSize: 22 }} />
-                                    </IconButton>
-                                    <IconButton
-                                        size="medium" onClick={handleStepOnce}
-                                        disabled={!canStep}
-                                        title="Advance one step"
-                                        sx={ctrlBtn}
-                                    >
-                                        <SkipNextIcon sx={{ fontSize: 22 }} />
-                                    </IconButton>
-                                    <IconButton
-                                        size="medium" onClick={handlePlayPause}
-                                        disabled={!canPlayPause}
-                                        title={eitherRunning ? 'Pause' : 'Resume'}
-                                        sx={{ ...ctrlBtn, bgcolor: `${GOLD}18`, '&:hover': { bgcolor: `${GOLD}30`, color: GOLD } }}
-                                    >
-                                        {eitherRunning
-                                            ? <PauseIcon sx={{ fontSize: 22 }} />
-                                            : <PlayArrowIcon sx={{ fontSize: 22 }} />
-                                        }
-                                    </IconButton>
-
-                                    <Box sx={{ flex: 1 }} />
-
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mr: 2 }}>
-                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555', mb: 0.25 }}>
-                                            Speed
-                                        </Typography>
-                                        <Box sx={{ width: 240 }}>
-                                            <Slider
-                                                value={SPEED_STEPS.indexOf(speedVal)}
-                                                min={0} max={3} step={1}
-                                                marks={SPEED_MARKS}
-                                                onChange={(_, idx) => {
-                                                    const s = SPEED_STEPS[idx as number];
-                                                    setSpeedVal(s);
-                                                    (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
-                                                    if (cmpPhase === 'active') (ctrl2Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
-                                                }}
-                                                sx={{
-                                                    color: GOLD,
-                                                    '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
-                                                    '& .MuiSlider-markLabel:first-child': { transform: 'translateX(0%)' },
-                                                    '& .MuiSlider-markLabel:last-child': { transform: 'translateX(-100%)' },
-                                                    '& .MuiSlider-thumb': { bgcolor: GOLD },
-                                                }}
-                                            />
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                                        {LEGEND.map(({ color, label }) => (
-                                            <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                                                <Box sx={{ width: 12, height: 12, bgcolor: color, borderRadius: '3px', flexShrink: 0 }} />
-                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#666' }}>
-                                                    {label}
-                                                </Typography>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            )}
-
-                            {/* ─ Footer row: reconfigure + compare toggle ─ */}
-                            {(cmpPhase === 'idle' || cmpPhase === 'active') && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 0.25 }}>
-                                    <ActionBtn onClick={backToWizard} label="← Reconfigure" />
-
-                                    {(category === 'sort' || category === 'search') && (
-                                        cmpPhase === 'idle' ? (
-                                            <ActionBtn
-                                                onClick={() => setCmpPhase('configuring')}
-                                                label="⊕ Add Comparison"
-                                                color={GREEN}
-                                                borderColor={`${GREEN}40`}
-                                                hoverBg={`${GREEN}10`}
-                                            />
                                         ) : (
-                                            <ActionBtn
-                                                onClick={handleRemoveCompare}
-                                                label="✕ Remove Comparison"
-                                                color="#d73737"
-                                                borderColor="rgba(215,55,55,0.4)"
-                                                hoverBg="rgba(215,55,55,0.08)"
-                                            />
+                                            <Box sx={{ display: 'flex', gap: 3.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <StatPill label={category === 'graph' ? 'Nodes Visited' : 'Comparisons'} value={comparisons} />
+                                                <StatPill label={category === 'graph' ? 'Path Length' : 'Moves'} value={moves} />
+                                                <StatPill label="Step" value={`${stepCur} / ${stepTotal}`} />
+                                                <Box sx={{ ml: 'auto' }}>
+                                                    <RunChip state={runState} />
+                                                </Box>
+                                            </Box>
                                         )
                                     )}
+
+                                    {/* ─ Playback row ─ */}
+                                    {(cmpPhase === 'idle' || cmpPhase === 'active') && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                                            <IconButton size="medium" onClick={handleReset} title="Reset" sx={ctrlBtn}>
+                                                <ReplayIcon sx={{ fontSize: 22 }} />
+                                            </IconButton>
+                                            <IconButton
+                                                size="medium" onClick={handleStepOnce}
+                                                disabled={!canStep}
+                                                title="Advance one step"
+                                                sx={ctrlBtn}
+                                            >
+                                                <SkipNextIcon sx={{ fontSize: 22 }} />
+                                            </IconButton>
+                                            <IconButton
+                                                size="medium" onClick={handlePlayPause}
+                                                disabled={!canPlayPause}
+                                                title={eitherRunning ? 'Pause' : 'Resume'}
+                                                sx={{ ...ctrlBtn, bgcolor: `${GOLD}18`, '&:hover': { bgcolor: `${GOLD}30`, color: GOLD } }}
+                                            >
+                                                {eitherRunning
+                                                    ? <PauseIcon sx={{ fontSize: 22 }} />
+                                                    : <PlayArrowIcon sx={{ fontSize: 22 }} />
+                                                }
+                                            </IconButton>
+
+                                            <Box sx={{ flex: 1 }} />
+
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mr: 2 }}>
+                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555', mb: 0.25 }}>
+                                                    Speed
+                                                </Typography>
+                                                <Box sx={{ width: 240 }}>
+                                                    <Slider
+                                                        value={SPEED_STEPS.indexOf(speedVal)}
+                                                        min={0} max={3} step={1}
+                                                        marks={SPEED_MARKS}
+                                                        onChange={(_, idx) => {
+                                                            const s = SPEED_STEPS[idx as number];
+                                                            setSpeedVal(s);
+                                                            (ctrl1Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
+                                                            if (cmpPhase === 'active') (ctrl2Ref.current?.setSpeed as ((s: number) => void) | undefined)?.(s);
+                                                        }}
+                                                        sx={{
+                                                            color: GOLD,
+                                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
+                                                            '& .MuiSlider-markLabel:first-of-type': { transform: 'translateX(0%)' },
+                                                            '& .MuiSlider-markLabel:last-of-type': { transform: 'translateX(-100%)' },
+                                                            '& .MuiSlider-thumb': { bgcolor: GOLD },
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </Box>
+
+                                            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                {LEGEND.map(({ color, label }) => (
+                                                    <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                                                        <Box sx={{ width: 12, height: 12, bgcolor: color, borderRadius: '3px', flexShrink: 0 }} />
+                                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#666' }}>
+                                                            {label}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        </Box>
+                                    )}
+
+                                    {/* ─ Footer row: reconfigure + compare toggle ─ */}
+                                    {(cmpPhase === 'idle' || cmpPhase === 'active') && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 0.25 }}>
+                                            <ActionBtn onClick={backToWizard} label="← Reconfigure" />
+
+                                            {(category === 'sort' || category === 'search') && (
+                                                cmpPhase === 'idle' ? (
+                                                    <ActionBtn
+                                                        onClick={() => setCmpPhase('configuring')}
+                                                        label="⊕ Add Comparison"
+                                                        color={GREEN}
+                                                        borderColor={`${GREEN}40`}
+                                                        hoverBg={`${GREEN}10`}
+                                                    />
+                                                ) : (
+                                                    <ActionBtn
+                                                        onClick={handleRemoveCompare}
+                                                        label="✕ Remove Comparison"
+                                                        color="#d73737"
+                                                        borderColor="rgba(215,55,55,0.4)"
+                                                        hoverBg="rgba(215,55,55,0.08)"
+                                                    />
+                                                )
+                                            )}
+                                        </Box>
+                                    )}
                                 </Box>
-                            )}
+                            </Collapse>
                         </Box>
                     )}
                 </Box>

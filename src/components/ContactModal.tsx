@@ -84,9 +84,11 @@ const ContactModal = ({ open, onClose }: ContactModalProps) => {
                 bgcolor: theme.palette.cardBackground.main,
                 border: `1px solid ${theme.palette.primaryGreen.main}`,
                 borderRadius: 2,
-                p: 4,
-                minWidth: 320,
+                p: { xs: 2.5, sm: 4 },
+                width: 'calc(100vw - 32px)',
                 maxWidth: 440,
+                maxHeight: '90vh',
+                overflowY: 'auto',
                 outline: 'none',
             }}>
                 <IconButton

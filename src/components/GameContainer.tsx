@@ -356,11 +356,13 @@ const GameContainer = ({
                         color: 'white',
                         borderBottom: '1px solid rgba(168, 214, 126, 0.15)',
                         backgroundImage: 'linear-gradient(90deg, rgba(168, 214, 126, 0.06) 0%, transparent 60%)',
+                        flexWrap: 'wrap',
+                        gap: 1,
                     }}
                 >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="h4" sx={{ fontFamily: FONTS.NECTO_MONO }}>{gameTitle}</Typography>
-                        <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+                        <Typography variant="h4" sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '1.2rem', sm: '2.125rem' } }}>{gameTitle}</Typography>
+                        <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '0.9rem', sm: '1.25rem' } }}>
                             Score: {currentScore}
                         </Typography>
                     </Box>

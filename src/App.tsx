@@ -155,7 +155,7 @@ function App() {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        minWidth: '100vw',
+        width: '100%',
         backgroundRepeat: 'repeat',
         backgroundAttachment: 'fixed',
         backgroundSize: 'auto',
