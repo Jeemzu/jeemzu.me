@@ -70,10 +70,10 @@ const LandingPage = () => {
 
                         {/* CTA Buttons */}
                         <Stack
-                            direction={{ xs: 'column', sm: 'row' }}
+                            direction={isMobile ? 'column' : 'row'}
                             sx={{
                                 justifyContent: 'flex-start',
-                                alignItems: { xs: 'stretch', sm: 'center' },
+                                alignItems: isMobile ? 'stretch' : 'center',
                                 flexWrap: 'wrap',
                                 gap: 1.5,
                             }}
@@ -89,9 +89,10 @@ const LandingPage = () => {
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
                                         fontFamily: FONTS.NECTO_MONO,
-                                        px: { xs: 2, sm: 3 },
+                                        px: 3,
                                         py: 1,
-                                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                                        fontSize: '1rem',
+                                        whiteSpace: 'nowrap',
                                         transition: EFFECTS.TRANSITION,
                                         '&:hover': {
                                             backgroundColor: theme.palette.softGreen.main,
@@ -114,9 +115,10 @@ const LandingPage = () => {
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
                                         fontFamily: FONTS.NECTO_MONO,
-                                        px: { xs: 2, sm: 3 },
+                                        px: 3,
                                         py: 1,
-                                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                                        fontSize: '1rem',
+                                        whiteSpace: 'nowrap',
                                         transition: EFFECTS.TRANSITION,
                                         '&:hover': {
                                             backgroundColor: theme.palette.softGreen.main,
@@ -139,9 +141,10 @@ const LandingPage = () => {
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
                                         fontFamily: FONTS.NECTO_MONO,
-                                        px: { xs: 2, sm: 3 },
+                                        px: 3,
                                         py: 1,
-                                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                                        fontSize: '1rem',
+                                        whiteSpace: 'nowrap',
                                         transition: EFFECTS.TRANSITION,
                                         '&:hover': {
                                             backgroundColor: theme.palette.softGreen.main,
@@ -164,9 +167,10 @@ const LandingPage = () => {
                                         backgroundColor: theme.palette.primaryGreen.main,
                                         color: theme.palette.background.default,
                                         fontFamily: FONTS.NECTO_MONO,
-                                        px: { xs: 2, sm: 3 },
+                                        px: 3,
                                         py: 1,
-                                        fontSize: { xs: '0.9rem', sm: '1rem' },
+                                        fontSize: '1rem',
+                                        whiteSpace: 'nowrap',
                                         transition: EFFECTS.TRANSITION,
                                         '&:hover': {
                                             backgroundColor: theme.palette.softGreen.main,
@@ -189,9 +193,10 @@ const LandingPage = () => {
                                     backgroundColor: theme.palette.primaryGreen.main,
                                     color: theme.palette.background.default,
                                     fontFamily: FONTS.NECTO_MONO,
-                                    px: { xs: 2, sm: 3 },
+                                    px: 3,
                                     py: 1,
-                                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                                    fontSize: '1rem',
+                                    whiteSpace: 'nowrap',
                                     transition: EFFECTS.TRANSITION,
                                     '&:hover': {
                                         backgroundColor: theme.palette.softGreen.main,
@@ -213,9 +218,10 @@ const LandingPage = () => {
                                     backgroundColor: theme.palette.primaryGreen.main,
                                     color: theme.palette.background.default,
                                     fontFamily: FONTS.NECTO_MONO,
-                                    px: { xs: 2, sm: 3 },
+                                    px: 3,
                                     py: 1,
-                                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                                    fontSize: '1rem',
+                                    whiteSpace: 'nowrap',
                                     transition: EFFECTS.TRANSITION,
                                     '&:hover': {
                                         backgroundColor: theme.palette.softGreen.main,

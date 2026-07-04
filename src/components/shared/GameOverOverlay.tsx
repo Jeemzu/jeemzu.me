@@ -25,12 +25,10 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
             {isNewAllTimeHigh ? (
                 <Stack direction="row" spacing={1} alignItems="center"
                     sx={{
-                        px: { xs: 2, sm: 3 }, py: 1, borderRadius: 2,
+                        px: 3, py: 1, borderRadius: 2,
                         background: 'linear-gradient(135deg, rgba(255,215,0,0.18) 0%, rgba(255,165,0,0.10) 100%)',
                         border: '1px solid rgba(255,215,0,0.45)',
                         boxShadow: '0 0 24px rgba(255,215,0,0.15)',
-                        flexWrap: 'wrap',
-                        justifyContent: 'center',
                     }}
                 >
                     <WorkspacePremiumIcon sx={{ color: '#ffd700', fontSize: '1.4rem' }} />
@@ -95,13 +93,13 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
                 </Stack>
             )}
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1, width: '100%', alignItems: 'center', maxWidth: 400 }}>
+            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
                 <Button variant="contained" onClick={onRetry}
-                    sx={{ bgcolor: 'primaryGreen.main', color: 'darkBackground.main', fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', px: 4, py: 1.5, width: { xs: '100%', sm: 'auto' }, '&:hover': { bgcolor: 'primaryGreen.light', transform: 'translateY(-2px)' } }}>
+                    sx={{ bgcolor: 'primaryGreen.main', color: 'darkBackground.main', fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', px: 4, py: 1.5, '&:hover': { bgcolor: 'primaryGreen.light', transform: 'translateY(-2px)' } }}>
                     Retry
                 </Button>
                 <Button variant="outlined" onClick={onBackToMenu}
-                    sx={{ borderColor: 'white', color: 'white', fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', px: 4, py: 1.5, width: { xs: '100%', sm: 'auto' }, '&:hover': { borderColor: 'rgba(255,255,255,0.8)', bgcolor: 'rgba(255,255,255,0.05)', transform: 'translateY(-2px)' } }}>
+                    sx={{ borderColor: 'white', color: 'white', fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', px: 4, py: 1.5, '&:hover': { borderColor: 'rgba(255,255,255,0.8)', bgcolor: 'rgba(255,255,255,0.05)', transform: 'translateY(-2px)' } }}>
                     Back to Menu
                 </Button>
             </Stack>
