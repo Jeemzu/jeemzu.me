@@ -48,7 +48,7 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
             </Typography>
 
             {stats.length > 0 && (
-                <Stack direction="row" spacing={3}>
+                <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', justifyContent: 'center', gap: 2 }}>
                     {stats.map(({ label, value }) => (
                         <Box key={label} sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontFamily: FONTS.NECTO_MONO, display: 'block', letterSpacing: 1 }}>
@@ -63,7 +63,7 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
             )}
 
             {(personalBest > 0 || allTimeHigh) && (
-                <Stack direction="row" spacing={3}>
+                <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', justifyContent: 'center', gap: 2 }}>
                     {personalBest > 0 && (
                         <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontFamily: FONTS.NECTO_MONO, display: 'block', letterSpacing: 1 }}>

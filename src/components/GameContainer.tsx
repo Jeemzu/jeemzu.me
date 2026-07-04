@@ -358,7 +358,7 @@ const GameContainer = ({
                         backgroundImage: 'linear-gradient(90deg, rgba(168, 214, 126, 0.06) 0%, transparent 60%)',
                     }}
                 >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, overflow: 'hidden' }}>
                         <Typography variant="h4" sx={{ fontFamily: FONTS.NECTO_MONO }}>{gameTitle}</Typography>
                         <Typography variant="h6" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO }}>
                             Score: {currentScore}

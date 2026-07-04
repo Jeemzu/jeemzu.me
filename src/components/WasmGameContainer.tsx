@@ -263,7 +263,7 @@ const WasmGameContainer = ({
                 </Box>
             </Box>
 
-            <DialogContent sx={{ p: 0, position: 'relative', lineHeight: 0 }}>
+            <DialogContent sx={{ p: 0, position: 'relative', lineHeight: 0, overflow: 'hidden' }}>
                 {/* SDL2 canvas — Emscripten renders into this */}
                 <canvas
                     ref={canvasRef}
@@ -271,7 +271,7 @@ const WasmGameContainer = ({
                     width={canvasWidth}
                     height={canvasHeight}
                     onClick={handleCanvasClick}
-                    style={{ display: 'block', cursor: 'pointer' }}
+                    style={{ display: 'block', cursor: 'pointer', maxWidth: '100%', height: 'auto' }}
                 />
 
                 {/* Loading spinner */}

@@ -35,10 +35,10 @@ const LandingPage = () => {
                     <Box sx={{
                         backgroundColor: theme.palette.cardBackground.main,
                         borderRadius: 2,
-                        p: { xs: 3, md: 3 },
+                        p: { xs: 2, md: 3 },
                         pb: { xs: 1.5, md: 1.5 },
                         boxShadow: EFFECTS.CARD_SHADOW,
-                        height: "200px",
+                        height: { xs: 'auto', md: '200px' },
                         width: '100%',
                     }}>
                         <Typography
@@ -70,19 +70,20 @@ const LandingPage = () => {
 
                         {/* CTA Buttons */}
                         <Stack
-                            direction="row"
+                            direction={isMobile ? 'column' : 'row'}
                             sx={{
                                 justifyContent: 'flex-start',
-                                alignItems: 'center',
-                                flexWrap: 'nowrap',
+                                alignItems: isMobile ? 'stretch' : 'center',
+                                flexWrap: 'wrap',
                                 gap: 1.5,
                             }}
                             paddingTop={1.5}
                         >
-                            <Link href="/projects">
+                            <Link href="/projects" style={{ width: isMobile ? '100%' : 'auto' }}>
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    fullWidth={isMobile}
                                     startIcon={<FaCode />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
@@ -104,10 +105,11 @@ const LandingPage = () => {
                                 </Button>
                             </Link>
 
-                            <Link href="/experience">
+                            <Link href="/experience" style={{ width: isMobile ? '100%' : 'auto' }}>
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    fullWidth={isMobile}
                                     startIcon={<FaRoad />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
@@ -129,10 +131,11 @@ const LandingPage = () => {
                                 </Button>
                             </Link>
 
-                            <Link href="/games">
+                            <Link href="/games" style={{ width: isMobile ? '100%' : 'auto' }}>
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    fullWidth={isMobile}
                                     startIcon={<FaDice />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
@@ -154,10 +157,11 @@ const LandingPage = () => {
                                 </Button>
                             </Link>
 
-                            <Link href="/algoviz">
+                            <Link href="/algoviz" style={{ width: isMobile ? '100%' : 'auto' }}>
                                 <Button
                                     variant="contained"
                                     size="medium"
+                                    fullWidth={isMobile}
                                     startIcon={<FaChartSimple />}
                                     sx={{
                                         backgroundColor: theme.palette.primaryGreen.main,
@@ -182,6 +186,7 @@ const LandingPage = () => {
                             <Button
                                 variant="contained"
                                 size="medium"
+                                fullWidth={isMobile}
                                 startIcon={<FaEnvelope />}
                                 onClick={() => setContactOpen(true)}
                                 sx={{
@@ -206,6 +211,7 @@ const LandingPage = () => {
                             <Button
                                 variant="contained"
                                 size="medium"
+                                fullWidth={isMobile}
                                 startIcon={<FaFile />}
                                 onClick={onClickUrl(LINKS.RESUME)}
                                 sx={{
