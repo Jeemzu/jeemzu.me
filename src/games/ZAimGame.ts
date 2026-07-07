@@ -259,7 +259,6 @@ export class ZAimScene extends Phaser.Scene {
         const colorHex: string = this.registry.get('primaryColor') || '#a8d67e';
         const popup = this.add.text(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, '+10s', { fontSize: '48px', fontFamily: 'NectoMono-Regular', color: colorHex, fontStyle: 'bold', resolution: this.cameraZoom }).setOrigin(0.5).setDepth(600);
         this.tweens.add({ targets: popup, y: popup.y - 60, alpha: 0, duration: 900, ease: 'Power2', onComplete: () => popup.destroy() });
-        this.cameras.main.flash(200, 100, 255, 100, false);
     }
 
     private endSpawnGroup(count: number, exclude?: GridCell) {
