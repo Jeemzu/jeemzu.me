@@ -76,6 +76,11 @@ export default function GamePage() {
 
     const isZAim = id === 'zaim';
     const leaderboardId = isZAim ? `${id}_${gameMode}` : id;
+    const isReflex = isZAim && gameMode === 'reflex';
+
+    // Reflex stores score as (10000 - avgMs) internally so higher-is-better ranking
+    // still applies server-side; decode back to the actual average for display.
+    const reflexAvgMs = (encoded: number) => Math.max(0, 10000 - encoded);
 
     // Fetch personal best + all-time high (re-fetches when mode changes for ZAim)
     useEffect(() => {
@@ -140,6 +145,7 @@ export default function GamePage() {
                         const stats = typeof payload === 'number' ? [] : (payload.stats ?? []);
                         setGameOverStats(stats);
                         setGameOver(true);
+                        setCurrentScore(finalScore);
                         if (finalScore > highScoreRef.current) {
                             setHighScore(finalScore);
                             highScoreRef.current = finalScore;
@@ -305,8 +311,8 @@ export default function GamePage() {
                             </Typography>
                             {highScore > 0 && (
                                 <Typography variant="body2" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'text.secondary' }}>
-                                    {isZAim && gameMode === 'reflex'
-                                        ? `Best avg: ${10000 - highScore}ms`
+                                    {isReflex
+                                        ? `Best avg: ${reflexAvgMs(highScore)}ms (lower is better)`
                                         : `Personal Best: ${highScore}`}
                                 </Typography>
                             )}
@@ -446,7 +452,7 @@ export default function GamePage() {
                                                 {entry.username}{entry.username === authUsername ? ' (you)' : ''}
                                             </Typography>
                                             <Typography variant="body2" sx={{ fontFamily: FONTS.NECTO_MONO, color: 'primaryGreen.main', fontWeight: 600 }}>
-                                                {entry.score.toLocaleString()}
+                                                {isReflex ? `${reflexAvgMs(entry.score)}ms` : entry.score.toLocaleString()}
                                             </Typography>
                                         </Stack>
                                     ))}
@@ -463,10 +469,11 @@ export default function GamePage() {
                     {/* ── Game over ── */}
                     {gameOver && (
                         <GameOverOverlay
-                            score={currentScore}
-                            personalBest={highScore}
+                            score={isReflex ? reflexAvgMs(currentScore) : currentScore}
+                            personalBest={isReflex ? reflexAvgMs(highScore) : highScore}
                             isNewAllTimeHigh={isNewAllTimeHigh}
-                            allTimeHigh={allTimeHigh}
+                            allTimeHigh={isReflex && allTimeHigh ? { ...allTimeHigh, score: reflexAvgMs(allTimeHigh.score) } : allTimeHigh}
+                            scoreSuffix={isReflex ? 'ms' : ''}
                             stats={gameOverStats}
                             onRetry={handleRestart}
                             onBackToMenu={handleBackToMenu}

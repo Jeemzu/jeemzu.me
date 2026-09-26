@@ -10,11 +10,13 @@ interface GameOverOverlayProps {
     personalBest: number;
     allTimeHigh: { score: number; username: string } | null;
     isNewAllTimeHigh?: boolean;
+    /** Appended after score/personalBest/allTimeHigh values, e.g. 'ms' for time-based scoring. */
+    scoreSuffix?: string;
     onRetry: () => void;
     onBackToMenu: () => void;
 }
 
-export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, isNewAllTimeHigh = false, onRetry, onBackToMenu }: GameOverOverlayProps) {
+export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, isNewAllTimeHigh = false, scoreSuffix = '', onRetry, onBackToMenu }: GameOverOverlayProps) {
     return (
         <Box sx={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -44,7 +46,7 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
             )}
 
             <Typography variant="h4" sx={{ color: 'primaryGreen.main', fontFamily: FONTS.NECTO_MONO, textAlign: 'center' }}>
-                Score: {score.toLocaleString()}
+                Score: {score.toLocaleString()}{scoreSuffix}
             </Typography>
 
             {stats.length > 0 && (
@@ -70,7 +72,7 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
                                 YOUR BEST
                             </Typography>
                             <Typography variant="h6" sx={{ color: 'white', fontFamily: FONTS.NECTO_MONO }}>
-                                {personalBest.toLocaleString()}
+                                {personalBest.toLocaleString()}{scoreSuffix}
                             </Typography>
                         </Box>
                     )}
@@ -83,7 +85,7 @@ export function GameOverOverlay({ score, stats = [], personalBest, allTimeHigh, 
                                 </Typography>
                             </Stack>
                             <Typography variant="h6" sx={{ color: '#ffd700', fontFamily: FONTS.NECTO_MONO, textShadow: isNewAllTimeHigh ? '0 0 16px rgba(255,215,0,0.6)' : 'none' }}>
-                                {allTimeHigh.score.toLocaleString()}
+                                {allTimeHigh.score.toLocaleString()}{scoreSuffix}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.35)', fontFamily: FONTS.NECTO_MONO }}>
                                 {allTimeHigh.username}
