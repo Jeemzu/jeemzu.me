@@ -10,6 +10,7 @@
     "build:all": "npm run build:cpp && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "vitest run",
     "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts",
     "generate-api-types:prod": "openapi-typescript https://jeemzu-prod-eza9c8edcdhhbqhw.canadaeast-01.azurewebsites.net/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
@@ -32,6 +33,7 @@
     "sonner": "^2.0.6",
     "tanstack-query": "^1.0.0",
     "wouter": "^3.7.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zustand": "^5.0.4"
   },
   "devDependencies": {
@@ -55,6 +57,7 @@
     "prettier": "^3.5.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^5.0.2"
   }
 }

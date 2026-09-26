@@ -16,6 +16,7 @@ import type {
     CampaignSavedPayload,
     CharacterClass,
     CharacterTakenOverPayload,
+    DialogueOptionPayload,
     GameUiState,
     GameUpdatePayload,
     NarrativeLogEntry,
@@ -27,6 +28,7 @@ import type {
 interface DialogueState {
     npcName: string;
     portrait: string;
+    options: DialogueOptionPayload[];
 }
 
 interface RpgState {
@@ -268,6 +270,7 @@ function applyGameUpdate(
         dialogue = {
             npcName: (dialogueCommand.data.npc_name as string) ?? 'Unknown',
             portrait: (dialogueCommand.data.portrait as string) ?? '',
+            options: (dialogueCommand.data.dialogue_options as DialogueOptionPayload[]) ?? [],
         };
     }
     if (payload.uiState.game_phase !== 'dialogue') {

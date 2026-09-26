@@ -1,0 +1,238 @@
+import { describe, expect, it } from 'vitest';
+import { BACKUP_VERSION, parseBackup, parseBudgetData, serializeBackup } from './backup';
+import type { BudgetData } from '../types';
+
+const sample: BudgetData = {
+  people: [
+    {
+      id: 'p1',
+      name: 'Courtney',
+      personalPerPaycheckCents: 105_23,
+      essentialsPerPaycheckCents: 400_00,
+      personalBalanceCents: 50_00,
+    },
+  ],
+  bills: [
+    { id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: 'Housing', paidFrom: 'shared' },
+    { id: 'b', name: 'Spectrum', amountCents: 90_00, dueDay: 21, category: '', paidFrom: 'autopay' },
+  ],
+  debts: [
+    {
+      id: 'd1',
+      name: 'Best Buy',
+      balanceCents: 3536_82,
+      minPaymentCents: 77_00,
+      suggestedPaymentCents: 589_47,
+      hasPromotion: true,
+      dueDay: 1,
+      paidFrom: 'autopay',
+    },
+    {
+      id: 'd2',
+      name: 'Aidvantage',
+      balanceCents: 28246_32,
+      minPaymentCents: 0,
+      suggestedPaymentCents: null,
+      hasPromotion: false,
+      dueDay: 1,
+      paidFrom: 'shared',
+    },
+  ],
+  essentialsBalanceCents: 1200_00,
+  autopayBalanceCents: 350_00,
+};
+
+describe('backup roundtrip', () => {
+  it('serializes and restores identical data', () => {
+    const json = serializeBackup(sample, new Date('2026-09-25T12:00:00Z'));
+    const parsed = JSON.parse(json);
+    expect(parsed.app).toBe('budgetize-me');
+    expect(parsed.version).toBe(BACKUP_VERSION);
+    expect(parsed.exportedAt).toBe('2026-09-25T12:00:00.000Z');
+
+    const result = parseBackup(json);
+    expect(result).toEqual({ ok: true, data: sample });
+  });
+
+  it('generates ids for entries missing them', () => {
+    const json = serializeBackup(sample);
+    const raw = JSON.parse(json);
+    delete raw.data.bills[0].id;
+    delete raw.data.debts[0].id;
+    delete raw.data.people[0].id;
+    const result = parseBackup(JSON.stringify(raw));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.data.bills[0].id).toBeTruthy();
+    expect(result.data.bills[1].id).toBe('b');
+    expect(result.data.debts[0].id).toBeTruthy();
+    expect(result.data.people[0].id).toBeTruthy();
+  });
+});
+
+describe('version 1 migration', () => {
+  it('turns weekly income into a Household person with no debts', () => {
+    const v1 = {
+      app: 'budgetize-me',
+      version: 1,
+      data: {
+        weeklyIncomeCents: 2300_00,
+        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: '' }],
+      },
+    };
+    const result = parseBackup(JSON.stringify(v1));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.data.bills).toHaveLength(1);
+    expect(result.data.debts).toEqual([]);
+    expect(result.data.essentialsBalanceCents).toBe(0);
+    expect(result.data.autopayBalanceCents).toBe(0);
+    expect(result.data.people).toHaveLength(1);
+    expect(result.data.people[0]).toMatchObject({
+      name: 'Household',
+      personalPerPaycheckCents: 0,
+      essentialsPerPaycheckCents: 2300_00,
+      personalBalanceCents: 0,
+    });
+  });
+
+  it('creates no people when v1 income was zero', () => {
+    const v1 = { app: 'budgetize-me', version: 1, data: { weeklyIncomeCents: 0, bills: [] } };
+    const result = parseBackup(JSON.stringify(v1));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.data.people).toEqual([]);
+  });
+
+  it('rejects invalid v1 income', () => {
+    const result = parseBackup(
+      JSON.stringify({ app: 'budgetize-me', version: 1, data: { weeklyIncomeCents: -5, bills: [] } }),
+    );
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('income') });
+  });
+});
+
+describe('parseBackup validation', () => {
+  it('rejects invalid JSON', () => {
+    expect(parseBackup('{nope')).toMatchObject({ ok: false });
+  });
+
+  it('rejects files from other apps', () => {
+    const result = parseBackup(JSON.stringify({ app: 'other', version: 2, data: sample }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('not a Budgetize Me backup') });
+  });
+
+  it('rejects newer backup versions', () => {
+    const result = parseBackup(
+      JSON.stringify({ app: 'budgetize-me', version: BACKUP_VERSION + 1, data: sample }),
+    );
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('version') });
+  });
+
+  it('rejects bills with bad due days', () => {
+    const data = { ...sample, bills: [{ id: 'x', name: 'Bad', amountCents: 100, dueDay: 42, category: '' }] };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('due day') });
+  });
+
+  it('rejects bills missing names', () => {
+    const data = { ...sample, bills: [{ id: 'x', name: '', amountCents: 100, dueDay: 1, category: '' }] };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('name') });
+  });
+
+  it('rejects debts with invalid amounts', () => {
+    const data = {
+      ...sample,
+      debts: [{ id: 'x', name: 'Card', balanceCents: -5, minPaymentCents: 0, dueDay: 1 }],
+    };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('balance') });
+  });
+
+  it('rejects people with invalid deposits', () => {
+    const data = {
+      ...sample,
+      people: [{ id: 'x', name: 'A', personalPerPaycheckCents: 1.5, essentialsPerPaycheckCents: 0, personalBalanceCents: 0 }],
+    };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('personal deposit') });
+  });
+
+  it('rejects an invalid essentials balance', () => {
+    const data = { ...sample, essentialsBalanceCents: 'lots' };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('essentials balance') });
+  });
+
+  it('rejects an invalid auto-pay balance', () => {
+    const data = { ...sample, autopayBalanceCents: 1.5 };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('auto-pay balance') });
+  });
+
+  it('accepts negative (overdrafted) cash balances', () => {
+    const data = {
+      ...sample,
+      essentialsBalanceCents: -50_00,
+      autopayBalanceCents: -1_00,
+      people: [{ ...sample.people[0], personalBalanceCents: -20_00 }],
+    };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.data.essentialsBalanceCents).toBe(-50_00);
+    expect(result.data.autopayBalanceCents).toBe(-1_00);
+    expect(result.data.people[0].personalBalanceCents).toBe(-20_00);
+  });
+
+  it('defaults paid-from and auto-pay balance on pre-autopay v2 backups', () => {
+    const legacy = {
+      app: 'budgetize-me',
+      version: 2,
+      data: {
+        people: [],
+        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: '' }],
+        debts: [
+          {
+            id: 'd1',
+            name: 'Best Buy',
+            balanceCents: 100_00,
+            minPaymentCents: 10_00,
+            suggestedPaymentCents: null,
+            hasPromotion: false,
+            dueDay: 1,
+          },
+        ],
+        essentialsBalanceCents: 0,
+      },
+    };
+    const result = parseBackup(JSON.stringify(legacy));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.data.bills[0].paidFrom).toBe('shared');
+    expect(result.data.debts[0].paidFrom).toBe('autopay');
+    expect(result.data.autopayBalanceCents).toBe(0);
+  });
+
+  it('defaults missing v2 sections to empty', () => {
+    const result = parseBackup(
+      JSON.stringify({ app: 'budgetize-me', version: 2, data: { bills: [] } }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      data: { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0 },
+    });
+  });
+});
+
+describe('parseBudgetData', () => {
+  it('accepts a budget payload loaded from the server', () => {
+    expect(parseBudgetData(JSON.parse(JSON.stringify(sample)))).toEqual({ ok: true, data: sample });
+  });
+
+  it('rejects a missing payload', () => {
+    expect(parseBudgetData(undefined)).toEqual({ ok: false, error: 'Budget data is missing.' });
+  });
+
+  it('rejects a payload with an invalid bill', () => {
+    const result = parseBudgetData({ bills: [{ name: 'Rent', amountCents: -1, dueDay: 1 }] });
+
+    expect(result.ok).toBe(false);
+  });
+});

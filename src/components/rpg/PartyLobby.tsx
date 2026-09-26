@@ -113,7 +113,7 @@ const PartyLobby = () => {
     return (
         <Box sx={{ maxWidth: 420, mx: 'auto', py: 4 }}>
             <Typography variant="h5" fontFamily={FONTS.NECTO_MONO} sx={{ mb: 3, textAlign: 'center' }}>
-                The Sunken Crypt
+                Progenitors: Echoes of the First
             </Typography>
 
             <ToggleButtonGroup
