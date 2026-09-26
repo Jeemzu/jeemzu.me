@@ -1,0 +1,518 @@
+import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
+import type { DebtPaymentStrategy, MonthRef } from './types';
+import { emptyBudget, perPaydayDepositCents } from './types';
+import { budgetReducer, initialState } from './state/budget';
+import { computeMonthSummary } from './lib/schedule';
+import { addMonths, monthLabel } from './lib/paydays';
+import { computeProjection } from './lib/projection';
+import { computeAutopayPlan } from './lib/autopay';
+import { computeFundingWarnings } from './lib/warnings';
+import { parseBackup, parseBudgetData, serializeBackup } from './lib/backup';
+import { downloadBlob } from './lib/download';
+import { SummaryCards } from './components/SummaryCards';
+import { CalendarView } from './components/CalendarView';
+import { UpcomingList } from './components/UpcomingList';
+import { CategoryBreakdown } from './components/CategoryBreakdown';
+import { PeopleEditor } from './components/PeopleEditor';
+import { BillsEditor } from './components/BillsEditor';
+import { DebtsEditor } from './components/DebtsEditor';
+import { ProjectionView } from './components/ProjectionView';
+import { AutopayCard } from './components/AutopayCard';
+import { FundingWarnings } from './components/FundingWarnings';
+import { useAuthStore } from '../../stores/authStore';
+import { loadBudget, saveBudget } from '../../utils/budgetApi';
+import './budgetize.css';
+
+// Loaded on demand so the xlsx library stays out of the main bundle.
+const ImportWizard = lazy(() =>
+  import('./components/ImportWizard').then((m) => ({ default: m.ImportWizard })),
+);
+
+function currentMonth(): MonthRef {
+  const now = new Date();
+  return { year: now.getFullYear(), month: now.getMonth() };
+}
+
+interface Notice {
+  kind: 'info' | 'error';
+  text: string;
+}
+
+const VIEW_TABS = [
+  { id: 'month', label: 'This month' },
+  { id: 'projections', label: 'Projections' },
+  { id: 'data', label: 'Edit data' },
+] as const;
+
+type ViewTab = (typeof VIEW_TABS)[number]['id'];
+
+type LoadState = 'loading' | 'ready' | 'error';
+
+export default function BudgetizePage() {
+  const { role, isInitialized } = useAuthStore();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (isInitialized && role !== 'Admin') {
+      navigate('/', { replace: true });
+    }
+  }, [isInitialized, role, navigate]);
+
+  if (!isInitialized) {
+    return (
+      <div className="budgetize">
+        <div className="app">
+          <p className="muted">Checking your session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (role !== 'Admin') return null;
+
+  return <BudgetWorkspace />;
+}
+
+function BudgetWorkspace() {
+  const [state, dispatch] = useReducer(budgetReducer, initialState);
+  const [monthRef, setMonthRef] = useState<MonthRef>(currentMonth);
+  const [importOpen, setImportOpen] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [tab, setTab] = useState<ViewTab>('month');
+  const [strategy, setStrategy] = useState<DebtPaymentStrategy>('suggested');
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [loadError, setLoadError] = useState('');
+  const [revision, setRevision] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  const summary = useMemo(
+    () => computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
+    [state.data, monthRef, strategy],
+  );
+
+  const categories = useMemo(
+    () => [...new Set(state.data.bills.map((bill) => bill.category.trim()).filter(Boolean))].sort(),
+    [state.data.bills],
+  );
+
+  const fundingWarnings = useMemo(() => {
+    const now = new Date();
+    const projection = computeProjection(state.data, now, 8, strategy);
+    const plan = computeAutopayPlan(state.data, now, 12, strategy);
+    return computeFundingWarnings(state.data, projection, plan, strategy);
+  }, [state.data, strategy]);
+
+  const load = useCallback(async () => {
+    setLoadState('loading');
+    setConflict(false);
+    const result = await loadBudget();
+
+    if (result.status === 'ok') {
+      const parsed = parseBudgetData(result.data);
+      if (!parsed.ok) {
+        setLoadState('error');
+        setLoadError(`Your saved budget could not be read: ${parsed.error}`);
+        return;
+      }
+      dispatch({ type: 'hydrate', data: parsed.data });
+      setRevision(result.revision);
+      setLoadState('ready');
+      return;
+    }
+
+    if (result.status === 'empty') {
+      dispatch({ type: 'hydrate', data: emptyBudget() });
+      setRevision(null);
+      setLoadState('ready');
+      return;
+    }
+
+    // Editing stays blocked on failure so a later save cannot replace data we never read.
+    setLoadState('error');
+    setLoadError(
+      result.status === 'unauthorized'
+        ? 'Your session has expired. Sign in again to load your budget.'
+        : 'Could not reach the server to load your budget.',
+    );
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!state.dirty) return;
+    const handler = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [state.dirty]);
+
+  async function handleSave() {
+    if (saving) return;
+    // Captured so edits made during the request stay marked as unsaved.
+    const snapshot = state.data;
+    setSaving(true);
+    const result = await saveBudget(snapshot, revision);
+    setSaving(false);
+
+    if (result.status === 'ok') {
+      setRevision(result.revision);
+      setConflict(false);
+      dispatch({ type: 'mark-saved', data: snapshot });
+      setNotice({ kind: 'info', text: 'Budget saved.' });
+      return;
+    }
+    if (result.status === 'conflict') {
+      setConflict(true);
+      return;
+    }
+    setNotice({
+      kind: 'error',
+      text:
+        result.status === 'unauthorized'
+          ? 'Your session has expired, so nothing was saved. Sign in again.'
+          : 'Could not reach the server, so nothing was saved. Your edits are still here.',
+    });
+  }
+
+  function handleReload() {
+    if (
+      state.dirty &&
+      !window.confirm('Reloading replaces your unsaved edits with the saved budget. Continue?')
+    ) {
+      return;
+    }
+    setNotice(null);
+    void load();
+  }
+
+  function handleBackupDownload() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(
+      `budgetize-me-backup-${stamp}.json`,
+      new Blob([serializeBackup(state.data)], { type: 'application/json' }),
+    );
+    setNotice({
+      kind: 'info',
+      text: 'Backup downloaded. This is a local copy — it does not save to the server.',
+    });
+  }
+
+  async function handleRestoreFile(file: File) {
+    const result = parseBackup(await file.text());
+    if (!result.ok) {
+      setNotice({ kind: 'error', text: result.error });
+      return;
+    }
+    if (state.dirty && !window.confirm('You have unsaved edits. Replace them with this backup?')) {
+      return;
+    }
+    dispatch({ type: 'restore', data: result.data });
+    setNotice({
+      kind: 'info',
+      text: `Backup loaded: ${result.data.bills.length} bills, ${result.data.debts.length} debts, ${result.data.people.length} people. Choose Save to store it.`,
+    });
+  }
+
+  if (loadState === 'loading') {
+    return (
+      <div className="budgetize">
+        <div className="app">
+          <p className="muted">Loading your budget…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadState === 'error') {
+    return (
+      <div className="budgetize">
+        <div className="app">
+          <section className="card hero">
+            <h2>Budget unavailable</h2>
+            <p>{loadError}</p>
+            <button type="button" className="btn primary" onClick={() => void load()}>
+              Try again
+            </button>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  const isEmpty =
+    state.data.bills.length === 0 && state.data.debts.length === 0 && state.data.people.length === 0;
+
+  return (
+    <div className="budgetize">
+      <div className="app">
+        <header className="topbar">
+          <div className="brand">
+            <h1>💵 Budgetize Me</h1>
+            <span className={`save-status${state.dirty ? ' dirty' : ''}`}>
+              {state.dirty ? '● Unsaved changes' : '✓ All changes saved'}
+            </span>
+          </div>
+          <div className="topbar-actions">
+            <button type="button" className="btn" onClick={() => setImportOpen(true)}>
+              Import Excel
+            </button>
+            <button type="button" className="btn" onClick={() => restoreInputRef.current?.click()}>
+              Restore backup
+            </button>
+            <button type="button" className="btn" onClick={handleBackupDownload}>
+              Download backup
+            </button>
+            <button type="button" className="btn" onClick={handleReload} disabled={saving}>
+              Reload
+            </button>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => void handleSave()}
+              disabled={saving || !state.dirty}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </header>
+
+        {conflict && (
+          <div className="banner error" role="alert">
+            <span>
+              This budget was saved on another device, so nothing was saved here. Download a backup
+              of your edits, then reload the newer version.
+            </span>
+            <button type="button" className="btn ghost" onClick={handleReload}>
+              Reload
+            </button>
+          </div>
+        )}
+
+        {notice && (
+          <div className={`banner ${notice.kind}`} role="status">
+            <span>{notice.text}</span>
+            <button type="button" className="btn ghost" onClick={() => setNotice(null)} aria-label="Dismiss">
+              ✕
+            </button>
+          </div>
+        )}
+
+        <main>
+          {!isEmpty && <FundingWarnings warnings={fundingWarnings} />}
+          {isEmpty && (
+            <section className="card hero">
+              <h2>Welcome!</h2>
+              <p>
+                Import your Excel budget workbook to pull in your bills, debt accounts, and paycheck
+                deposits. Choose Save to store your budget so you can pick it up on another machine.
+              </p>
+              <button type="button" className="btn primary" onClick={() => setImportOpen(true)}>
+                Import your workbook
+              </button>
+            </section>
+          )}
+
+          <div className="view-bar">
+            <div className="view-tabs" role="tablist" aria-label="Sections">
+              {VIEW_TABS.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === entry.id}
+                  className={`view-tab${tab === entry.id ? ' active' : ''}`}
+                  onClick={() => setTab(entry.id)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            <div className="strategy-toggle">
+              <span id="strategy-label">Debt payments</span>
+              <div className="seg" role="group" aria-labelledby="strategy-label">
+                <button
+                  type="button"
+                  className={strategy === 'suggested' ? 'active' : ''}
+                  title="Promo payoff amount while a promotion is active, otherwise the minimum"
+                  onClick={() => setStrategy('suggested')}
+                >
+                  Suggested
+                </button>
+                <button
+                  type="button"
+                  className={strategy === 'minimum' ? 'active' : ''}
+                  title="Always the minimum monthly payment"
+                  onClick={() => setStrategy('minimum')}
+                >
+                  Minimum
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {tab === 'month' && (
+            <>
+              <section className="month-row">
+                <div className="month-nav">
+                  <button type="button" className="btn" onClick={() => setMonthRef(addMonths(monthRef, -1))} aria-label="Previous month">
+                    ‹
+                  </button>
+                  <h2>{monthLabel(monthRef)}</h2>
+                  <button type="button" className="btn" onClick={() => setMonthRef(addMonths(monthRef, 1))} aria-label="Next month">
+                    ›
+                  </button>
+                  <button type="button" className="btn ghost" onClick={() => setMonthRef(currentMonth())}>
+                    Today
+                  </button>
+                </div>
+                <SummaryCards monthRef={monthRef} summary={summary} />
+              </section>
+
+              <div className="columns">
+                <section className="card">
+                  <h3>Calendar</h3>
+                  <CalendarView monthRef={monthRef} summary={summary} />
+                </section>
+                <aside className="side-col">
+                  <section className="card">
+                    <h3>This month</h3>
+                    <UpcomingList
+                      monthRef={monthRef}
+                      summary={summary}
+                      paydayDepositCents={perPaydayDepositCents(state.data.people)}
+                    />
+                  </section>
+                  <section className="card">
+                    <h3>By category</h3>
+                    <CategoryBreakdown categories={summary.categories} />
+                  </section>
+                </aside>
+              </div>
+            </>
+          )}
+
+          {tab === 'projections' && (
+            <div className="columns">
+              <section className="card">
+                <h3>8-week balance projection</h3>
+                <ProjectionView
+                  data={state.data}
+                  strategy={strategy}
+                  onUpdatePerson={(id, patch) => dispatch({ type: 'update-person', id, patch })}
+                  onSetEssentialsBalance={(cents) => dispatch({ type: 'set-essentials-balance', cents })}
+                  onSetAutopayBalance={(cents) => dispatch({ type: 'set-autopay-balance', cents })}
+                />
+              </section>
+              <section className="card">
+                <h3>Auto-pay account plan</h3>
+                <AutopayCard data={state.data} strategy={strategy} />
+              </section>
+            </div>
+          )}
+
+          {tab === 'data' && (
+            <>
+              <div className="columns editors">
+                <section className="card">
+                  <h3>Income &amp; people</h3>
+                  <PeopleEditor
+                    people={state.data.people}
+                    onAdd={() =>
+                      dispatch({
+                        type: 'add-person',
+                        person: {
+                          id: crypto.randomUUID(),
+                          name: 'New person',
+                          personalPerPaycheckCents: 0,
+                          essentialsPerPaycheckCents: 0,
+                          personalBalanceCents: 0,
+                        },
+                      })
+                    }
+                    onUpdate={(id, patch) => dispatch({ type: 'update-person', id, patch })}
+                    onRemove={(id) => dispatch({ type: 'remove-person', id })}
+                  />
+                </section>
+                <section className="card grow">
+                  <h3>Monthly bills</h3>
+                  <BillsEditor
+                    bills={state.data.bills}
+                    categories={categories}
+                    onAdd={() =>
+                      dispatch({
+                        type: 'add-bill',
+                        bill: { id: crypto.randomUUID(), name: 'New bill', amountCents: 0, dueDay: 1, category: '', paidFrom: 'shared' },
+                      })
+                    }
+                    onUpdate={(id, patch) => dispatch({ type: 'update-bill', id, patch })}
+                    onRemove={(id) => dispatch({ type: 'remove-bill', id })}
+                  />
+                </section>
+              </div>
+
+              <section className="card">
+                <h3>Debt accounts</h3>
+                <DebtsEditor
+                  debts={state.data.debts}
+                  strategy={strategy}
+                  onAdd={() =>
+                    dispatch({
+                      type: 'add-debt',
+                      debt: {
+                        id: crypto.randomUUID(),
+                        name: 'New debt',
+                        balanceCents: 0,
+                        minPaymentCents: 0,
+                        suggestedPaymentCents: null,
+                        hasPromotion: false,
+                        dueDay: 1,
+                        paidFrom: 'autopay',
+                      },
+                    })
+                  }
+                  onUpdate={(id, patch) => dispatch({ type: 'update-debt', id, patch })}
+                  onRemove={(id) => dispatch({ type: 'remove-debt', id })}
+                />
+              </section>
+            </>
+          )}
+        </main>
+
+        <input
+          ref={restoreInputRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleRestoreFile(file);
+            e.target.value = '';
+          }}
+        />
+
+        {importOpen && (
+          <Suspense fallback={<div className="overlay"><div className="modal modal-loading">Loading importer…</div></div>}>
+            <ImportWizard
+              dirty={state.dirty}
+              hasData={!isEmpty}
+              onImport={(payload) => {
+                dispatch({ type: 'import-data', payload });
+                const parts = [
+                  payload.bills && `${payload.bills.length} bills`,
+                  payload.debts && `${payload.debts.length} debts`,
+                  payload.people && `${payload.people.length} people`,
+                ].filter(Boolean);
+                setNotice({ kind: 'info', text: `Imported ${parts.join(', ')} from Excel. Choose Save to store it.` });
+              }}
+              onClose={() => setImportOpen(false)}
+            />
+          </Suspense>
+        )}
+      </div>
+    </div>
+  );
+}

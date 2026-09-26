@@ -119,6 +119,7 @@ const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const RPGPage = LC(lazy(() => import("./pages/rpg/RPGPage")));
+const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
 
 export function Routes() {
   return (
@@ -135,6 +136,8 @@ export function Routes() {
           <Route path="/algoviz" component={AlgoVizPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/rpg" component={RPGPage} />
+          {/* Admin-only and intentionally not linked from the navigation. */}
+          <Route path="/budgetize" component={BudgetizePage} />
           <Route>
             <Custom404 />
           </Route>
