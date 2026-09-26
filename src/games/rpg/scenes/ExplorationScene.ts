@@ -90,10 +90,10 @@ export class ExplorationScene extends Phaser.Scene {
           await this.showSpellEffect(command.data);
           break;
         case "combat_miss":
-          await this.showMissEffect(command.data);
+          await this.showMissEffect();
           break;
         case "enemy_death":
-          await this.showDeathEffect(command.data);
+          await this.showDeathEffect();
           break;
         default:
           // show_dialogue, npc_speak, quest_accepted, rest_animation, use_item_animation, etc.
@@ -199,8 +199,6 @@ export class ExplorationScene extends Phaser.Scene {
 
   /** Show spell effect animation */
   private async showSpellEffect(data: Record<string, unknown>): Promise<void> {
-    const damage = data.damage as number;
-    const spell = (data.spell as string) || "spell";
     const damageType = (data.damage_type as string) || "fire";
 
     // Show particles for spell
@@ -241,7 +239,7 @@ export class ExplorationScene extends Phaser.Scene {
   }
 
   /** Show miss effect */
-  private async showMissEffect(data: Record<string, unknown>): Promise<void> {
+  private async showMissEffect(): Promise<void> {
     const x = SCENE_WIDTH / 2 + (Math.random() - 0.5) * 40;
     const y = SCENE_HEIGHT / 2;
 
@@ -271,7 +269,7 @@ export class ExplorationScene extends Phaser.Scene {
   }
 
   /** Show death effect */
-  private async showDeathEffect(data: Record<string, unknown>): Promise<void> {
+  private async showDeathEffect(): Promise<void> {
     const x = SCENE_WIDTH / 2;
     const y = SCENE_HEIGHT / 2;
 

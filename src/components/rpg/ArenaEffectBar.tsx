@@ -1,5 +1,5 @@
 import { Box, Typography, Chip, Stack, Paper } from "@mui/material";
-import { ArenaEffect, DamageType } from "../../lib/RpgTypes";
+import type { ArenaEffect, DamageType } from "../../lib/RpgTypes";
 import { useTheme } from "@mui/material/styles";
 import {
   Whatshot,

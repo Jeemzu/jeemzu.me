@@ -7,7 +7,7 @@ import {
   Paper,
   Tooltip,
 } from "@mui/material";
-import { ArenaEffect, CombatEntity, DamageType } from "../../lib/RpgTypes";
+import type { CombatEntity } from "../../lib/RpgTypes";
 import { useTheme } from "@mui/material/styles";
 
 interface CombatHUDProps {
@@ -19,16 +19,6 @@ interface CombatHUDProps {
     { name: string; hp: number; max_hp: number; class: string }
   >;
 }
-
-const DAMAGE_TYPE_COLORS: Record<DamageType, string> = {
-  physical: "#9e9e9e",
-  fire: "#ff6b6b",
-  ice: "#4fc3f7",
-  lightning: "#fff59d",
-  poison: "#66bb6a",
-  holy: "#ffd700",
-  dark: "#7e57c2",
-};
 
 export default function CombatHUD({
   enemies,

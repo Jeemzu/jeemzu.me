@@ -10,7 +10,7 @@ import {
   Stack,
   Chip,
 } from "@mui/material";
-import { DialogueOption, StatCheckResult } from "../../lib/RpgTypes";
+import type { DialogueOption, StatCheckResult } from "../../lib/RpgTypes";
 import { useTheme } from "@mui/material/styles";
 import { Casino, CheckCircle, Cancel } from "@mui/icons-material";
 
