@@ -1,14 +1,22 @@
-import { Button, CircularProgress, Grid, Box, Typography, Container } from '@mui/material'
-import './App.css'
-import { lazy, Suspense, useEffect, type JSX } from 'react';
+import {
+  Button,
+  CircularProgress,
+  Grid,
+  Box,
+  Typography,
+  Container,
+} from "@mui/material";
+import "./App.css";
+import { lazy, Suspense, useEffect, type JSX } from "react";
 import { Route, Router, Switch } from "wouter";
-import Footer from './components/shared/Footer';
-import Navigation from './components/shared/Navigation';
-import PageTransition from './components/shared/PageTransition';
-import confusedTravolta from './assets/images/confused-john-travolta.gif';
-import { FONTS } from './lib/globals';
-import ErrorBoundary from './components/shared/ErrorBoundary';
-import { useAuthStore } from './stores/authStore';
+import Footer from "./components/shared/Footer";
+import Navigation from "./components/shared/Navigation";
+import PageTransition from "./components/shared/PageTransition";
+import confusedTravolta from "./assets/images/confused-john-travolta.gif";
+import { FONTS } from "./lib/globals";
+import ErrorBoundary from "./components/shared/ErrorBoundary";
+import { useAuthStore } from "./stores/authStore";
+import DeveloperLayout from "./pages/developer/DeveloperLayout";
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element | null>;
 
@@ -17,27 +25,27 @@ const LoadingSpinner = () => (
   <Container
     maxWidth={false}
     sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '50vh',
-      backgroundColor: '#121212'
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "50vh",
+      backgroundColor: "#121212",
     }}
   >
     <CircularProgress
       size={60}
       sx={{
-        color: '#bdeb92ff',
-        mb: 2
+        color: "#bdeb92ff",
+        mb: 2,
       }}
     />
     <Typography
       variant="h6"
       fontFamily={FONTS.NECTO_MONO}
       sx={{
-        color: '#bdeb92ff',
-        textAlign: 'center'
+        color: "#bdeb92ff",
+        textAlign: "center",
       }}
     >
       Loading...
@@ -57,64 +65,62 @@ function LC(Component: LazyComponentT) {
 
 function Custom404() {
   return (
-    <Container sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '50vh',
-      textAlign: 'center',
-      color: '#bdeb92ff'
-    }}>
+    <Container
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "50vh",
+        textAlign: "center",
+        color: "#bdeb92ff",
+      }}
+    >
       <img
         src={confusedTravolta}
         alt="Confused John Travolta"
         style={{
-          maxWidth: '300px',
-          width: '100%',
-          height: 'auto',
-          marginBottom: '1rem'
+          maxWidth: "300px",
+          width: "100%",
+          height: "auto",
+          marginBottom: "1rem",
         }}
       />
-      <Typography
-        variant="h3"
-        fontFamily={FONTS.NECTO_MONO}
-        sx={{ mb: 2 }}
-      >
+      <Typography variant="h3" fontFamily={FONTS.NECTO_MONO} sx={{ mb: 2 }}>
         *Visible Confusion*
       </Typography>
-      <Typography
-        variant="h6"
-        fontFamily={FONTS.NECTO_MONO}
-        sx={{ mb: 3 }}
-      >
+      <Typography variant="h6" fontFamily={FONTS.NECTO_MONO} sx={{ mb: 3 }}>
         (404, this page doesn't exist...)
       </Typography>
       <Button
         variant="contained"
-        onClick={() => window.location.href = "/"}
+        onClick={() => (window.location.href = "/")}
         sx={{
-          backgroundColor: '#bdeb92ff',
-          color: '#121212',
+          backgroundColor: "#bdeb92ff",
+          color: "#121212",
           fontFamily: FONTS.NECTO_MONO,
-          fontSize: '1.25rem',
-          '&:hover': {
-            backgroundColor: '#a8d67eff'
-          }
+          fontSize: "1.25rem",
+          "&:hover": {
+            backgroundColor: "#a8d67eff",
+          },
         }}
       >
         Go To Home
       </Button>
     </Container>
-  )
+  );
 }
 
 const LandingPage = LC(lazy(() => import("./pages/landing/LandingPage")));
+const AboutPage = LC(lazy(() => import("./pages/developer/AboutPage")));
 const ProjectsPage = LC(lazy(() => import("./pages/projects/ProjectsPage")));
 const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")));
-const ExperiencePage = LC(lazy(() => import("./pages/experience/ExperiencePage")));
-const LevelEditorPage = LC(lazy(() => import("./pages/editor/LevelEditorPage")));
-const MemorialPage = LC(lazy(() => import("./pages/memorial/MemorialPage")));
+const ExperiencePage = LC(
+  lazy(() => import("./pages/experience/ExperiencePage")),
+);
+const LevelEditorPage = LC(
+  lazy(() => import("./pages/editor/LevelEditorPage")),
+);
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
@@ -127,23 +133,34 @@ export function Routes() {
       <PageTransition>
         <Switch>
           <Route path="/" component={LandingPage} />
-          <Route path="/projects" component={ProjectsPage} />
+          <Route path="/developer">
+            <DeveloperLayout>
+              <AboutPage />
+            </DeveloperLayout>
+          </Route>
+          <Route path="/developer/experience">
+            <DeveloperLayout>
+              <ExperiencePage />
+            </DeveloperLayout>
+          </Route>
+          <Route path="/developer/projects">
+            <DeveloperLayout>
+              <ProjectsPage />
+            </DeveloperLayout>
+          </Route>
           <Route path="/games/:id" component={GamePage} />
           <Route path="/games" component={GamesPage} />
-          <Route path="/experience" component={ExperiencePage} />
           <Route path="/editor" component={LevelEditorPage} />
-          <Route path="/memorial" component={MemorialPage} />
           <Route path="/algoviz" component={AlgoVizPage} />
           <Route path="/admin" component={AdminPage} />
           <Route path="/rpg" component={RPGPage} />
-          {/* Admin-only and intentionally not linked from the navigation. */}
           <Route path="/budgetize" component={BudgetizePage} />
           <Route>
             <Custom404 />
           </Route>
-        </Switch >
-      </PageTransition >
-    </Router >
+        </Switch>
+      </PageTransition>
+    </Router>
   );
 }
 
@@ -154,16 +171,18 @@ function App() {
   }, []);
   return (
     <ErrorBoundary>
-      <Box sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        minWidth: '100vw',
-        backgroundRepeat: 'repeat',
-        backgroundAttachment: 'fixed',
-        backgroundSize: 'auto',
-        backgroundColor: '#090c0c',
-      }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          minWidth: "100vw",
+          backgroundRepeat: "repeat",
+          backgroundAttachment: "fixed",
+          backgroundSize: "auto",
+          backgroundColor: "#090c0c",
+        }}
+      >
         {/* Navigation */}
         <Navigation />
 
@@ -184,10 +203,9 @@ function App() {
             </Grid>
           </Grid>
         </Box>
-
       </Box>
     </ErrorBoundary>
-  )
+  );
 }
 
-export default App
+export default App;

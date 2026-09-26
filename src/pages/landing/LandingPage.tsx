@@ -1,298 +1,210 @@
-import { Typography, Stack, Button, useTheme, useMediaQuery, Container, Box, Modal } from "@mui/material";
-import { FaDice, FaEnvelope, FaFile, FaCode, FaRoad, FaChartSimple } from "react-icons/fa6";
-import { onClickUrl } from "../../utils/openInNewTab";
-import { EFFECTS, FONTS, LINKS } from "../../lib/globals";
+import {
+  Typography,
+  Button,
+  useTheme,
+  Container,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+} from "@mui/material";
+import {
+  FaGamepad,
+  FaChartSimple,
+  FaDiceD20,
+  FaSackDollar,
+  FaPenRuler,
+  FaCode,
+} from "react-icons/fa6";
 import { Link } from "wouter";
-import LandingChat from "./LandingChat";
-import { useState, useRef } from "react";
-import ContactModal from "../../components/ContactModal";
+import { EFFECTS, FONTS } from "../../lib/globals";
+
+interface AppCardDef {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  path: string;
+  note?: string;
+}
+
+const APPS: AppCardDef[] = [
+  {
+    title: "Games",
+    description:
+      "Snake, Tetris, Brick Break, Pong, and more — all playable in the browser.",
+    icon: <FaGamepad size={42} />,
+    path: "/games",
+  },
+  {
+    title: "Algorithm Visualizer",
+    description:
+      "Watch sorting, pathfinding, and tree algorithms step through their work.",
+    icon: <FaChartSimple size={42} />,
+    path: "/algoviz",
+  },
+  {
+    title: "AI RPG",
+    description:
+      "A text adventure narrated by an AI game master. Fight, explore, and talk your way through.",
+    icon: <FaDiceD20 size={42} />,
+    path: "/rpg",
+  },
+  {
+    title: "Budgetize Me",
+    description:
+      "Plan your bills, debts, and paychecks with calendars and projections.",
+    icon: <FaSackDollar size={42} />,
+    path: "/budgetize",
+    note: "Sign in to save",
+  },
+  {
+    title: "Level Editor",
+    description: "Build your own platformer levels and play them.",
+    icon: <FaPenRuler size={42} />,
+    path: "/editor",
+    note: "Sign-in required",
+  },
+];
+
+const AppCard = ({ title, description, icon, path, note }: AppCardDef) => {
+  const theme = useTheme();
+
+  return (
+    <Link href={path} style={{ textDecoration: "none" }}>
+      <Card
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: theme.palette.cardBackground.main,
+          boxShadow: EFFECTS.CARD_SHADOW,
+          transition: EFFECTS.TRANSITION,
+          cursor: "pointer",
+          ":hover": {
+            transform: EFFECTS.HOVER_SCALE,
+            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
+          },
+        }}
+      >
+        <CardContent sx={{ flexGrow: 1, p: 3 }}>
+          <Box sx={{ color: theme.palette.primaryGreen.main, mb: 1.5 }}>
+            {icon}
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              flexWrap: "wrap",
+              mb: 1,
+            }}
+          >
+            <Typography
+              fontFamily={FONTS.NECTO_MONO}
+              variant="h5"
+              sx={{ color: theme.palette.primaryGreen.main }}
+            >
+              {title}
+            </Typography>
+            {note && (
+              <Chip
+                label={note}
+                size="small"
+                sx={{
+                  bgcolor: "rgba(168, 214, 126, 0.12)",
+                  color: theme.palette.primaryGreen.main,
+                  fontFamily: FONTS.NECTO_MONO,
+                  fontSize: "0.7rem",
+                  border: "1px solid rgba(168, 214, 126, 0.25)",
+                }}
+              />
+            )}
+          </Box>
+          <Typography
+            fontFamily={FONTS.NECTO_MONO}
+            variant="body1"
+            sx={{ color: theme.palette.textSecondary.main, lineHeight: 1.7 }}
+          >
+            {description}
+          </Typography>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+};
 
 const LandingPage = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery('(max-width:900px)');
-    const [openImage, setOpenImage] = useState<string | null>(null);
-    const [contactOpen, setContactOpen] = useState(false);
-    const heroRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
-    return (
-        <Container maxWidth="xl" sx={{ position: 'relative', py: { xs: 3, md: 4 } }}>
-            {/* Name - Centered above everything */}
-            <Typography
-                fontFamily={FONTS.POIRET_ONE}
-                variant={isMobile ? "h3" : "h1"}
-                sx={{
-                    textAlign: 'center',
-                    mb: { xs: 2, md: 3 },
-                    color: theme.palette.primaryGreen.main,
-                }}
-            >
-                James Friedenberg
-            </Typography>
+  return (
+    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
+      <Typography
+        fontFamily={FONTS.POIRET_ONE}
+        variant="h1"
+        sx={{
+          textAlign: "center",
+          mb: { xs: 2, md: 3 },
+          color: theme.palette.primaryGreen.main,
+        }}
+      >
+        jeemzu.me
+      </Typography>
+      <Typography
+        fontFamily={FONTS.NECTO_MONO}
+        variant="h6"
+        sx={{
+          textAlign: "center",
+          mb: { xs: 4, md: 6 },
+          color: theme.palette.textSecondary.main,
+          maxWidth: "600px",
+          mx: "auto",
+        }}
+      >
+        Interactive apps, games, and tools — pick one and dive in.
+      </Typography>
 
-            {/* Hero Section - Two-column layout */}
-            <Box ref={heroRef} sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
-                <Box sx={{ flex: isMobile ? 'none' : '3 1 0', minWidth: 0, display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start', order: isMobile ? 1 : 2, width: isMobile ? '100%' : 'auto' }}>
-                    <Box sx={{
-                        backgroundColor: theme.palette.cardBackground.main,
-                        borderRadius: 2,
-                        p: { xs: 2, md: 3 },
-                        pb: { xs: 1.5, md: 1.5 },
-                        boxShadow: EFFECTS.CARD_SHADOW,
-                        height: { xs: 'auto', md: '200px' },
-                        width: '100%',
-                    }}>
-                        <Typography
-                            fontFamily={FONTS.NECTO_MONO}
-                            variant={isMobile ? "h6" : "h4"}
-                            sx={{
-                                mb: { xs: 1.5, md: 2 },
-                                color: theme.palette.text.primary,
-                                fontWeight: 500,
-                                textAlign: 'left',
-                            }}
-                        >
-                            Software Engineer at Mojang Studios
-                        </Typography>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, 1fr)",
+            md: "repeat(3, 1fr)",
+          },
+          gap: 4,
+          mb: { xs: 5, md: 7 },
+        }}
+      >
+        {APPS.map((app) => (
+          <AppCard key={app.path} {...app} />
+        ))}
+      </Box>
 
-                        <Typography
-                            fontFamily={FONTS.NECTO_MONO}
-                            variant={isMobile ? "body1" : "h6"}
-                            sx={{
-                                mb: { xs: 1.5, md: 2 },
-                                color: theme.palette.textSecondary.main,
-                                fontSize: { xs: '1rem', md: '1.125rem' },
-                                textAlign: 'left',
-                            }}
-                        >
-                            Developing cool new features for Minecraft.
-                            Passionate about clean code, collaboration, gaming, and woodworking.
-                        </Typography>
-
-                        {/* CTA Buttons */}
-                        <Stack
-                            direction={isMobile ? 'column' : 'row'}
-                            sx={{
-                                justifyContent: 'flex-start',
-                                alignItems: isMobile ? 'stretch' : 'center',
-                                flexWrap: 'wrap',
-                                gap: 1.5,
-                            }}
-                            paddingTop={1.5}
-                        >
-                            <Link href="/projects" style={{ width: isMobile ? '100%' : 'auto' }}>
-                                <Button
-                                    variant="contained"
-                                    size="medium"
-                                    fullWidth={isMobile}
-                                    startIcon={<FaCode />}
-                                    sx={{
-                                        backgroundColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.background.default,
-                                        fontFamily: FONTS.NECTO_MONO,
-                                        px: 3,
-                                        py: 1,
-                                        fontSize: '1rem',
-                                        whiteSpace: 'nowrap',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.softGreen.main,
-                                            transform: EFFECTS.HOVER_SCALE,
-                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                        }
-                                    }}
-                                >
-                                    Projects
-                                </Button>
-                            </Link>
-
-                            <Link href="/experience" style={{ width: isMobile ? '100%' : 'auto' }}>
-                                <Button
-                                    variant="contained"
-                                    size="medium"
-                                    fullWidth={isMobile}
-                                    startIcon={<FaRoad />}
-                                    sx={{
-                                        backgroundColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.background.default,
-                                        fontFamily: FONTS.NECTO_MONO,
-                                        px: 3,
-                                        py: 1,
-                                        fontSize: '1rem',
-                                        whiteSpace: 'nowrap',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.softGreen.main,
-                                            transform: EFFECTS.HOVER_SCALE,
-                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                        }
-                                    }}
-                                >
-                                    Experience
-                                </Button>
-                            </Link>
-
-                            <Link href="/games" style={{ width: isMobile ? '100%' : 'auto' }}>
-                                <Button
-                                    variant="contained"
-                                    size="medium"
-                                    fullWidth={isMobile}
-                                    startIcon={<FaDice />}
-                                    sx={{
-                                        backgroundColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.background.default,
-                                        fontFamily: FONTS.NECTO_MONO,
-                                        px: 3,
-                                        py: 1,
-                                        fontSize: '1rem',
-                                        whiteSpace: 'nowrap',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.softGreen.main,
-                                            transform: EFFECTS.HOVER_SCALE,
-                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                        }
-                                    }}
-                                >
-                                    Games
-                                </Button>
-                            </Link>
-
-                            <Link href="/algoviz" style={{ width: isMobile ? '100%' : 'auto' }}>
-                                <Button
-                                    variant="contained"
-                                    size="medium"
-                                    fullWidth={isMobile}
-                                    startIcon={<FaChartSimple />}
-                                    sx={{
-                                        backgroundColor: theme.palette.primaryGreen.main,
-                                        color: theme.palette.background.default,
-                                        fontFamily: FONTS.NECTO_MONO,
-                                        px: 3,
-                                        py: 1,
-                                        fontSize: '1rem',
-                                        whiteSpace: 'nowrap',
-                                        transition: EFFECTS.TRANSITION,
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.softGreen.main,
-                                            transform: EFFECTS.HOVER_SCALE,
-                                            boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                        }
-                                    }}
-                                >
-                                    Visualizer
-                                </Button>
-                            </Link>
-
-                            <Button
-                                variant="contained"
-                                size="medium"
-                                fullWidth={isMobile}
-                                startIcon={<FaEnvelope />}
-                                onClick={() => setContactOpen(true)}
-                                sx={{
-                                    backgroundColor: theme.palette.primaryGreen.main,
-                                    color: theme.palette.background.default,
-                                    fontFamily: FONTS.NECTO_MONO,
-                                    px: 3,
-                                    py: 1,
-                                    fontSize: '1rem',
-                                    whiteSpace: 'nowrap',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        backgroundColor: theme.palette.softGreen.main,
-                                        transform: EFFECTS.HOVER_SCALE,
-                                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                    }
-                                }}
-                            >
-                                Contact
-                            </Button>
-
-                            <Button
-                                variant="contained"
-                                size="medium"
-                                fullWidth={isMobile}
-                                startIcon={<FaFile />}
-                                onClick={onClickUrl(LINKS.RESUME)}
-                                sx={{
-                                    backgroundColor: theme.palette.primaryGreen.main,
-                                    color: theme.palette.background.default,
-                                    fontFamily: FONTS.NECTO_MONO,
-                                    px: 3,
-                                    py: 1,
-                                    fontSize: '1rem',
-                                    whiteSpace: 'nowrap',
-                                    transition: EFFECTS.TRANSITION,
-                                    '&:hover': {
-                                        backgroundColor: theme.palette.softGreen.main,
-                                        transform: EFFECTS.HOVER_SCALE,
-                                        boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-                                    }
-                                }}
-                            >
-                                Resume
-                            </Button>
-
-
-                        </Stack>
-                    </Box>
-                </Box>
-            </Box>
-
-            {/* Chat Section */}
-            <Box sx={{ mt: { xs: 3, md: 4 } }}>
-                <LandingChat />
-            </Box>
-
-            {/* Image Modal */}
-            <Modal
-                open={openImage !== null}
-                onClose={() => setOpenImage(null)}
-                slotProps={{
-                    backdrop: {
-                        sx: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        }
-                    }
-                }}
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                }}
-                onClick={() => setOpenImage(null)}
-            >
-                <Box
-                    sx={{
-                        outline: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '60vw',
-                        height: '60vh',
-                    }}
-                >
-                    {openImage && (
-                        <img
-                            src={openImage}
-                            alt="Enlarged view"
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '100%',
-                                width: 'auto',
-                                height: 'auto',
-                                objectFit: 'contain',
-                                borderRadius: '8px',
-                                boxShadow: '0 8px 40px rgba(0, 0, 0, 0.8)',
-                            }}
-                        />
-                    )}
-                </Box>
-            </Modal>
-            <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
-        </Container>
-    );
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Link href="/developer">
+          <Button
+            variant="outlined"
+            startIcon={<FaCode />}
+            sx={{
+              color: theme.palette.textSecondary.main,
+              borderColor: "rgba(255,255,255,0.2)",
+              fontFamily: FONTS.NECTO_MONO,
+              px: 3,
+              py: 1,
+              transition: EFFECTS.TRANSITION,
+              "&:hover": {
+                borderColor: theme.palette.primaryGreen.main,
+                color: theme.palette.primaryGreen.main,
+                bgcolor: "rgba(168, 214, 126, 0.06)",
+              },
+            }}
+          >
+            Learn About the Developer
+          </Button>
+        </Link>
+      </Box>
+    </Container>
+  );
 };
 
 export default LandingPage;

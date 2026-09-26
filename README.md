@@ -4,34 +4,37 @@ React 19 + TypeScript + Vite SPA — personal portfolio, browser games, and AI c
 
 ## Stack
 
-| Concern | Technology |
-|---|---|
-| Framework | React 19 + TypeScript + Vite 6 |
-| Routing | Wouter |
-| UI | MUI v7 (custom dark theme) |
-| State | Zustand v5 |
-| Games (JS) | Phaser 3 |
-| Games (C++) | Emscripten WASM (C++20) |
-| Forms | react-hook-form |
-| Notifications | sonner |
-| API types | openapi-typescript (auto-generated) |
-| Deployment | Netlify (SPA) |
-| Pre-commit | Husky + lint-staged |
+| Concern       | Technology                          |
+| ------------- | ----------------------------------- |
+| Framework     | React 19 + TypeScript + Vite 6      |
+| Routing       | Wouter                              |
+| UI            | MUI v7 (custom dark theme)          |
+| State         | Zustand v5                          |
+| Games (JS)    | Phaser 3                            |
+| Games (C++)   | Emscripten WASM (C++20)             |
+| Forms         | react-hook-form                     |
+| Notifications | sonner                              |
+| API types     | openapi-typescript (auto-generated) |
+| Deployment    | Netlify (SPA)                       |
+| Pre-commit    | Husky + lint-staged                 |
 
 ## Pages
 
-| Path | Component | Description |
-|---|---|---|
-| `/` | `LandingPage` | Hero, intro, about sections |
-| `/projects` | `ProjectsPage` | Projects carousel (react-slick) |
-| `/games` | `GamesPage` | Genre-grouped game cards + launchers |
-| `/games/:id` | `GamePage` | Individual game detail/launch |
-| `/experience` | `ExperiencePage` | Work history timeline |
-| `/editor` | `LevelEditorPage` | Platformer level editor |
-| `/memorial` | `MemorialPage` | Memorial page |
-| `/algoviz` | `AlgoVizPage` | WASM algorithm visualizer |
-| `/admin` | `AdminPage` | Admin-gated controls |
-| `*` | `Custom404` | 404 page |
+| Path                    | Component         | Description                                             |
+| ----------------------- | ----------------- | ------------------------------------------------------- |
+| `/`                     | `LandingPage`     | App hub — cards linking to every app                    |
+| `/developer`            | `AboutPage`       | About the developer + AI chat (sub-nav layout)          |
+| `/developer/projects`   | `ProjectsPage`    | Projects carousel (react-slick)                         |
+| `/developer/experience` | `ExperiencePage`  | Work history timeline                                   |
+| `/games`                | `GamesPage`       | Genre-grouped game cards + launchers                    |
+| `/games/:id`            | `GamePage`        | Individual game detail/launch                           |
+| `/editor`               | `LevelEditorPage` | Platformer level editor                                 |
+| `/algoviz`              | `AlgoVizPage`     | WASM algorithm visualizer                               |
+| `/budgetize`            | `BudgetizePage`   | Budget planner — guests edit in-memory, sign in to save |
+| `/admin`                | `AdminPage`       | Admin-gated controls                                    |
+| `*`                     | `Custom404`       | 404 page                                                |
+
+The `/developer/*` routes share a `DeveloperLayout` sub-nav (About / Experience / Projects / Resume download).
 
 All pages are lazy-loaded with `Suspense` + `ErrorBoundary`.
 
@@ -41,22 +44,22 @@ All pages are lazy-loaded with `Suspense` + `ErrorBoundary`.
 
 Launched inside `GameContainer` modal — supports start menu, pause, volume, difficulty, and color options.
 
-| Game | File |
-|---|---|
-| Snake | `src/games/SnakeGame.ts` |
-| Tetris | `src/games/TetrisGame.ts` |
+| Game        | File                          |
+| ----------- | ----------------------------- |
+| Snake       | `src/games/SnakeGame.ts`      |
+| Tetris      | `src/games/TetrisGame.ts`     |
 | Brick Break | `src/games/BrickBreakGame.ts` |
-| Pong | `src/games/PongGame.ts` |
-| ZAim | `src/games/ZAimGame.ts` |
+| Pong        | `src/games/PongGame.ts`       |
+| ZAim        | `src/games/ZAimGame.ts`       |
 
 ### WASM Games (C++)
 
 Compiled with Emscripten to `public/wasm/`. Launched inside `WasmGameContainer` modal.
 
-| Game | Source |
-|---|---|
-| Platformer | `cpp/platformer/main.cpp` |
-| Algorithm Visualizer | `cpp/algoviz/main.cpp` |
+| Game                 | Source                    |
+| -------------------- | ------------------------- |
+| Platformer           | `cpp/platformer/main.cpp` |
+| Algorithm Visualizer | `cpp/algoviz/main.cpp`    |
 
 Game states mirrored from C++ enum: `WAITING(0)`, `PLAYING(1)`, `DEAD(2)`, `COMPLETED(3)`.
 
@@ -75,9 +78,9 @@ Roles: `'Admin' | 'User'` — role-gated UI via `<RoleGuard>` component and `use
 
 Base URL: `VITE_API_URL` env var (defaults to `http://localhost:5000/api`)
 
-| Utility | Endpoints |
-|---|---|
-| `src/utils/authApi.ts` | `/auth/refresh`, `/auth/logout`, `/users/register`, `/users/login` |
+| Utility                | Endpoints                                                              |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `src/utils/authApi.ts` | `/auth/refresh`, `/auth/logout`, `/users/register`, `/users/login`     |
 | `src/utils/gameApi.ts` | `/scores` (submit/leaderboard/summary), `/users` (profile/preferences) |
 | `src/utils/chatApi.ts` | `/chat` (RAG chat — tries agent service first, falls back to .NET API) |
 
@@ -105,12 +108,13 @@ src/
 │   ├── LevelSchema.ts      # Zod schema for platformer levels
 │   └── data/                # GameData, ProjectData, JourneyData
 ├── pages/
-│   ├── landing/             # LandingPage + LandingChat
+│   ├── landing/             # LandingPage (app hub)
+│   ├── developer/           # DeveloperLayout, AboutPage, LandingChat
 │   ├── projects/            # ProjectsPage + Projects carousel
 │   ├── games/               # GamesPage, GamePage, GameCard, GameRow
 │   ├── experience/          # ExperiencePage + MyJourney
 │   ├── editor/              # LevelEditorPage
-│   ├── memorial/            # MemorialPage
+│   ├── budgetize/           # BudgetizePage + budget components
 │   ├── algoviz/             # AlgoVizPage + AVLVisualizer
 │   └── admin/               # AdminPage
 ├── stores/
@@ -137,14 +141,14 @@ public/
 
 Custom MUI dark theme defined in `src/themes.ts`:
 
-| Token | Value |
-|---|---|
-| Primary Green | `#a8d67e` |
-| Soft Green | `#c5e8a4` |
-| Background | `#121212` |
-| Paper / Cards | `#1a1a1a` / `#1f1f1f` |
-| Text Secondary | `#b0b0b0` |
-| Font | `NectoMono-Regular` (monospace) |
+| Token          | Value                           |
+| -------------- | ------------------------------- |
+| Primary Green  | `#a8d67e`                       |
+| Soft Green     | `#c5e8a4`                       |
+| Background     | `#121212`                       |
+| Paper / Cards  | `#1a1a1a` / `#1f1f1f`           |
+| Text Secondary | `#b0b0b0`                       |
+| Font           | `NectoMono-Regular` (monospace) |
 
 Styling via MUI `sx` prop — no CSS modules. Layout constants in `src/lib/globals.ts`.
 
