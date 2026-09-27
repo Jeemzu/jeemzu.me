@@ -1,15 +1,19 @@
 @font-face {
-  font-family: 'NectoMono-Regular';
-  src: local('NectoMono-Regular'), url(./assets/fonts/NectoMono-Regular.otf) format('opentype');
+  font-family: "NectoMono-Regular";
+  src:
+    local("NectoMono-Regular"),
+    url(./assets/fonts/NectoMono-Regular.otf) format("opentype");
 }
 
 @font-face {
-  font-family: 'PoiretOne-Regular';
-  src: local('PoiretOne-Regular'), url(./assets/fonts/PoiretOne-Regular.ttf) format('truetype');
+  font-family: "PoiretOne-Regular";
+  src:
+    local("PoiretOne-Regular"),
+    url(./assets/fonts/PoiretOne-Regular.ttf) format("truetype");
 }
 
 :root {
-  font-family: 'NectoMono-Regular', monospace;
+  font-family: "NectoMono-Regular", monospace;
   line-height: 1.5;
   font-weight: 400;
 
@@ -81,6 +85,84 @@ body {
 /* Ensure all containers respect viewport width */
 * {
   box-sizing: border-box;
+}
+
+/* Shared motion for the landing page and app shell. */
+@keyframes jz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Single gilded sweep across the title, then a rest before it repeats. */
+@keyframes jz-gleam {
+  0% {
+    background-position: 170% 0;
+  }
+
+  45%,
+  100% {
+    background-position: -70% 0;
+  }
+}
+
+@keyframes jz-line {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes jz-lozenge {
+  from {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+@keyframes jz-drift {
+  from {
+    opacity: 0.7;
+    transform: translate3d(-1.5%, -1%, 0) scale(1.02);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(1.5%, 1%, 0) scale(1.06);
+  }
+}
+
+/* Steps one cell at a time through an AnimatedGlyph filmstrip (GLYPH_FRAMES * GLYPH_CELL). */
+@keyframes jz-filmstrip {
+  to {
+    transform: translateX(-288px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (prefers-color-scheme: light) {

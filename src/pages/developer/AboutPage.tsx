@@ -9,7 +9,8 @@ import {
 } from "@mui/material";
 import { FaEnvelope } from "react-icons/fa6";
 import { useState } from "react";
-import { EFFECTS, FONTS } from "../../lib/globals";
+import { FONTS } from "../../lib/globals";
+import { goldButtonSx, panelSx } from "../../lib/medievalStyles";
 import LandingChat from "./LandingChat";
 import ContactModal from "../../components/ContactModal";
 
@@ -24,12 +25,24 @@ const AboutPage = () => {
       sx={{ position: "relative", py: { xs: 3, md: 4 } }}
     >
       <Typography
-        fontFamily={FONTS.POIRET_ONE}
+        fontFamily={FONTS.MEDIEVAL_DISPLAY}
         variant={isMobile ? "h3" : "h1"}
         sx={{
           textAlign: "center",
           mb: { xs: 2, md: 3 },
-          color: theme.palette.primaryGreen.main,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          color: theme.palette.medievalGold.light,
+          backgroundImage:
+            "linear-gradient(110deg, #8a6a24 0%, #c8a24a 26%, #f8ecc4 46%, #c8a24a 66%, #8a6a24 100%)",
+          backgroundSize: "260% 100%",
+          backgroundPosition: "-70% 0",
+          backgroundClip: "text",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          filter: "drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75))",
+          animation:
+            "jz-rise 0.7s ease-out both, jz-gleam 7s ease-in-out 1.2s infinite",
         }}
       >
         James Friedenberg
@@ -37,20 +50,19 @@ const AboutPage = () => {
 
       <Box
         sx={{
-          backgroundColor: theme.palette.cardBackground.main,
-          borderRadius: 2,
+          ...panelSx,
           p: { xs: 2, md: 3 },
-          boxShadow: EFFECTS.CARD_SHADOW,
           width: "100%",
         }}
       >
         <Typography
-          fontFamily={FONTS.NECTO_MONO}
+          fontFamily={FONTS.MEDIEVAL_DISPLAY}
           variant={isMobile ? "h6" : "h4"}
           sx={{
             mb: { xs: 1.5, md: 2 },
-            color: theme.palette.text.primary,
-            fontWeight: 500,
+            color: theme.palette.medievalGold.light,
+            letterSpacing: "0.04em",
+            fontWeight: 600,
             textAlign: "left",
           }}
         >
@@ -58,11 +70,13 @@ const AboutPage = () => {
         </Typography>
 
         <Typography
-          fontFamily={FONTS.NECTO_MONO}
+          component="p"
+          fontFamily={FONTS.MEDIEVAL_SERIF}
           variant={isMobile ? "body1" : "h6"}
           sx={{
+            mt: 0,
             mb: { xs: 1.5, md: 2 },
-            color: theme.palette.textSecondary.main,
+            color: theme.palette.parchment.dark,
             fontSize: { xs: "1rem", md: "1.125rem" },
             textAlign: "left",
           }}
@@ -87,19 +101,11 @@ const AboutPage = () => {
             startIcon={<FaEnvelope />}
             onClick={() => setContactOpen(true)}
             sx={{
-              backgroundColor: theme.palette.primaryGreen.main,
-              color: theme.palette.background.default,
-              fontFamily: FONTS.NECTO_MONO,
+              ...goldButtonSx,
               px: 3,
               py: 1,
               fontSize: "1rem",
               whiteSpace: "nowrap",
-              transition: EFFECTS.TRANSITION,
-              "&:hover": {
-                backgroundColor: theme.palette.softGreen.main,
-                transform: EFFECTS.HOVER_SCALE,
-                boxShadow: EFFECTS.CARD_SHADOW_HOVER,
-              },
             }}
           >
             Contact

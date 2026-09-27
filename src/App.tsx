@@ -14,6 +14,7 @@ import Navigation from "./components/shared/Navigation";
 import PageTransition from "./components/shared/PageTransition";
 import confusedTravolta from "./assets/images/confused-john-travolta.gif";
 import { FONTS } from "./lib/globals";
+import { goldButtonSx } from "./lib/medievalStyles";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { useAuthStore } from "./stores/authStore";
 import DeveloperLayout from "./pages/developer/DeveloperLayout";
@@ -36,15 +37,16 @@ const LoadingSpinner = () => (
     <CircularProgress
       size={60}
       sx={{
-        color: "#bdeb92ff",
+        color: "#c8a24a",
         mb: 2,
       }}
     />
     <Typography
       variant="h6"
-      fontFamily={FONTS.NECTO_MONO}
+      fontFamily={FONTS.MEDIEVAL_DISPLAY}
       sx={{
-        color: "#bdeb92ff",
+        color: "#e8cf8f",
+        letterSpacing: "0.1em",
         textAlign: "center",
       }}
     >
@@ -73,7 +75,7 @@ function Custom404() {
         justifyContent: "center",
         minHeight: "50vh",
         textAlign: "center",
-        color: "#bdeb92ff",
+        color: "#e8cf8f",
       }}
     >
       <img
@@ -86,23 +88,26 @@ function Custom404() {
           marginBottom: "1rem",
         }}
       />
-      <Typography variant="h3" fontFamily={FONTS.NECTO_MONO} sx={{ mb: 2 }}>
+      <Typography
+        variant="h3"
+        fontFamily={FONTS.MEDIEVAL_DISPLAY}
+        sx={{ mb: 2, letterSpacing: "0.06em" }}
+      >
         *Visible Confusion*
       </Typography>
-      <Typography variant="h6" fontFamily={FONTS.NECTO_MONO} sx={{ mb: 3 }}>
+      <Typography
+        variant="h6"
+        fontFamily={FONTS.MEDIEVAL_SERIF}
+        sx={{ mb: 3, fontStyle: "italic", color: "#a79c85" }}
+      >
         (404, this page doesn't exist...)
       </Typography>
       <Button
         variant="contained"
         onClick={() => (window.location.href = "/")}
         sx={{
-          backgroundColor: "#bdeb92ff",
-          color: "#121212",
-          fontFamily: FONTS.NECTO_MONO,
+          ...goldButtonSx,
           fontSize: "1.25rem",
-          "&:hover": {
-            backgroundColor: "#a8d67eff",
-          },
         }}
       >
         Go To Home
@@ -173,6 +178,7 @@ function App() {
     <ErrorBoundary>
       <Box
         sx={{
+          position: "relative",
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
@@ -180,14 +186,28 @@ function App() {
           backgroundRepeat: "repeat",
           backgroundAttachment: "fixed",
           backgroundSize: "auto",
-          backgroundColor: "#090c0c",
+          backgroundColor: "#0b0e14",
+          backgroundImage: `radial-gradient(ellipse at 50% -10%, rgba(200, 162, 74, 0.13), transparent 58%),
+            radial-gradient(ellipse at 12% 72%, rgba(63, 111, 168, 0.10), transparent 52%),
+            radial-gradient(ellipse at 88% 58%, rgba(178, 58, 72, 0.09), transparent 52%),
+            linear-gradient(180deg, #151a24 0%, #0d1017 55%, #080a0f 100%)`,
+          // Candlelit pools that drift slowly behind the content.
+          "&::before": {
+            content: '""',
+            position: "fixed",
+            inset: 0,
+            pointerEvents: "none",
+            background: `radial-gradient(38% 46% at 18% 24%, rgba(200, 162, 74, 0.10), transparent 70%),
+              radial-gradient(34% 42% at 84% 70%, rgba(63, 111, 168, 0.09), transparent 70%)`,
+            animation: "jz-drift 26s ease-in-out infinite alternate",
+          },
         }}
       >
         {/* Navigation */}
         <Navigation />
 
         {/* Main content area */}
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ position: "relative", zIndex: 1, flex: 1 }}>
           <Grid container spacing={0}>
             <Grid size={12}>
               <Routes />
@@ -196,7 +216,7 @@ function App() {
         </Box>
 
         {/* Footer area */}
-        <Box>
+        <Box sx={{ position: "relative", zIndex: 1 }}>
           <Grid container spacing={0}>
             <Grid size={12}>
               <Footer />

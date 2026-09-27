@@ -1,208 +1,232 @@
-import { Container, Grid, Typography, useTheme, Box, IconButton, Divider, Stack, Modal } from "@mui/material"
-import React, { useState } from "react"
-import { EFFECTS, FONTS, LINKS } from "../../lib/globals"
-import { FaGithub, FaLinkedin, FaEnvelope, FaPaw } from "react-icons/fa6"
-import { onClickUrl } from "../../utils/openInNewTab"
-import beansImg from '../../assets/images/beans.png'
-import ContactModal from "../ContactModal"
+import {
+  Container,
+  Grid,
+  Typography,
+  useTheme,
+  Box,
+  IconButton,
+  Divider,
+  Stack,
+  Modal,
+} from "@mui/material";
+import React, { useState } from "react";
+import { EFFECTS, FONTS, LINKS, MEDIEVAL_EFFECTS } from "../../lib/globals";
+import { FaGithub, FaLinkedin, FaEnvelope, FaPaw } from "react-icons/fa6";
+import { onClickUrl } from "../../utils/openInNewTab";
+import beansImg from "../../assets/images/beans.png";
+import ContactModal from "../ContactModal";
 
 const Footer = () => {
-    const theme = useTheme();
-    const [openImage, setOpenImage] = useState(false);
-    const [contactOpen, setContactOpen] = useState(false);
+  const theme = useTheme();
+  const [openImage, setOpenImage] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
-    return (
-        <React.Fragment>
-            <Box
-                sx={{
-                    borderTop: `1px solid ${theme.palette.primaryGreen.main}33`,
-                    mt: 4,
-                    py: 3,
-                    px: 2,
-                }}
+  return (
+    <React.Fragment>
+      <Box
+        sx={{
+          borderTop: MEDIEVAL_EFFECTS.FRAME_BORDER,
+          boxShadow: "inset 0 1px 0 rgba(232, 207, 143, 0.10)",
+          backgroundImage:
+            "linear-gradient(180deg, rgba(27, 31, 40, 0.55) 0%, rgba(8, 10, 15, 0.85) 100%)",
+          mt: 4,
+          py: 3,
+          px: 2,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={2}>
+            {/* Left Section - Branding */}
+            <Grid
+              size={{ xs: 12, md: 4 }}
+              sx={{ textAlign: { xs: "center", md: "left" } }}
             >
-                <Container maxWidth="lg">
-                    <Grid container spacing={2}>
-                        {/* Left Section - Branding */}
-                        <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-                            <Typography
-                                variant="h5"
-                                fontFamily={FONTS.NECTO_MONO}
-                                sx={{
-                                    color: theme.palette.primaryGreen.main,
-                                    mb: 0.5,
-                                }}
-                            >
-                                James Friedenberg
-                            </Typography>
-                            <Typography
-                                variant="caption"
-                                fontFamily={FONTS.NECTO_MONO}
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    lineHeight: 1.5,
-                                }}
-                            >
-                                Building cool things for Minecraft and beyond
-                            </Typography>
-                        </Grid>
-
-                        {/* Center Section - Quick Links */}
-                        <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: 'center' }}>
-                            <Stack spacing={0.5} sx={{ alignItems: 'center' }}>
-                                <Typography
-                                    variant="body2"
-                                    fontFamily={FONTS.NECTO_MONO}
-                                    sx={{
-                                        color: theme.palette.primaryGreen.main,
-                                        mb: 0.5,
-                                    }}
-                                >
-                                    Connect
-                                </Typography>
-                                <Stack direction="row" spacing={1.5}>
-                                    <IconButton
-                                        size="small"
-                                        onClick={onClickUrl(LINKS.GITHUB)}
-                                        sx={{
-                                            color: theme.palette.textSecondary.main,
-                                            transition: EFFECTS.TRANSITION,
-                                            '&:hover': {
-                                                color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-2px)',
-                                            }
-                                        }}
-                                    >
-                                        <FaGithub size={20} />
-                                    </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={onClickUrl(LINKS.LINKEDIN)}
-                                        sx={{
-                                            color: theme.palette.textSecondary.main,
-                                            transition: EFFECTS.TRANSITION,
-                                            '&:hover': {
-                                                color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-2px)',
-                                            }
-                                        }}
-                                    >
-                                        <FaLinkedin size={20} />
-                                    </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setContactOpen(true)}
-                                        sx={{
-                                            color: theme.palette.textSecondary.main,
-                                            transition: EFFECTS.TRANSITION,
-                                            '&:hover': {
-                                                color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-2px)',
-                                            }
-                                        }}
-                                    >
-                                        <FaEnvelope size={20} />
-                                    </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setOpenImage(true)}
-                                        sx={{
-                                            color: theme.palette.textSecondary.main,
-                                            transition: EFFECTS.TRANSITION,
-                                            '&:hover': {
-                                                color: theme.palette.primaryGreen.main,
-                                                transform: 'translateY(-2px)',
-                                            }
-                                        }}
-                                    >
-                                        <FaPaw size={20} />
-                                    </IconButton>
-                                </Stack>
-                            </Stack>
-                        </Grid>
-
-                        {/* Right Section - Copyright */}
-                        <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'center', md: 'right' } }}>
-                            <Typography
-                                variant="caption"
-                                fontFamily={FONTS.NECTO_MONO}
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    display: 'block',
-                                    mb: 0.25,
-                                }}
-                            >
-                                © 2026 James Friedenberg
-                            </Typography>
-                            <Typography
-                                variant="caption"
-                                fontFamily={FONTS.NECTO_MONO}
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    opacity: 0.7,
-                                    fontSize: '0.7rem',
-                                }}
-                            >
-                                Built with React + TypeScript
-                            </Typography>
-                        </Grid>
-
-                        {/* Bottom Divider */}
-                        <Grid size={12}>
-                            <Divider sx={{ borderColor: `${theme.palette.primaryGreen.main}22`, mt: 1.5 }} />
-                            <Typography
-                                variant="caption"
-                                fontFamily={FONTS.NECTO_MONO}
-                                sx={{
-                                    color: theme.palette.textSecondary.main,
-                                    opacity: 0.6,
-                                    textAlign: 'center',
-                                    display: 'block',
-                                    mt: 1,
-                                    fontSize: '0.7rem',
-                                }}
-                            >
-                                Made with ☕ and 💚
-                            </Typography>
-                        </Grid>
-                    </Grid>
-                </Container>
-            </Box>
-
-            {/* Cats Image Modal */}
-            <Modal
-                open={openImage}
-                onClose={() => setOpenImage(false)}
-                slotProps={{
-                    backdrop: {
-                        sx: { backgroundColor: 'rgba(0, 0, 0, 0.9)' }
-                    }
-                }}
+              <Typography
+                variant="h5"
+                fontFamily={FONTS.MEDIEVAL_DISPLAY}
                 sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
+                  color: theme.palette.medievalGold.main,
+                  letterSpacing: "0.06em",
+                  textShadow: MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW,
+                  mb: 0.5,
                 }}
-                onClick={() => setOpenImage(false)}
+              >
+                James Friedenberg
+              </Typography>
+              <Typography
+                variant="caption"
+                fontFamily={FONTS.MEDIEVAL_SERIF}
+                sx={{
+                  color: theme.palette.parchment.dark,
+                  lineHeight: 1.5,
+                }}
+              >
+                Building cool things for Minecraft and beyond
+              </Typography>
+            </Grid>
+
+            {/* Center Section - Quick Links */}
+            <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: "center" }}>
+              <Stack spacing={0.5} sx={{ alignItems: "center" }}>
+                <Typography
+                  variant="body2"
+                  fontFamily={FONTS.MEDIEVAL_DISPLAY}
+                  sx={{
+                    color: theme.palette.medievalGold.main,
+                    letterSpacing: "0.12em",
+                    mb: 0.5,
+                  }}
+                >
+                  Connect
+                </Typography>
+                <Stack direction="row" spacing={1.5}>
+                  <IconButton
+                    size="small"
+                    onClick={onClickUrl(LINKS.GITHUB)}
+                    sx={{
+                      color: theme.palette.parchment.dark,
+                      transition: EFFECTS.TRANSITION,
+                      "&:hover": {
+                        color: theme.palette.medievalGold.light,
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <FaGithub size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={onClickUrl(LINKS.LINKEDIN)}
+                    sx={{
+                      color: theme.palette.parchment.dark,
+                      transition: EFFECTS.TRANSITION,
+                      "&:hover": {
+                        color: theme.palette.medievalGold.light,
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <FaLinkedin size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setContactOpen(true)}
+                    sx={{
+                      color: theme.palette.parchment.dark,
+                      transition: EFFECTS.TRANSITION,
+                      "&:hover": {
+                        color: theme.palette.medievalGold.light,
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <FaEnvelope size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => setOpenImage(true)}
+                    sx={{
+                      color: theme.palette.parchment.dark,
+                      transition: EFFECTS.TRANSITION,
+                      "&:hover": {
+                        color: theme.palette.medievalGold.light,
+                        transform: "translateY(-2px)",
+                      },
+                    }}
+                  >
+                    <FaPaw size={20} />
+                  </IconButton>
+                </Stack>
+              </Stack>
+            </Grid>
+
+            {/* Right Section - Copyright */}
+            <Grid
+              size={{ xs: 12, md: 4 }}
+              sx={{ textAlign: { xs: "center", md: "right" } }}
             >
-                <Box sx={{ outline: 'none' }}>
-                    <img
-                        src={beansImg}
-                        alt="Our Cats"
-                        style={{
-                            maxWidth: '60vw',
-                            maxHeight: '60vh',
-                            objectFit: 'contain',
-                            borderRadius: '8px',
-                            boxShadow: '0 8px 40px rgba(0, 0, 0, 0.8)',
-                        }}
-                    />
-                </Box>
-            </Modal>
-            <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
-        </React.Fragment>
-    )
-}
+              <Typography
+                variant="caption"
+                fontFamily={FONTS.MEDIEVAL_SERIF}
+                sx={{
+                  color: theme.palette.parchment.dark,
+                  display: "block",
+                  mb: 0.25,
+                }}
+              >
+                © 2026 James Friedenberg
+              </Typography>
+              <Typography
+                variant="caption"
+                fontFamily={FONTS.MEDIEVAL_SERIF}
+                sx={{
+                  color: theme.palette.parchment.dark,
+                  opacity: 0.7,
+                  fontSize: "0.7rem",
+                }}
+              >
+                Built with React + TypeScript
+              </Typography>
+            </Grid>
+
+            {/* Bottom Divider */}
+            <Grid size={12}>
+              <Divider
+                sx={{ borderColor: "rgba(200, 162, 74, 0.20)", mt: 1.5 }}
+              />
+              <Typography
+                variant="caption"
+                fontFamily={FONTS.MEDIEVAL_SERIF}
+                sx={{
+                  color: theme.palette.parchment.dark,
+                  opacity: 0.6,
+                  textAlign: "center",
+                  display: "block",
+                  mt: 1,
+                  fontSize: "0.7rem",
+                }}
+              >
+                Made with ☕ and 💚
+              </Typography>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Cats Image Modal */}
+      <Modal
+        open={openImage}
+        onClose={() => setOpenImage(false)}
+        slotProps={{
+          backdrop: {
+            sx: { backgroundColor: "rgba(0, 0, 0, 0.9)" },
+          },
+        }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+        }}
+        onClick={() => setOpenImage(false)}
+      >
+        <Box sx={{ outline: "none" }}>
+          <img
+            src={beansImg}
+            alt="Our Cats"
+            style={{
+              maxWidth: "60vw",
+              maxHeight: "60vh",
+              objectFit: "contain",
+              borderRadius: "8px",
+              boxShadow: "0 8px 40px rgba(0, 0, 0, 0.8)",
+            }}
+          />
+        </Box>
+      </Modal>
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+    </React.Fragment>
+  );
+};
 
 export default Footer;

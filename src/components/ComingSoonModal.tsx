@@ -1,96 +1,98 @@
-import { Dialog, Box, Typography, Button, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import { FONTS } from '../lib/globals';
+import { Dialog, Box, Typography, Button, IconButton } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import {
+  bodySx,
+  dialogPaperSx,
+  goldButtonSx,
+  headingSx,
+} from "../lib/medievalStyles";
 
 interface ComingSoonModalProps {
-    open: boolean;
-    onClose: () => void;
-    gameTitle: string;
+  open: boolean;
+  onClose: () => void;
+  gameTitle: string;
 }
 
-const ComingSoonModal = ({ open, onClose, gameTitle }: ComingSoonModalProps) => {
-    return (
-        <Dialog
-            open={open}
-            onClose={onClose}
-            maxWidth="sm"
-            fullWidth
-            PaperProps={{
-                sx: {
-                    bgcolor: 'darkBackground.main',
-                },
-            }}
+const ComingSoonModal = ({
+  open,
+  onClose,
+  gameTitle,
+}: ComingSoonModalProps) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: dialogPaperSx,
+      }}
+    >
+      <Box
+        sx={{
+          position: "relative",
+          p: 4,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 3,
+        }}
+      >
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            color: "parchment.dark",
+          }}
         >
-            <Box
-                sx={{
-                    position: 'relative',
-                    p: 4,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 3,
-                }}
-            >
-                <IconButton
-                    onClick={onClose}
-                    sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        color: 'white',
-                    }}
-                >
-                    <CloseIcon />
-                </IconButton>
+          <CloseIcon />
+        </IconButton>
 
-                <Typography variant="h4" sx={{ color: 'white', fontFamily: FONTS.NECTO_MONO, textAlign: 'center' }}>
-                    {gameTitle}
-                </Typography>
+        <Typography
+          variant="h4"
+          sx={{ ...headingSx, color: "parchment.main", textAlign: "center" }}
+        >
+          {gameTitle}
+        </Typography>
 
-                <Typography
-                    variant="h5"
-                    sx={{
-                        color: 'primaryGreen.main',
-                        fontFamily: FONTS.NECTO_MONO,
-                        textAlign: 'center',
-                    }}
-                >
-                    Coming Soon!
-                </Typography>
+        <Typography
+          variant="h5"
+          sx={{
+            ...headingSx,
+            textAlign: "center",
+          }}
+        >
+          Coming Soon!
+        </Typography>
 
-                <Typography
-                    variant="body1"
-                    sx={{
-                        color: 'textSecondary.main',
-                        fontFamily: FONTS.NECTO_MONO,
-                        textAlign: 'center',
-                    }}
-                >
-                    This game is currently under development. Check back soon!
-                </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            ...bodySx,
+            textAlign: "center",
+          }}
+        >
+          This game is currently under development. Check back soon!
+        </Typography>
 
-                <Button
-                    variant="contained"
-                    onClick={onClose}
-                    sx={{
-                        bgcolor: 'primaryGreen.main',
-                        color: 'darkBackground.main',
-                        fontFamily: FONTS.NECTO_MONO,
-                        fontSize: '1.1rem',
-                        px: 4,
-                        py: 1.5,
-                        mt: 2,
-                        '&:hover': {
-                            bgcolor: 'primaryGreen.light',
-                            transform: 'translateY(-2px)',
-                        },
-                    }}
-                >
-                    Close
-                </Button>
-            </Box>
-        </Dialog>
-    );
+        <Button
+          variant="contained"
+          onClick={onClose}
+          sx={{
+            ...goldButtonSx,
+            fontSize: "1.1rem",
+            px: 4,
+            py: 1.5,
+            mt: 2,
+          }}
+        >
+          Close
+        </Button>
+      </Box>
+    </Dialog>
+  );
 };
 
 export default ComingSoonModal;

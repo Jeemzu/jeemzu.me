@@ -2,7 +2,7 @@ import { Box, Button, Stack, useTheme } from "@mui/material";
 import { Link, useLocation } from "wouter";
 import { FaFile } from "react-icons/fa6";
 import type { ReactNode } from "react";
-import { FONTS, LINKS } from "../../lib/globals";
+import { FONTS, LINKS, MEDIEVAL_EFFECTS } from "../../lib/globals";
 import { onClickUrl } from "../../utils/openInNewTab";
 
 const SUB_NAV = [
@@ -18,20 +18,22 @@ const DeveloperLayout = ({ children }: { children: ReactNode }) => {
 
   const tabSx = (isActive: boolean) => ({
     color: isActive
-      ? theme.palette.text.primary
-      : theme.palette.textSecondary.main,
-    fontFamily: FONTS.NECTO_MONO,
-    fontWeight: 700,
+      ? theme.palette.medievalGold.light
+      : theme.palette.parchment.dark,
+    fontFamily: FONTS.MEDIEVAL_DISPLAY,
+    fontWeight: 600,
+    letterSpacing: "0.08em",
     fontSize: "1rem",
     px: 2,
     borderBottom: isActive
-      ? `2px solid ${theme.palette.primaryGreen.main}`
+      ? `2px solid ${theme.palette.medievalGold.main}`
       : "2px solid transparent",
     borderRadius: 0,
-    transition: "all 0.2s ease-in-out",
+    transition: MEDIEVAL_EFFECTS.TRANSITION,
     "&:hover": {
-      color: theme.palette.primaryGreen.main,
-      backgroundColor: "rgba(168, 214, 126, 0.08)",
+      color: theme.palette.medievalGold.light,
+      backgroundColor: "rgba(200, 162, 74, 0.10)",
+      borderBottomColor: "rgba(200, 162, 74, 0.45)",
     },
   });
 

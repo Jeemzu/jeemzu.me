@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { Link, useLocation } from "wouter";
-import { FONTS, LINKS } from "../../lib/globals";
+import { FONTS, LINKS, MEDIEVAL_EFFECTS } from "../../lib/globals";
 import {
   FaGithub,
   FaLinkedin,
@@ -60,20 +60,23 @@ const Navigation = () => {
         <Button
           sx={{
             color: isActive
-              ? theme.palette.text.primary
-              : theme.palette.textSecondary.main,
-            fontFamily: FONTS.NECTO_MONO,
-            fontWeight: 700,
-            fontSize: mobile ? "1.8rem" : "1.1rem",
+              ? theme.palette.medievalGold.light
+              : theme.palette.parchment.dark,
+            fontFamily: FONTS.MEDIEVAL_DISPLAY,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            fontSize: mobile ? "1.5rem" : "1rem",
             px: 2,
             borderBottom: isActive
-              ? `2px solid ${theme.palette.primaryGreen.main}`
-              : "none",
+              ? `2px solid ${theme.palette.medievalGold.main}`
+              : "2px solid transparent",
             borderRadius: 0,
-            transition: "all 0.2s ease-in-out",
+            textShadow: isActive ? MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW : "none",
+            transition: MEDIEVAL_EFFECTS.TRANSITION,
             "&:hover": {
-              color: theme.palette.primaryGreen.main,
-              backgroundColor: "rgba(168, 214, 126, 0.08)",
+              color: theme.palette.medievalGold.light,
+              backgroundColor: "rgba(200, 162, 74, 0.10)",
+              borderBottomColor: "rgba(200, 162, 74, 0.45)",
             },
             ...(mobile && {
               width: "100%",
@@ -96,7 +99,9 @@ const Navigation = () => {
       onClose={() => setDrawerOpen(false)}
       sx={{
         "& .MuiDrawer-paper": {
-          backgroundColor: theme.palette.darkBackground.main,
+          backgroundColor: theme.palette.medievalStone.dark,
+          backgroundImage: MEDIEVAL_EFFECTS.PANEL_BG,
+          borderLeft: MEDIEVAL_EFFECTS.FRAME_BORDER,
           width: "70%",
           maxWidth: "300px",
         },
@@ -106,7 +111,7 @@ const Navigation = () => {
         <IconButton
           onClick={() => setDrawerOpen(false)}
           sx={{
-            color: theme.palette.primaryGreen.main,
+            color: theme.palette.medievalGold.main,
             mb: 2,
           }}
         >
@@ -127,10 +132,10 @@ const Navigation = () => {
           <IconButton
             onClick={onClickUrl(LINKS.GITHUB)}
             sx={{
-              color: theme.palette.textSecondary.main,
-              transition: "all 0.2s ease-in-out",
+              color: theme.palette.parchment.dark,
+              transition: MEDIEVAL_EFFECTS.TRANSITION,
               "&:hover": {
-                color: theme.palette.primaryGreen.main,
+                color: theme.palette.medievalGold.light,
               },
             }}
           >
@@ -139,10 +144,10 @@ const Navigation = () => {
           <IconButton
             onClick={onClickUrl(LINKS.LINKEDIN)}
             sx={{
-              color: theme.palette.textSecondary.main,
-              transition: "all 0.2s ease-in-out",
+              color: theme.palette.parchment.dark,
+              transition: MEDIEVAL_EFFECTS.TRANSITION,
               "&:hover": {
-                color: theme.palette.primaryGreen.main,
+                color: theme.palette.medievalGold.light,
               },
             }}
           >
@@ -158,9 +163,13 @@ const Navigation = () => {
       <AppBar
         position="sticky"
         sx={{
-          backgroundColor: "rgba(18, 18, 18, 0.95)",
+          backgroundColor: "rgba(13, 16, 23, 0.94)",
+          backgroundImage:
+            "linear-gradient(180deg, rgba(38, 44, 56, 0.9) 0%, rgba(13, 16, 23, 0.94) 100%)",
           backdropFilter: "blur(10px)",
-          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.3)",
+          borderBottom: MEDIEVAL_EFFECTS.FRAME_BORDER,
+          boxShadow:
+            "inset 0 1px 0 rgba(232, 207, 143, 0.12), 0 4px 18px rgba(0, 0, 0, 0.6)",
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -168,13 +177,15 @@ const Navigation = () => {
           <Link href="/">
             <Button
               sx={{
-                color: theme.palette.primaryGreen.main,
-                fontFamily: FONTS.NECTO_MONO,
-                fontSize: "1.75rem",
-                fontWeight: 600,
-                transition: "all 0.2s ease-in-out",
+                color: theme.palette.medievalGold.main,
+                fontFamily: FONTS.MEDIEVAL_DISPLAY,
+                fontSize: "1.6rem",
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+                textShadow: MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW,
+                transition: MEDIEVAL_EFFECTS.TRANSITION,
                 "&:hover": {
-                  color: theme.palette.softGreen.main,
+                  color: theme.palette.medievalGold.light,
                   backgroundColor: "transparent",
                 },
               }}
@@ -194,10 +205,10 @@ const Navigation = () => {
                 <IconButton
                   onClick={onClickUrl(LINKS.GITHUB)}
                   sx={{
-                    color: theme.palette.textSecondary.main,
-                    transition: "all 0.2s ease-in-out",
+                    color: theme.palette.parchment.dark,
+                    transition: MEDIEVAL_EFFECTS.TRANSITION,
                     "&:hover": {
-                      color: theme.palette.primaryGreen.main,
+                      color: theme.palette.medievalGold.light,
                     },
                   }}
                 >
@@ -206,10 +217,10 @@ const Navigation = () => {
                 <IconButton
                   onClick={onClickUrl(LINKS.LINKEDIN)}
                   sx={{
-                    color: theme.palette.textSecondary.main,
-                    transition: "all 0.2s ease-in-out",
+                    color: theme.palette.parchment.dark,
+                    transition: MEDIEVAL_EFFECTS.TRANSITION,
                     "&:hover": {
-                      color: theme.palette.primaryGreen.main,
+                      color: theme.palette.medievalGold.light,
                     },
                   }}
                 >
@@ -231,11 +242,11 @@ const Navigation = () => {
                     }
                     size="small"
                     sx={{
-                      bgcolor: "rgba(168, 214, 126, 0.12)",
-                      color: "primaryGreen.main",
-                      fontFamily: FONTS.NECTO_MONO,
+                      bgcolor: "rgba(200, 162, 74, 0.14)",
+                      color: "medievalGold.light",
+                      fontFamily: FONTS.MEDIEVAL_SERIF,
                       fontSize: "0.7rem",
-                      border: "1px solid rgba(168, 214, 126, 0.25)",
+                      border: MEDIEVAL_EFFECTS.FRAME_BORDER,
                     }}
                   />
                   <Tooltip title="Sign out">
@@ -257,17 +268,17 @@ const Navigation = () => {
                   size="small"
                   sx={{
                     ml: 1,
-                    color: theme.palette.textSecondary.main,
-                    borderColor: "rgba(255,255,255,0.2)",
-                    fontFamily: FONTS.NECTO_MONO,
+                    color: theme.palette.parchment.dark,
+                    borderColor: "rgba(200, 162, 74, 0.34)",
+                    fontFamily: FONTS.MEDIEVAL_SERIF,
                     fontSize: "0.75rem",
                     px: 1.5,
                     py: 0.5,
                     minWidth: "auto",
                     "&:hover": {
-                      borderColor: theme.palette.primaryGreen.main,
-                      color: theme.palette.primaryGreen.main,
-                      bgcolor: "rgba(168, 214, 126, 0.06)",
+                      borderColor: theme.palette.medievalGold.main,
+                      color: theme.palette.medievalGold.light,
+                      bgcolor: "rgba(200, 162, 74, 0.10)",
                     },
                   }}
                 >
@@ -280,7 +291,7 @@ const Navigation = () => {
             <IconButton
               onClick={() => setDrawerOpen(true)}
               sx={{
-                color: theme.palette.primaryGreen.main,
+                color: theme.palette.medievalGold.main,
               }}
             >
               <FaBars size={24} />
