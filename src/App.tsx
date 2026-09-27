@@ -1,17 +1,10 @@
-import {
-  Button,
-  CircularProgress,
-  Grid,
-  Box,
-  Typography,
-  Container,
-} from "@mui/material";
+import { Button, Grid, Box, Typography, Container } from "@mui/material";
 import "./App.css";
 import { lazy, Suspense, useEffect, type JSX } from "react";
 import { Route, Router, Switch } from "wouter";
 import Footer from "./components/shared/Footer";
 import Navigation from "./components/shared/Navigation";
-import PageTransition from "./components/shared/PageTransition";
+import PageTransition, { PageEnter } from "./components/shared/PageTransition";
 import confusedTravolta from "./assets/images/confused-john-travolta.gif";
 import { FONTS } from "./lib/globals";
 import { goldButtonSx } from "./lib/medievalStyles";
@@ -21,45 +14,14 @@ import DeveloperLayout from "./pages/developer/DeveloperLayout";
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element | null>;
 
-// Enhanced Loading Component
-const LoadingSpinner = () => (
-  <Container
-    maxWidth={false}
-    sx={{
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      alignItems: "center",
-      minHeight: "50vh",
-      backgroundColor: "#121212",
-    }}
-  >
-    <CircularProgress
-      size={60}
-      sx={{
-        color: "#c8a24a",
-        mb: 2,
-      }}
-    />
-    <Typography
-      variant="h6"
-      fontFamily={FONTS.MEDIEVAL_DISPLAY}
-      sx={{
-        color: "#e8cf8f",
-        letterSpacing: "0.1em",
-        textAlign: "center",
-      }}
-    >
-      Loading...
-    </Typography>
-  </Container>
-);
-
 function LC(Component: LazyComponentT) {
   return () => {
     return (
-      <Suspense fallback={<LoadingSpinner />}>
-        <Component />
+      // Invisible spacer keeps the footer below the fold while a chunk loads.
+      <Suspense fallback={<Box sx={{ minHeight: "100vh" }} />}>
+        <PageEnter>
+          <Component />
+        </PageEnter>
       </Suspense>
     );
   };
@@ -136,34 +98,38 @@ export function Routes() {
   return (
     <Router>
       <PageTransition>
-        <Switch>
-          <Route path="/" component={LandingPage} />
-          <Route path="/developer">
-            <DeveloperLayout>
-              <AboutPage />
-            </DeveloperLayout>
-          </Route>
-          <Route path="/developer/experience">
-            <DeveloperLayout>
-              <ExperiencePage />
-            </DeveloperLayout>
-          </Route>
-          <Route path="/developer/projects">
-            <DeveloperLayout>
-              <ProjectsPage />
-            </DeveloperLayout>
-          </Route>
-          <Route path="/games/:id" component={GamePage} />
-          <Route path="/games" component={GamesPage} />
-          <Route path="/editor" component={LevelEditorPage} />
-          <Route path="/algoviz" component={AlgoVizPage} />
-          <Route path="/admin" component={AdminPage} />
-          <Route path="/rpg" component={RPGPage} />
-          <Route path="/budgetize" component={BudgetizePage} />
-          <Route>
-            <Custom404 />
-          </Route>
-        </Switch>
+        {(location) => (
+          <Switch location={location}>
+            <Route path="/" component={LandingPage} />
+            <Route path="/developer">
+              <DeveloperLayout>
+                <AboutPage />
+              </DeveloperLayout>
+            </Route>
+            <Route path="/developer/experience">
+              <DeveloperLayout>
+                <ExperiencePage />
+              </DeveloperLayout>
+            </Route>
+            <Route path="/developer/projects">
+              <DeveloperLayout>
+                <ProjectsPage />
+              </DeveloperLayout>
+            </Route>
+            <Route path="/games/:id" component={GamePage} />
+            <Route path="/games" component={GamesPage} />
+            <Route path="/editor" component={LevelEditorPage} />
+            <Route path="/algoviz" component={AlgoVizPage} />
+            <Route path="/admin" component={AdminPage} />
+            <Route path="/rpg" component={RPGPage} />
+            <Route path="/budgetize" component={BudgetizePage} />
+            <Route>
+              <PageEnter>
+                <Custom404 />
+              </PageEnter>
+            </Route>
+          </Switch>
+        )}
       </PageTransition>
     </Router>
   );

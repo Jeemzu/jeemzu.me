@@ -3,9 +3,15 @@ import { useId, type CSSProperties, type ReactElement } from "react";
 export type GlyphVariant = "gamepad" | "bars" | "d20" | "coins" | "pen";
 
 // Frames sit side by side in one SVG and are stepped through like a sprite sheet.
-// The jz-filmstrip keyframes in index.css shift by GLYPH_FRAMES * GLYPH_CELL.
-export const GLYPH_FRAMES = 12;
 export const GLYPH_CELL = 24;
+
+const VARIANT_FRAMES: Record<GlyphVariant, number> = {
+  gamepad: 12,
+  bars: 12,
+  d20: 20,
+  coins: 12,
+  pen: 12,
+};
 
 const STROKE = "currentColor";
 
@@ -24,22 +30,48 @@ const at = (
 const poly = (points: [number, number][]) =>
   points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
 
-const D20_FACES = [20, 7, 13, 2, 18, 5, 11, 9, 16, 3, 14, 8];
+const D20_FACES = [20, 7, 2, 18, 11, 5, 16, 9];
 
-// The silhouette wobbles while the facets and numeral snap to new angles, so the
-// die reads as tumbling onto a different face rather than spinning in place.
-const d20Frame = (i: number): ReactElement => {
-  const t = i / GLYPH_FRAMES;
-  const spin = t * 360;
-  const wobble = Math.sin(t * Math.PI * 2) * 9;
-  const bob = Math.sin(t * Math.PI * 4) * 1.1;
-  const hex = [0, 60, 120, 180, 240, 300].map((a) =>
-    at(12, 12, 9.6, a + wobble),
+// Frames spent tumbling before the die lands; the rest hold the result so it can be read.
+const D20_TUMBLE = 12;
+
+// A die flips face over face and decelerates rather than rotating evenly. The face group
+// squashes to an edge and swaps numerals while it's hidden, which is what separates a
+// tumble from a wheel spin.
+const d20Frame = (i: number, frames: number): ReactElement => {
+  let faceScale: number;
+  let face: number;
+  let lean: number;
+  let lift: number;
+
+  if (i < D20_TUMBLE) {
+    const u = i / D20_TUMBLE;
+    const eased = 1 - Math.pow(1 - u, 1.7);
+    const phase = eased * 4.5 * Math.PI;
+    // abs() keeps the face upright as it rolls over; it squashes to an edge at each
+    // zero crossing, which is exactly where the numeral swaps to the next face.
+    faceScale = Math.abs(Math.cos(phase));
+    face = D20_FACES[Math.round(phase / Math.PI) % D20_FACES.length];
+    lean = (1 - eased) * 15 * Math.sin(u * Math.PI * 3);
+    lift = -Math.abs(Math.sin(eased * Math.PI * 2.5)) * 2.2;
+  } else {
+    const s = (i - D20_TUMBLE) / (frames - D20_TUMBLE);
+    faceScale = 1;
+    face = 20;
+    lean = Math.max(0, 1 - s * 4) * Math.sin(s * Math.PI * 8) * 4;
+    lift = 0;
+  }
+
+  const hex = [0, 60, 120, 180, 240, 300].map((a) => at(12, 12, 9.6, a + lean));
+  const tri = [270, 30, 150].map((a) => at(12, 12, 7.6, a + lean));
+  const facets = [270, 30, 150].flatMap((ta) =>
+    [ta - 30, ta + 30].map(
+      (ha) => [at(12, 12, 7.6, ta + lean), at(12, 12, 9.6, ha + lean)] as const,
+    ),
   );
-  const tri = [90, 210, 330].map((a) => at(12, 12, 6.4, a + spin));
 
   return (
-    <g transform={`translate(0 ${bob.toFixed(2)})`}>
+    <g transform={`translate(0 ${lift.toFixed(2)})`}>
       <polygon
         points={poly(hex)}
         fill="none"
@@ -47,48 +79,49 @@ const d20Frame = (i: number): ReactElement => {
         strokeWidth={1.5}
         strokeLinejoin="round"
       />
-      {tri.map((v, k) => {
-        const corner =
-          (((Math.round((90 + 120 * k + spin) / 60) % 6) + 6) % 6) * 60;
-        const [hx, hy] = at(12, 12, 9.6, corner + wobble);
-        return (
+      <g
+        transform={`translate(12 12) scale(1 ${faceScale.toFixed(3)}) translate(-12 -12)`}
+      >
+        {facets.map(([v, h], k) => (
           <line
             key={k}
             x1={v[0].toFixed(2)}
             y1={v[1].toFixed(2)}
-            x2={hx.toFixed(2)}
-            y2={hy.toFixed(2)}
+            x2={h[0].toFixed(2)}
+            y2={h[1].toFixed(2)}
             stroke={STROKE}
             strokeWidth={1}
-            opacity={0.55}
+            opacity={0.5}
           />
-        );
-      })}
-      <polygon
-        points={poly(tri)}
-        fill="none"
-        stroke={STROKE}
-        strokeWidth={1.2}
-        strokeLinejoin="round"
-      />
-      <text
-        x={12}
-        y={13}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={7.5}
-        fontWeight={700}
-        fill={STROKE}
-        stroke="none"
-      >
-        {D20_FACES[i]}
-      </text>
+        ))}
+        <polygon
+          points={poly(tri)}
+          fill="none"
+          stroke={STROKE}
+          strokeWidth={1.2}
+          strokeLinejoin="round"
+        />
+        {faceScale > 0.25 && (
+          <text
+            x={12}
+            y={13.6}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={7.5}
+            fontWeight={700}
+            fill={STROKE}
+            stroke="none"
+          >
+            {face}
+          </text>
+        )}
+      </g>
     </g>
   );
 };
 
-const barsFrame = (i: number): ReactElement => {
-  const t = i / GLYPH_FRAMES;
+const barsFrame = (i: number, frames: number): ReactElement => {
+  const t = i / frames;
   const xs = [3.4, 8.4, 13.4, 18.4];
 
   return (
@@ -122,8 +155,8 @@ const barsFrame = (i: number): ReactElement => {
   );
 };
 
-const gamepadFrame = (i: number): ReactElement => {
-  const t = i / GLYPH_FRAMES;
+const gamepadFrame = (i: number, frames: number): ReactElement => {
+  const t = i / frames;
   const shake = Math.sin(t * Math.PI * 6) * 0.5;
   const pressed = i % 3;
 
@@ -166,8 +199,8 @@ const gamepadFrame = (i: number): ReactElement => {
   );
 };
 
-const coinsFrame = (i: number): ReactElement => {
-  const t = i / GLYPH_FRAMES;
+const coinsFrame = (i: number, frames: number): ReactElement => {
+  const t = i / frames;
   const belly = (16.1 + Math.sin(t * Math.PI * 2) * 0.5).toFixed(2);
 
   return (
@@ -219,8 +252,8 @@ const coinsFrame = (i: number): ReactElement => {
   );
 };
 
-const penFrame = (i: number): ReactElement => {
-  const p = i / GLYPH_FRAMES;
+const penFrame = (i: number, frames: number): ReactElement => {
+  const p = i / frames;
   const dx = -3 + 11 * p;
 
   return (
@@ -258,7 +291,10 @@ const penFrame = (i: number): ReactElement => {
   );
 };
 
-const FRAME_BUILDERS: Record<GlyphVariant, (i: number) => ReactElement> = {
+const FRAME_BUILDERS: Record<
+  GlyphVariant,
+  (i: number, frames: number) => ReactElement
+> = {
   gamepad: gamepadFrame,
   bars: barsFrame,
   d20: d20Frame,
@@ -279,6 +315,7 @@ const AnimatedGlyph = ({
 }: AnimatedGlyphProps) => {
   const clipId = useId();
   const buildFrame = FRAME_BUILDERS[variant];
+  const frames = VARIANT_FRAMES[variant];
 
   return (
     <svg
@@ -288,7 +325,12 @@ const AnimatedGlyph = ({
       aria-hidden="true"
       focusable="false"
       style={
-        { "--jz-glyph-duration": speed, overflow: "hidden" } as CSSProperties
+        {
+          "--jz-glyph-duration": speed,
+          "--jz-glyph-shift": `-${frames * GLYPH_CELL}px`,
+          "--jz-glyph-steps": `steps(${frames})`,
+          overflow: "hidden",
+        } as CSSProperties
       }
     >
       <defs>
@@ -297,10 +339,10 @@ const AnimatedGlyph = ({
         </clipPath>
       </defs>
       <g className="jz-glyph-strip">
-        {Array.from({ length: GLYPH_FRAMES }, (_, i) => (
+        {Array.from({ length: frames }, (_, i) => (
           <g key={i} transform={`translate(${i * GLYPH_CELL} 0)`}>
             {/* Clip per cell so a frame can never bleed into its neighbour. */}
-            <g clipPath={`url(#${clipId})`}>{buildFrame(i)}</g>
+            <g clipPath={`url(#${clipId})`}>{buildFrame(i, frames)}</g>
           </g>
         ))}
       </g>

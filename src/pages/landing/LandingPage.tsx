@@ -8,14 +8,17 @@ import {
   CardContent,
   Chip,
 } from "@mui/material";
-import { FaCode } from "react-icons/fa6";
+import {
+  FaGamepad,
+  FaChartSimple,
+  FaDiceD20,
+  FaSackDollar,
+  FaPenRuler,
+  FaCode,
+} from "react-icons/fa6";
 import { Link } from "wouter";
 import { FONTS, MEDIEVAL_EFFECTS } from "../../lib/globals";
 import PageHeading from "../../components/shared/PageHeading";
-import AnimatedGlyph, {
-  GLYPH_FRAMES,
-  type GlyphVariant,
-} from "../../components/shared/AnimatedGlyph";
 
 type GlassAccent =
   | "glassRuby"
@@ -27,11 +30,13 @@ type GlassAccent =
 interface AppCardDef {
   title: string;
   description: string;
-  glyph: GlyphVariant;
+  icon: React.ReactNode;
   path: string;
   accent: GlassAccent;
   note?: string;
-  speed?: string;
+  /** CSS animation shorthand played on the icon while its card is hovered. */
+  iconAnimation: string;
+  iconOrigin?: string;
 }
 
 const APPS: AppCardDef[] = [
@@ -39,58 +44,61 @@ const APPS: AppCardDef[] = [
     title: "Games",
     description:
       "Snake, Tetris, Brick Break, Pong, and more — all playable in the browser.",
-    glyph: "gamepad",
+    icon: <FaGamepad size={34} />,
     path: "/games",
     accent: "glassEmerald",
-    speed: "0.7s",
+    iconAnimation: "jz-rumble 0.6s linear both",
   },
   {
     title: "Algorithm Visualizer",
     description:
       "Watch sorting, pathfinding, and tree algorithms step through their work.",
-    glyph: "bars",
+    icon: <FaChartSimple size={34} />,
     path: "/algoviz",
     accent: "glassSapphire",
-    speed: "1.1s",
+    iconAnimation: "jz-sort 0.85s ease-in-out both",
+    iconOrigin: "50% 85%",
   },
   {
     title: "AI RPG",
     description:
       "A text adventure narrated by an AI game master. Fight, explore, and talk your way through.",
-    glyph: "d20",
+    icon: <FaDiceD20 size={34} />,
     path: "/rpg",
     accent: "glassAmethyst",
-    speed: "0.9s",
+    iconAnimation: "jz-dice-roll 0.95s ease-in-out both",
   },
   {
     title: "Budgetize Me",
     description:
       "Plan your bills, debts, and paychecks with calendars and projections.",
-    glyph: "coins",
+    icon: <FaSackDollar size={34} />,
     path: "/budgetize",
     accent: "glassAmber",
     note: "Sign in to save",
-    speed: "1.2s",
+    iconAnimation: "jz-jingle 1.1s ease-in-out both",
+    iconOrigin: "50% 6%",
   },
   {
     title: "Level Editor",
     description: "Build your own platformer levels and play them.",
-    glyph: "pen",
+    icon: <FaPenRuler size={34} />,
     path: "/editor",
     accent: "glassRuby",
     note: "Sign-in required",
-    speed: "1.4s",
+    iconAnimation: "jz-scribe 0.85s ease-in-out both",
   },
 ];
 
 const AppCard = ({
   title,
   description,
-  glyph,
+  icon,
   path,
   accent,
   note,
-  speed,
+  iconAnimation,
+  iconOrigin,
   index,
 }: AppCardDef & { index: number }) => {
   const theme = useTheme();
@@ -147,11 +155,11 @@ const AppCard = ({
             borderColor: "rgba(232, 207, 143, 0.72)",
             boxShadow: `inset 0 0 20px ${glass.main}66, 0 0 18px ${glass.main}4d`,
           },
-          "&:hover .jz-glyph-strip": {
-            animationName: "jz-filmstrip",
-            animationDuration: "var(--jz-glyph-duration, 0.85s)",
-            animationTimingFunction: `steps(${GLYPH_FRAMES})`,
-            animationIterationCount: "infinite",
+          "&:hover .landing-medallion::after": {
+            animation: "jz-halo-pulse 1.9s ease-in-out 0.2s infinite",
+          },
+          "&:hover .landing-icon": {
+            animation: iconAnimation,
           },
         }}
       >
@@ -170,6 +178,7 @@ const AppCard = ({
           <Box
             className="landing-medallion"
             sx={{
+              position: "relative",
               width: 68,
               height: 68,
               flexShrink: 0,
@@ -183,13 +192,27 @@ const AppCard = ({
               boxShadow: `inset 0 0 14px ${glass.main}40, 0 4px 12px rgba(0, 0, 0, 0.55)`,
               transition: MEDIEVAL_EFFECTS.TRANSITION,
               mb: 2,
-              "& .landing-icon": {
-                display: "flex",
+              // Halo ring revealed by the card's hover state.
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: -5,
+                borderRadius: "50%",
+                border: `1px solid ${glass.main}8c`,
+                boxShadow: `0 0 16px ${glass.main}59, inset 0 0 10px ${glass.main}33`,
+                opacity: 0,
+                pointerEvents: "none",
               },
             }}
           >
-            <Box className="landing-icon">
-              <AnimatedGlyph variant={glyph} speed={speed} />
+            <Box
+              className="landing-icon"
+              sx={{
+                display: "flex",
+                transformOrigin: iconOrigin ?? "50% 50%",
+              }}
+            >
+              {icon}
             </Box>
           </Box>
 
