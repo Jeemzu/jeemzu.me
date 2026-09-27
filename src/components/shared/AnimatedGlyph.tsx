@@ -16,7 +16,10 @@ const at = (
   cy: number,
   r: number,
   deg: number,
-): [number, number] => [cx + r * Math.cos(rad(deg)), cy + r * Math.sin(rad(deg))];
+): [number, number] => [
+  cx + r * Math.cos(rad(deg)),
+  cy + r * Math.sin(rad(deg)),
+];
 
 const poly = (points: [number, number][]) =>
   points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
@@ -30,7 +33,9 @@ const d20Frame = (i: number): ReactElement => {
   const spin = t * 360;
   const wobble = Math.sin(t * Math.PI * 2) * 9;
   const bob = Math.sin(t * Math.PI * 4) * 1.1;
-  const hex = [0, 60, 120, 180, 240, 300].map((a) => at(12, 12, 9.6, a + wobble));
+  const hex = [0, 60, 120, 180, 240, 300].map((a) =>
+    at(12, 12, 9.6, a + wobble),
+  );
   const tri = [90, 210, 330].map((a) => at(12, 12, 6.4, a + spin));
 
   return (
@@ -43,7 +48,8 @@ const d20Frame = (i: number): ReactElement => {
         strokeLinejoin="round"
       />
       {tri.map((v, k) => {
-        const corner = (((Math.round((90 + 120 * k + spin) / 60) % 6) + 6) % 6) * 60;
+        const corner =
+          (((Math.round((90 + 120 * k + spin) / 60) % 6) + 6) % 6) * 60;
         const [hx, hy] = at(12, 12, 9.6, corner + wobble);
         return (
           <line
@@ -88,7 +94,8 @@ const barsFrame = (i: number): ReactElement => {
   return (
     <g>
       {xs.map((x, b) => {
-        const h = 3.5 + 10 * (0.5 + 0.5 * Math.sin((t + b * 0.12) * Math.PI * 2));
+        const h =
+          3.5 + 10 * (0.5 + 0.5 * Math.sin((t + b * 0.12) * Math.PI * 2));
         return (
           <rect
             key={b}
@@ -265,7 +272,11 @@ interface AnimatedGlyphProps {
   speed?: string;
 }
 
-const AnimatedGlyph = ({ variant, size = 34, speed = "0.85s" }: AnimatedGlyphProps) => {
+const AnimatedGlyph = ({
+  variant,
+  size = 34,
+  speed = "0.85s",
+}: AnimatedGlyphProps) => {
   const clipId = useId();
   const buildFrame = FRAME_BUILDERS[variant];
 
@@ -276,7 +287,9 @@ const AnimatedGlyph = ({ variant, size = 34, speed = "0.85s" }: AnimatedGlyphPro
       viewBox={`0 0 ${GLYPH_CELL} ${GLYPH_CELL}`}
       aria-hidden="true"
       focusable="false"
-      style={{ "--jz-glyph-duration": speed, overflow: "hidden" } as CSSProperties}
+      style={
+        { "--jz-glyph-duration": speed, overflow: "hidden" } as CSSProperties
+      }
     >
       <defs>
         <clipPath id={clipId}>
