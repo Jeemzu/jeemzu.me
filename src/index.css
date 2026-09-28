@@ -1,15 +1,19 @@
 @font-face {
-  font-family: 'NectoMono-Regular';
-  src: local('NectoMono-Regular'), url(./assets/fonts/NectoMono-Regular.otf) format('opentype');
+  font-family: "NectoMono-Regular";
+  src:
+    local("NectoMono-Regular"),
+    url(./assets/fonts/NectoMono-Regular.otf) format("opentype");
 }
 
 @font-face {
-  font-family: 'PoiretOne-Regular';
-  src: local('PoiretOne-Regular'), url(./assets/fonts/PoiretOne-Regular.ttf) format('truetype');
+  font-family: "PoiretOne-Regular";
+  src:
+    local("PoiretOne-Regular"),
+    url(./assets/fonts/PoiretOne-Regular.ttf) format("truetype");
 }
 
 :root {
-  font-family: 'NectoMono-Regular', monospace;
+  font-family: "NectoMono-Regular", monospace;
   line-height: 1.5;
   font-weight: 400;
 
@@ -81,6 +85,229 @@ body {
 /* Ensure all containers respect viewport width */
 * {
   box-sizing: border-box;
+}
+
+/* Shared motion for the landing page and app shell. */
+@keyframes jz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Single gilded sweep across the title, then a rest before it repeats. */
+@keyframes jz-gleam {
+  0% {
+    background-position: 170% 0;
+  }
+
+  45%,
+  100% {
+    background-position: -70% 0;
+  }
+}
+
+@keyframes jz-line {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes jz-lozenge {
+  from {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(45deg) scale(1);
+  }
+}
+
+@keyframes jz-drift {
+  from {
+    opacity: 0.7;
+    transform: translate3d(-1.5%, -1%, 0) scale(1.02);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(1.5%, 1%, 0) scale(1.06);
+  }
+}
+
+/* --- Landing card icon personalities (played once per hover) --- */
+
+/* Controller rumble: jitter burst that settles. */
+@keyframes jz-rumble {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  10% {
+    transform: translate(-2px, 1px) rotate(-4deg);
+  }
+
+  20% {
+    transform: translate(2px, -1px) rotate(3deg);
+  }
+
+  30% {
+    transform: translate(-2px, -1px) rotate(-3deg);
+  }
+
+  45% {
+    transform: translate(2px, 1px) rotate(2deg);
+  }
+
+  60% {
+    transform: translate(-1px, 0) rotate(-1.5deg);
+  }
+
+  75% {
+    transform: translate(1px, 0) rotate(1deg);
+  }
+
+  90% {
+    transform: translate(0, 0) rotate(-0.5deg);
+  }
+}
+
+/* Bars re-sorting: squash-stretch bounce from the baseline. */
+@keyframes jz-sort {
+  0% {
+    transform: scaleY(1);
+  }
+
+  25% {
+    transform: scaleY(0.62);
+  }
+
+  50% {
+    transform: scaleY(1.18);
+  }
+
+  70% {
+    transform: scaleY(0.9);
+  }
+
+  85% {
+    transform: scaleY(1.05);
+  }
+
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* D20 roll: full spin with overshoot and a bounce on landing. */
+@keyframes jz-dice-roll {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  55% {
+    transform: rotate(285deg) scale(1.18);
+  }
+
+  78% {
+    transform: rotate(378deg) scale(1.04);
+  }
+
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+/* Coin purse jingle: pendulum swing decaying to rest. */
+@keyframes jz-jingle {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  18% {
+    transform: rotate(13deg);
+  }
+
+  38% {
+    transform: rotate(-10deg);
+  }
+
+  58% {
+    transform: rotate(6deg);
+  }
+
+  76% {
+    transform: rotate(-3deg);
+  }
+
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Quill scribing: tilted stroke motions, then rest. */
+@keyframes jz-scribe {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  20% {
+    transform: translate(-2px, 1px) rotate(-9deg);
+  }
+
+  40% {
+    transform: translate(1px, -1px) rotate(-6deg);
+  }
+
+  60% {
+    transform: translate(-1px, 1.5px) rotate(-10deg);
+  }
+
+  80% {
+    transform: translate(2px, -0.5px) rotate(-5deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+/* Accent halo breathing around a hovered medallion. */
+@keyframes jz-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.97);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (prefers-color-scheme: light) {

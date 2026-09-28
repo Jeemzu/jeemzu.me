@@ -1,38 +1,62 @@
-import { Box } from "@mui/material";
-import { useEffect, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useLocation } from "wouter";
+import {
+  gleamVariants,
+  pageEnterVariants,
+  pageExit,
+} from "../../lib/motionPresets";
 
 interface PageTransitionProps {
-    children: React.ReactNode;
+  /** Render prop receives the frozen location so exiting pages keep their route. */
+  children: (location: string) => React.ReactNode;
 }
 
+/** Blurs content into focus; mounts with the content itself, so lazy chunks never show a loader. */
+export const PageEnter = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    variants={pageEnterVariants}
+    initial="initial"
+    animate="enter"
+    style={{ position: "relative" }}
+  >
+    {/* Candlelight gleam that sweeps across the incoming page. */}
+    <motion.div
+      aria-hidden
+      variants={gleamVariants}
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: "38%",
+        zIndex: 5,
+        pointerEvents: "none",
+        skewX: -14,
+        background:
+          "linear-gradient(90deg, transparent, rgba(232, 207, 143, 0.06) 32%, rgba(232, 207, 143, 0.15) 50%, rgba(232, 207, 143, 0.06) 68%, transparent)",
+        mixBlendMode: "screen",
+      }}
+    />
+    {children}
+  </motion.div>
+);
+
 const PageTransition = ({ children }: PageTransitionProps) => {
-    const [location] = useLocation();
-    const [displayLocation, setDisplayLocation] = useState(location);
-    const [isTransitioning, setIsTransitioning] = useState(false);
+  const [location] = useLocation();
 
-    useEffect(() => {
-        if (location !== displayLocation) {
-            setIsTransitioning(true);
-            const timeout = setTimeout(() => {
-                setDisplayLocation(location);
-                setIsTransitioning(false);
-            }, 200);
-            return () => clearTimeout(timeout);
-        }
-    }, [location, displayLocation]);
-
-    return (
-        <Box
-            sx={{
-                opacity: isTransitioning ? 0 : 1,
-                transform: isTransitioning ? 'translateY(20px)' : 'none',
-                transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
-            }}
-        >
-            {children}
-        </Box>
-    );
+  return (
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence
+        mode="wait"
+        initial={false}
+        onExitComplete={() => window.scrollTo(0, 0)}
+      >
+        <motion.div key={location} exit={pageExit}>
+          {children(location)}
+        </motion.div>
+      </AnimatePresence>
+    </MotionConfig>
+  );
 };
 
 export default PageTransition;

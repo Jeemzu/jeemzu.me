@@ -1,32 +1,43 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
-import type { DebtPaymentStrategy, MonthRef } from './types';
-import { emptyBudget, perPaydayDepositCents } from './types';
-import { budgetReducer, initialState } from './state/budget';
-import { computeMonthSummary } from './lib/schedule';
-import { addMonths, monthLabel } from './lib/paydays';
-import { computeProjection } from './lib/projection';
-import { computeAutopayPlan } from './lib/autopay';
-import { computeFundingWarnings } from './lib/warnings';
-import { parseBackup, parseBudgetData, serializeBackup } from './lib/backup';
-import { downloadBlob } from './lib/download';
-import { SummaryCards } from './components/SummaryCards';
-import { CalendarView } from './components/CalendarView';
-import { UpcomingList } from './components/UpcomingList';
-import { CategoryBreakdown } from './components/CategoryBreakdown';
-import { PeopleEditor } from './components/PeopleEditor';
-import { BillsEditor } from './components/BillsEditor';
-import { DebtsEditor } from './components/DebtsEditor';
-import { ProjectionView } from './components/ProjectionView';
-import { AutopayCard } from './components/AutopayCard';
-import { FundingWarnings } from './components/FundingWarnings';
-import { useAuthStore } from '../../stores/authStore';
-import { loadBudget, saveBudget } from '../../utils/budgetApi';
-import './budgetize.css';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import type { DebtPaymentStrategy, MonthRef } from "./types";
+import { emptyBudget, perPaydayDepositCents } from "./types";
+import { budgetReducer, initialState } from "./state/budget";
+import { computeMonthSummary } from "./lib/schedule";
+import { addMonths, monthLabel } from "./lib/paydays";
+import { computeProjection } from "./lib/projection";
+import { computeAutopayPlan } from "./lib/autopay";
+import { computeFundingWarnings } from "./lib/warnings";
+import { parseBackup, parseBudgetData, serializeBackup } from "./lib/backup";
+import { downloadBlob } from "./lib/download";
+import { SummaryCards } from "./components/SummaryCards";
+import { CalendarView } from "./components/CalendarView";
+import { UpcomingList } from "./components/UpcomingList";
+import { CategoryBreakdown } from "./components/CategoryBreakdown";
+import { PeopleEditor } from "./components/PeopleEditor";
+import { BillsEditor } from "./components/BillsEditor";
+import { DebtsEditor } from "./components/DebtsEditor";
+import { ProjectionView } from "./components/ProjectionView";
+import { AutopayCard } from "./components/AutopayCard";
+import { FundingWarnings } from "./components/FundingWarnings";
+import { useAuthStore } from "../../stores/authStore";
+import { loadBudget, saveBudget } from "../../utils/budgetApi";
+import UserAuthModal from "../../components/shared/UserAuthModal";
+import "./budgetize.css";
 
 // Loaded on demand so the xlsx library stays out of the main bundle.
 const ImportWizard = lazy(() =>
-  import('./components/ImportWizard').then((m) => ({ default: m.ImportWizard })),
+  import("./components/ImportWizard").then((m) => ({
+    default: m.ImportWizard,
+  })),
 );
 
 function currentMonth(): MonthRef {
@@ -35,29 +46,22 @@ function currentMonth(): MonthRef {
 }
 
 interface Notice {
-  kind: 'info' | 'error';
+  kind: "info" | "error";
   text: string;
 }
 
 const VIEW_TABS = [
-  { id: 'month', label: 'This month' },
-  { id: 'projections', label: 'Projections' },
-  { id: 'data', label: 'Edit data' },
+  { id: "month", label: "This month" },
+  { id: "projections", label: "Projections" },
+  { id: "data", label: "Edit data" },
 ] as const;
 
-type ViewTab = (typeof VIEW_TABS)[number]['id'];
+type ViewTab = (typeof VIEW_TABS)[number]["id"];
 
-type LoadState = 'loading' | 'ready' | 'error';
+type LoadState = "loading" | "ready" | "error";
 
 export default function BudgetizePage() {
-  const { role, isInitialized } = useAuthStore();
-  const [, navigate] = useLocation();
-
-  useEffect(() => {
-    if (isInitialized && role !== 'Admin') {
-      navigate('/', { replace: true });
-    }
-  }, [isInitialized, role, navigate]);
+  const { isInitialized } = useAuthStore();
 
   if (!isInitialized) {
     return (
@@ -69,32 +73,38 @@ export default function BudgetizePage() {
     );
   }
 
-  if (role !== 'Admin') return null;
-
   return <BudgetWorkspace />;
 }
 
 function BudgetWorkspace() {
+  const { isAuthenticated } = useAuthStore();
   const [state, dispatch] = useReducer(budgetReducer, initialState);
   const [monthRef, setMonthRef] = useState<MonthRef>(currentMonth);
   const [importOpen, setImportOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [tab, setTab] = useState<ViewTab>('month');
-  const [strategy, setStrategy] = useState<DebtPaymentStrategy>('suggested');
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [loadError, setLoadError] = useState('');
+  const [tab, setTab] = useState<ViewTab>("month");
+  const [strategy, setStrategy] = useState<DebtPaymentStrategy>("suggested");
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [loadError, setLoadError] = useState("");
   const [revision, setRevision] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
   const summary = useMemo(
-    () => computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
+    () =>
+      computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
     [state.data, monthRef, strategy],
   );
 
   const categories = useMemo(
-    () => [...new Set(state.data.bills.map((bill) => bill.category.trim()).filter(Boolean))].sort(),
+    () =>
+      [
+        ...new Set(
+          state.data.bills.map((bill) => bill.category.trim()).filter(Boolean),
+        ),
+      ].sort(),
     [state.data.bills],
   );
 
@@ -106,48 +116,120 @@ function BudgetWorkspace() {
   }, [state.data, strategy]);
 
   const load = useCallback(async () => {
-    setLoadState('loading');
+    setLoadState("loading");
     setConflict(false);
     const result = await loadBudget();
 
-    if (result.status === 'ok') {
+    if (result.status === "ok") {
       const parsed = parseBudgetData(result.data);
       if (!parsed.ok) {
-        setLoadState('error');
+        setLoadState("error");
         setLoadError(`Your saved budget could not be read: ${parsed.error}`);
         return;
       }
-      dispatch({ type: 'hydrate', data: parsed.data });
+      dispatch({ type: "hydrate", data: parsed.data });
       setRevision(result.revision);
-      setLoadState('ready');
+      setLoadState("ready");
       return;
     }
 
-    if (result.status === 'empty') {
-      dispatch({ type: 'hydrate', data: emptyBudget() });
+    if (result.status === "empty") {
+      dispatch({ type: "hydrate", data: emptyBudget() });
       setRevision(null);
-      setLoadState('ready');
+      setLoadState("ready");
       return;
     }
 
     // Editing stays blocked on failure so a later save cannot replace data we never read.
-    setLoadState('error');
+    setLoadState("error");
     setLoadError(
-      result.status === 'unauthorized'
-        ? 'Your session has expired. Sign in again to load your budget.'
-        : 'Could not reach the server to load your budget.',
+      result.status === "unauthorized"
+        ? "Your session has expired. Sign in again to load your budget."
+        : "Could not reach the server to load your budget.",
     );
   }, []);
 
   useEffect(() => {
+    // Guests edit a blank in-memory budget; there is nothing to fetch.
+    if (!useAuthStore.getState().isAuthenticated) {
+      setLoadState("ready");
+      return;
+    }
     void load();
   }, [load]);
+
+  // Kept in a ref so the auth-transition effect reads fresh edits without re-running on every keystroke.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const adoptSignIn = useCallback(async () => {
+    if (!stateRef.current.dirty) {
+      await load();
+      return;
+    }
+    // Guest edits exist — fetch quietly instead of replacing the workspace.
+    const result = await loadBudget();
+    if (result.status === "empty") {
+      setRevision(null);
+      setNotice({
+        kind: "info",
+        text: "Signed in. Choose Save to store your budget.",
+      });
+      return;
+    }
+    if (result.status === "ok") {
+      const keepEdits = window.confirm(
+        "You already have a saved budget. Keep your current edits? Saving will then overwrite the saved budget. Cancel loads the saved budget instead.",
+      );
+      if (keepEdits) {
+        setRevision(result.revision);
+        setNotice({
+          kind: "info",
+          text: "Your edits are kept. Choose Save to overwrite your saved budget.",
+        });
+        return;
+      }
+      const parsed = parseBudgetData(result.data);
+      if (!parsed.ok) {
+        setNotice({
+          kind: "error",
+          text: `Your saved budget could not be read: ${parsed.error}`,
+        });
+        return;
+      }
+      dispatch({ type: "hydrate", data: parsed.data });
+      setRevision(result.revision);
+      return;
+    }
+    setNotice({
+      kind: "error",
+      text: "Could not load your saved budget. Your edits are still here.",
+    });
+  }, [load]);
+
+  const wasAuthenticated = useRef(isAuthenticated);
+  useEffect(() => {
+    if (isAuthenticated === wasAuthenticated.current) return;
+    wasAuthenticated.current = isAuthenticated;
+    if (isAuthenticated) {
+      void adoptSignIn();
+      return;
+    }
+    // Signing out clears the budget so it never lingers on a shared screen.
+    dispatch({ type: "hydrate", data: emptyBudget() });
+    setRevision(null);
+    setConflict(false);
+    setNotice(null);
+    setLoadState("ready");
+  }, [isAuthenticated, adoptSignIn]);
 
   useEffect(() => {
     if (!state.dirty) return;
     const handler = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [state.dirty]);
 
   async function handleSave() {
@@ -158,30 +240,32 @@ function BudgetWorkspace() {
     const result = await saveBudget(snapshot, revision);
     setSaving(false);
 
-    if (result.status === 'ok') {
+    if (result.status === "ok") {
       setRevision(result.revision);
       setConflict(false);
-      dispatch({ type: 'mark-saved', data: snapshot });
-      setNotice({ kind: 'info', text: 'Budget saved.' });
+      dispatch({ type: "mark-saved", data: snapshot });
+      setNotice({ kind: "info", text: "Budget saved." });
       return;
     }
-    if (result.status === 'conflict') {
+    if (result.status === "conflict") {
       setConflict(true);
       return;
     }
     setNotice({
-      kind: 'error',
+      kind: "error",
       text:
-        result.status === 'unauthorized'
-          ? 'Your session has expired, so nothing was saved. Sign in again.'
-          : 'Could not reach the server, so nothing was saved. Your edits are still here.',
+        result.status === "unauthorized"
+          ? "Your session has expired, so nothing was saved. Sign in again."
+          : "Could not reach the server, so nothing was saved. Your edits are still here.",
     });
   }
 
   function handleReload() {
     if (
       state.dirty &&
-      !window.confirm('Reloading replaces your unsaved edits with the saved budget. Continue?')
+      !window.confirm(
+        "Reloading replaces your unsaved edits with the saved budget. Continue?",
+      )
     ) {
       return;
     }
@@ -193,31 +277,34 @@ function BudgetWorkspace() {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadBlob(
       `budgetize-me-backup-${stamp}.json`,
-      new Blob([serializeBackup(state.data)], { type: 'application/json' }),
+      new Blob([serializeBackup(state.data)], { type: "application/json" }),
     );
     setNotice({
-      kind: 'info',
-      text: 'Backup downloaded. This is a local copy — it does not save to the server.',
+      kind: "info",
+      text: "Backup downloaded. This is a local copy — it does not save to the server.",
     });
   }
 
   async function handleRestoreFile(file: File) {
     const result = parseBackup(await file.text());
     if (!result.ok) {
-      setNotice({ kind: 'error', text: result.error });
+      setNotice({ kind: "error", text: result.error });
       return;
     }
-    if (state.dirty && !window.confirm('You have unsaved edits. Replace them with this backup?')) {
+    if (
+      state.dirty &&
+      !window.confirm("You have unsaved edits. Replace them with this backup?")
+    ) {
       return;
     }
-    dispatch({ type: 'restore', data: result.data });
+    dispatch({ type: "restore", data: result.data });
     setNotice({
-      kind: 'info',
+      kind: "info",
       text: `Backup loaded: ${result.data.bills.length} bills, ${result.data.debts.length} debts, ${result.data.people.length} people. Choose Save to store it.`,
     });
   }
 
-  if (loadState === 'loading') {
+  if (loadState === "loading") {
     return (
       <div className="budgetize">
         <div className="app">
@@ -227,14 +314,18 @@ function BudgetWorkspace() {
     );
   }
 
-  if (loadState === 'error') {
+  if (loadState === "error") {
     return (
       <div className="budgetize">
         <div className="app">
           <section className="card hero">
             <h2>Budget unavailable</h2>
             <p>{loadError}</p>
-            <button type="button" className="btn primary" onClick={() => void load()}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => void load()}
+            >
               Try again
             </button>
           </section>
@@ -244,7 +335,9 @@ function BudgetWorkspace() {
   }
 
   const isEmpty =
-    state.data.bills.length === 0 && state.data.debts.length === 0 && state.data.people.length === 0;
+    state.data.bills.length === 0 &&
+    state.data.debts.length === 0 &&
+    state.data.people.length === 0;
 
   return (
     <div className="budgetize">
@@ -252,39 +345,73 @@ function BudgetWorkspace() {
         <header className="topbar">
           <div className="brand">
             <h1>💵 Budgetize Me</h1>
-            <span className={`save-status${state.dirty ? ' dirty' : ''}`}>
-              {state.dirty ? '● Unsaved changes' : '✓ All changes saved'}
+            <span className={`save-status${state.dirty ? " dirty" : ""}`}>
+              {!isAuthenticated
+                ? "Guest mode — sign in to save"
+                : state.dirty
+                  ? "● Unsaved changes"
+                  : "✓ All changes saved"}
             </span>
           </div>
           <div className="topbar-actions">
-            <button type="button" className="btn" onClick={() => setImportOpen(true)}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setImportOpen(true)}
+            >
               Import Excel
-            </button>
-            <button type="button" className="btn" onClick={() => restoreInputRef.current?.click()}>
-              Restore backup
-            </button>
-            <button type="button" className="btn" onClick={handleBackupDownload}>
-              Download backup
-            </button>
-            <button type="button" className="btn" onClick={handleReload} disabled={saving}>
-              Reload
             </button>
             <button
               type="button"
-              className="btn primary"
-              onClick={() => void handleSave()}
-              disabled={saving || !state.dirty}
+              className="btn"
+              onClick={() => restoreInputRef.current?.click()}
             >
-              {saving ? 'Saving…' : 'Save'}
+              Restore backup
             </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleBackupDownload}
+            >
+              Download backup
+            </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                className="btn"
+                onClick={handleReload}
+                disabled={saving}
+              >
+                Reload
+              </button>
+            )}
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => void handleSave()}
+                disabled={saving || !state.dirty}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => setLoginOpen(true)}
+              >
+                Sign in to save
+              </button>
+            )}
           </div>
         </header>
 
         {conflict && (
           <div className="banner error" role="alert">
             <span>
-              This budget was saved on another device, so nothing was saved here. Download a backup
-              of your edits, then reload the newer version.
+              This budget was saved on another device, so nothing was saved
+              here. Download a backup of your edits, then reload the newer
+              version.
             </span>
             <button type="button" className="btn ghost" onClick={handleReload}>
               Reload
@@ -295,7 +422,12 @@ function BudgetWorkspace() {
         {notice && (
           <div className={`banner ${notice.kind}`} role="status">
             <span>{notice.text}</span>
-            <button type="button" className="btn ghost" onClick={() => setNotice(null)} aria-label="Dismiss">
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setNotice(null)}
+              aria-label="Dismiss"
+            >
               ✕
             </button>
           </div>
@@ -307,10 +439,17 @@ function BudgetWorkspace() {
             <section className="card hero">
               <h2>Welcome!</h2>
               <p>
-                Import your Excel budget workbook to pull in your bills, debt accounts, and paycheck
-                deposits. Choose Save to store your budget so you can pick it up on another machine.
+                Import your Excel budget workbook to pull in your bills, debt
+                accounts, and paycheck deposits.{" "}
+                {isAuthenticated
+                  ? "Choose Save to store your budget so you can pick it up on another machine."
+                  : "Sign in to save your budget so you can pick it up on another machine."}
               </p>
-              <button type="button" className="btn primary" onClick={() => setImportOpen(true)}>
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => setImportOpen(true)}
+              >
                 Import your workbook
               </button>
             </section>
@@ -324,7 +463,7 @@ function BudgetWorkspace() {
                   type="button"
                   role="tab"
                   aria-selected={tab === entry.id}
-                  className={`view-tab${tab === entry.id ? ' active' : ''}`}
+                  className={`view-tab${tab === entry.id ? " active" : ""}`}
                   onClick={() => setTab(entry.id)}
                 >
                   {entry.label}
@@ -333,20 +472,24 @@ function BudgetWorkspace() {
             </div>
             <div className="strategy-toggle">
               <span id="strategy-label">Debt payments</span>
-              <div className="seg" role="group" aria-labelledby="strategy-label">
+              <div
+                className="seg"
+                role="group"
+                aria-labelledby="strategy-label"
+              >
                 <button
                   type="button"
-                  className={strategy === 'suggested' ? 'active' : ''}
+                  className={strategy === "suggested" ? "active" : ""}
                   title="Promo payoff amount while a promotion is active, otherwise the minimum"
-                  onClick={() => setStrategy('suggested')}
+                  onClick={() => setStrategy("suggested")}
                 >
                   Suggested
                 </button>
                 <button
                   type="button"
-                  className={strategy === 'minimum' ? 'active' : ''}
+                  className={strategy === "minimum" ? "active" : ""}
                   title="Always the minimum monthly payment"
-                  onClick={() => setStrategy('minimum')}
+                  onClick={() => setStrategy("minimum")}
                 >
                   Minimum
                 </button>
@@ -354,18 +497,32 @@ function BudgetWorkspace() {
             </div>
           </div>
 
-          {tab === 'month' && (
+          {tab === "month" && (
             <>
               <section className="month-row">
                 <div className="month-nav">
-                  <button type="button" className="btn" onClick={() => setMonthRef(addMonths(monthRef, -1))} aria-label="Previous month">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setMonthRef(addMonths(monthRef, -1))}
+                    aria-label="Previous month"
+                  >
                     ‹
                   </button>
                   <h2>{monthLabel(monthRef)}</h2>
-                  <button type="button" className="btn" onClick={() => setMonthRef(addMonths(monthRef, 1))} aria-label="Next month">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setMonthRef(addMonths(monthRef, 1))}
+                    aria-label="Next month"
+                  >
                     ›
                   </button>
-                  <button type="button" className="btn ghost" onClick={() => setMonthRef(currentMonth())}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => setMonthRef(currentMonth())}
+                  >
                     Today
                   </button>
                 </div>
@@ -383,7 +540,9 @@ function BudgetWorkspace() {
                     <UpcomingList
                       monthRef={monthRef}
                       summary={summary}
-                      paydayDepositCents={perPaydayDepositCents(state.data.people)}
+                      paydayDepositCents={perPaydayDepositCents(
+                        state.data.people,
+                      )}
                     />
                   </section>
                   <section className="card">
@@ -395,16 +554,22 @@ function BudgetWorkspace() {
             </>
           )}
 
-          {tab === 'projections' && (
+          {tab === "projections" && (
             <div className="columns">
               <section className="card">
                 <h3>8-week balance projection</h3>
                 <ProjectionView
                   data={state.data}
                   strategy={strategy}
-                  onUpdatePerson={(id, patch) => dispatch({ type: 'update-person', id, patch })}
-                  onSetEssentialsBalance={(cents) => dispatch({ type: 'set-essentials-balance', cents })}
-                  onSetAutopayBalance={(cents) => dispatch({ type: 'set-autopay-balance', cents })}
+                  onUpdatePerson={(id, patch) =>
+                    dispatch({ type: "update-person", id, patch })
+                  }
+                  onSetEssentialsBalance={(cents) =>
+                    dispatch({ type: "set-essentials-balance", cents })
+                  }
+                  onSetAutopayBalance={(cents) =>
+                    dispatch({ type: "set-autopay-balance", cents })
+                  }
                 />
               </section>
               <section className="card">
@@ -414,7 +579,7 @@ function BudgetWorkspace() {
             </div>
           )}
 
-          {tab === 'data' && (
+          {tab === "data" && (
             <>
               <div className="columns editors">
                 <section className="card">
@@ -423,18 +588,20 @@ function BudgetWorkspace() {
                     people={state.data.people}
                     onAdd={() =>
                       dispatch({
-                        type: 'add-person',
+                        type: "add-person",
                         person: {
                           id: crypto.randomUUID(),
-                          name: 'New person',
+                          name: "New person",
                           personalPerPaycheckCents: 0,
                           essentialsPerPaycheckCents: 0,
                           personalBalanceCents: 0,
                         },
                       })
                     }
-                    onUpdate={(id, patch) => dispatch({ type: 'update-person', id, patch })}
-                    onRemove={(id) => dispatch({ type: 'remove-person', id })}
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-person", id, patch })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-person", id })}
                   />
                 </section>
                 <section className="card grow">
@@ -444,12 +611,21 @@ function BudgetWorkspace() {
                     categories={categories}
                     onAdd={() =>
                       dispatch({
-                        type: 'add-bill',
-                        bill: { id: crypto.randomUUID(), name: 'New bill', amountCents: 0, dueDay: 1, category: '', paidFrom: 'shared' },
+                        type: "add-bill",
+                        bill: {
+                          id: crypto.randomUUID(),
+                          name: "New bill",
+                          amountCents: 0,
+                          dueDay: 1,
+                          category: "",
+                          paidFrom: "shared",
+                        },
                       })
                     }
-                    onUpdate={(id, patch) => dispatch({ type: 'update-bill', id, patch })}
-                    onRemove={(id) => dispatch({ type: 'remove-bill', id })}
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-bill", id, patch })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-bill", id })}
                   />
                 </section>
               </div>
@@ -461,21 +637,23 @@ function BudgetWorkspace() {
                   strategy={strategy}
                   onAdd={() =>
                     dispatch({
-                      type: 'add-debt',
+                      type: "add-debt",
                       debt: {
                         id: crypto.randomUUID(),
-                        name: 'New debt',
+                        name: "New debt",
                         balanceCents: 0,
                         minPaymentCents: 0,
                         suggestedPaymentCents: null,
                         hasPromotion: false,
                         dueDay: 1,
-                        paidFrom: 'autopay',
+                        paidFrom: "autopay",
                       },
                     })
                   }
-                  onUpdate={(id, patch) => dispatch({ type: 'update-debt', id, patch })}
-                  onRemove={(id) => dispatch({ type: 'remove-debt', id })}
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-debt", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-debt", id })}
                 />
               </section>
             </>
@@ -490,28 +668,43 @@ function BudgetWorkspace() {
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) void handleRestoreFile(file);
-            e.target.value = '';
+            e.target.value = "";
           }}
         />
 
         {importOpen && (
-          <Suspense fallback={<div className="overlay"><div className="modal modal-loading">Loading importer…</div></div>}>
+          <Suspense
+            fallback={
+              <div className="overlay">
+                <div className="modal modal-loading">Loading importer…</div>
+              </div>
+            }
+          >
             <ImportWizard
               dirty={state.dirty}
               hasData={!isEmpty}
               onImport={(payload) => {
-                dispatch({ type: 'import-data', payload });
+                dispatch({ type: "import-data", payload });
                 const parts = [
                   payload.bills && `${payload.bills.length} bills`,
                   payload.debts && `${payload.debts.length} debts`,
                   payload.people && `${payload.people.length} people`,
                 ].filter(Boolean);
-                setNotice({ kind: 'info', text: `Imported ${parts.join(', ')} from Excel. Choose Save to store it.` });
+                setNotice({
+                  kind: "info",
+                  text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
+                });
               }}
               onClose={() => setImportOpen(false)}
             />
           </Suspense>
         )}
+
+        <UserAuthModal
+          open={loginOpen}
+          onClose={() => setLoginOpen(false)}
+          defaultTab="login"
+        />
       </div>
     </div>
   );
