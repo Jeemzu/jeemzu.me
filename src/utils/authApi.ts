@@ -13,7 +13,7 @@ type ApiSchemas = components['schemas'];
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    'http://localhost:5000/api';
+    'http://localhost:5050/api';
 
 /**
  * POST /api/auth/refresh
@@ -76,4 +76,58 @@ export async function loginUserRequest(
     if (response.status === 401) return null;
     if (!response.ok) throw new Error(`User login failed (${response.status})`);
     return (await response.json()) as ApiSchemas['TokenResponse'];
+}
+
+const jsonHeaders = { 'Content-Type': 'application/json' };
+
+/**
+ * POST /api/users/forgot-password
+ * Always resolves — the API deliberately returns the same response whether or
+ * not the address belongs to a verified account, so it can't be used to probe
+ * for registered emails.
+ */
+export async function forgotPasswordRequest(
+    body: ApiSchemas['ForgotPasswordRequest'],
+): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/users/forgot-password`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Reset request failed (${response.status})`);
+}
+
+/**
+ * POST /api/users/reset-password
+ * Returns false when the link has expired or was already used.
+ */
+export async function resetPasswordRequest(
+    body: ApiSchemas['ResetPasswordRequest'],
+): Promise<boolean> {
+    const response = await fetch(`${API_BASE_URL}/users/reset-password`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+    });
+    if (response.status === 400) return false;
+    if (!response.ok) throw new Error(`Password reset failed (${response.status})`);
+    return true;
+}
+
+/**
+ * POST /api/users/verify-email
+ * `conflict` means the address is already verified on a different account.
+ */
+export async function verifyEmailRequest(
+    body: ApiSchemas['VerifyEmailRequest'],
+): Promise<{ ok: true } | { ok: false; conflict: boolean }> {
+    const response = await fetch(`${API_BASE_URL}/users/verify-email`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+    });
+    if (response.ok) return { ok: true };
+    if (response.status === 400 || response.status === 409)
+        return { ok: false, conflict: response.status === 409 };
+    throw new Error(`Email verification failed (${response.status})`);
 }

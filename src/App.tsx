@@ -93,6 +93,13 @@ const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const RPGPage = LC(lazy(() => import("./pages/rpg/RPGPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
+const ProfilePage = LC(lazy(() => import("./pages/account/ProfilePage")));
+const VerifyEmailPage = LC(
+  lazy(() => import("./pages/account/VerifyEmailPage")),
+);
+const ResetPasswordPage = LC(
+  lazy(() => import("./pages/account/ResetPasswordPage")),
+);
 
 export function Routes() {
   return (
@@ -123,6 +130,9 @@ export function Routes() {
             <Route path="/admin" component={AdminPage} />
             <Route path="/rpg" component={RPGPage} />
             <Route path="/budgetize" component={BudgetizePage} />
+            <Route path="/account" component={ProfilePage} />
+            <Route path="/verify-email" component={VerifyEmailPage} />
+            <Route path="/reset-password" component={ResetPasswordPage} />
             <Route>
               <PageEnter>
                 <Custom404 />

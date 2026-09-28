@@ -241,6 +241,9 @@ const Navigation = () => {
                       role === "Admin" ? `${username} · Admin` : `${username}`
                     }
                     size="small"
+                    component={Link}
+                    href="/account"
+                    clickable
                     sx={{
                       bgcolor: "rgba(200, 162, 74, 0.14)",
                       color: "medievalGold.light",

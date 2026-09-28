@@ -51,7 +51,7 @@
       {
         "label": "Docker: Dev Services",
         "type": "shell",
-        "command": "docker compose up agents",
+        "command": "docker compose up agents rpg",
         "options": {
           "cwd": "${workspaceFolder:jeemzu.api}",
         },

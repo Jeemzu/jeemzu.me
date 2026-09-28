@@ -12,7 +12,7 @@ import type { BudgetData } from "../pages/budgetize/types";
 import { useAuthStore } from "../stores/authStore";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || "http://localhost:5050/api";
 
 const BUDGET_URL = `${API_BASE_URL}/budget`;
 

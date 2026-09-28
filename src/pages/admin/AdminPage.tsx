@@ -34,7 +34,7 @@ import { FONTS } from "../../lib/globals";
 import { goldButtonSx, headingSx, panelSx } from "../../lib/medievalStyles";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || "http://localhost:5050/api";
 const AGENT_URL = import.meta.env.VITE_AGENT_URL || "";
 
 function authHeader(): Record<string, string> {

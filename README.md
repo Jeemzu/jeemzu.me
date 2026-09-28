@@ -76,7 +76,7 @@ Roles: `'Admin' | 'User'` — role-gated UI via `<RoleGuard>` component and `use
 
 ## API Integration
 
-Base URL: `VITE_API_URL` env var (defaults to `http://localhost:5000/api`)
+Base URL: `VITE_API_URL` env var (defaults to `http://localhost:5050/api`)
 
 | Utility                | Endpoints                                                              |
 | ---------------------- | ---------------------------------------------------------------------- |
@@ -178,7 +178,7 @@ npm install
 npm run dev
 ```
 
-Dev server runs on http://localhost:5173 with HMR. Requires the backend API running on `localhost:5000` (or set `VITE_API_URL`).
+Dev server runs on http://localhost:5173 with HMR. Requires the backend API running on `localhost:5050` (or set `VITE_API_URL`).
 
 ### Build WASM games
 
