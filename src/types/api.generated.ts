@@ -191,6 +191,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/budget/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BudgetGapSummaryResponse"][];
+                        "application/json": components["schemas"]["BudgetGapSummaryResponse"][];
+                        "text/json": components["schemas"]["BudgetGapSummaryResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/health": {
         parameters: {
             query?: never;
@@ -367,20 +404,7 @@ export interface paths {
             };
         };
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/campaigns": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
+        delete: {
             parameters: {
                 query?: never;
                 header?: never;
@@ -394,23 +418,16 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "text/plain": components["schemas"]["CampaignSummaryResponse"][];
-                        "application/json": components["schemas"]["CampaignSummaryResponse"][];
-                        "text/json": components["schemas"]["CampaignSummaryResponse"][];
-                    };
+                    content?: never;
                 };
             };
         };
-        put?: never;
-        post?: never;
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/campaigns/{id}": {
+    "/api/budget/chat": {
         parameters: {
             query?: never;
             header?: never;
@@ -419,17 +436,63 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        delete: {
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BudgetChatRequest"];
+                    "text/json": components["schemas"]["BudgetChatRequest"];
+                    "application/*+json": components["schemas"]["BudgetChatRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BudgetChatResult"];
+                        "application/json": components["schemas"]["BudgetChatResult"];
+                        "text/json": components["schemas"]["BudgetChatResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/budget/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LogBudgetGapRequest"];
+                    "text/json": components["schemas"]["LogBudgetGapRequest"];
+                    "application/*+json": components["schemas"]["LogBudgetGapRequest"];
+                };
+            };
             responses: {
                 /** @description OK */
                 200: {
@@ -440,6 +503,7 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1373,11 +1437,31 @@ export interface components {
             /** Format: int32 */
             dueDay?: number;
             paidFrom: string;
+            frequency: string;
+            anchorISO?: string | null;
+            startISO?: string | null;
+            endISO?: string | null;
+        };
+        BudgetChatRequest: {
+            question: string;
+            history?: components["schemas"]["ConversationMessage"][] | null;
+            budget: components["schemas"]["BudgetDataDto"];
+            projection: unknown;
+            today: string;
+            strategy?: string | null;
+        };
+        BudgetChatResult: {
+            answer?: string | null;
+            intent?: string | null;
+            proposal?: unknown;
+            capabilityGap?: unknown;
         };
         BudgetDataDto: {
             people: components["schemas"]["BudgetPersonDto"][];
             bills: components["schemas"]["BudgetBillDto"][];
             debts: components["schemas"]["BudgetDebtDto"][];
+            overrides: components["schemas"]["BudgetOverrideDto"][];
+            oneOffs: components["schemas"]["BudgetOneOffDto"][];
             /** Format: int32 */
             essentialsBalanceCents?: number;
             /** Format: int32 */
@@ -1401,6 +1485,20 @@ export interface components {
             /** Format: int32 */
             dueDay?: number;
             paidFrom: string;
+            frequency: string;
+            anchorISO?: string | null;
+            startISO?: string | null;
+            endISO?: string | null;
+        };
+        BudgetGapSummaryResponse: {
+            suggestedFeature?: string | null;
+            /** Format: int32 */
+            requestCount?: number;
+            /** Format: int32 */
+            userCount?: number;
+            /** Format: date-time */
+            lastRequestedAt?: string;
+            examples?: string[] | null;
         };
         BudgetMonthlyIncomeDto: {
             /** Format: int32 */
@@ -1412,10 +1510,32 @@ export interface components {
             /** Format: int32 */
             perPaycheckCents?: number;
         };
+        BudgetOneOffDto: {
+            id: string;
+            kind: string;
+            name: string;
+            /** Format: int32 */
+            amountCents?: number;
+            dateISO: string;
+            account: string;
+            personId?: string | null;
+            note?: string | null;
+        };
+        BudgetOverrideDto: {
+            id: string;
+            targetKind: string;
+            targetId: string;
+            fromISO: string;
+            toISO: string;
+            mode: string;
+            /** Format: int32 */
+            amountCents?: number | null;
+            note?: string | null;
+        };
         BudgetPersonDto: {
             id: string;
             name: string;
-            schedule?: components["schemas"]["BudgetMonthlyIncomeDto"][];
+            schedule?: components["schemas"]["BudgetMonthlyIncomeDto"][] | null;
             /** Format: int32 */
             personalBalanceCents?: number;
         };
@@ -1425,18 +1545,6 @@ export interface components {
             revision?: string;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        CampaignSummaryResponse: {
-            /** Format: uuid */
-            id?: string;
-            name?: string | null;
-            currentLocation?: string | null;
-            characterSummaryJson?: string | null;
-            status?: string | null;
-            /** Format: date-time */
-            lastPlayedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
         };
         ChangePasswordRequest: {
             currentPassword: string;
@@ -1481,6 +1589,11 @@ export interface components {
         KnowledgeSearchResult: {
             sourceKey?: string | null;
             content?: string | null;
+        };
+        LogBudgetGapRequest: {
+            request: string;
+            reason: string;
+            suggestedFeature: string;
         };
         LoginRequest: {
             username: string;
