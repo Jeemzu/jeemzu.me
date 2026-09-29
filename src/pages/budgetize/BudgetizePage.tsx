@@ -33,7 +33,7 @@ import { AutopayCard } from "./components/AutopayCard";
 import { FundingWarnings } from "./components/FundingWarnings";
 import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useAuthStore } from "../../stores/authStore";
-import { loadBudget, saveBudget } from "../../utils/budgetApi";
+import { deleteBudget, loadBudget, saveBudget } from "../../utils/budgetApi";
 import UserAuthModal from "../../components/shared/UserAuthModal";
 import "./budgetize.css";
 
@@ -91,6 +91,9 @@ function BudgetWorkspace() {
   const [strategy, setStrategy] = useState<DebtPaymentStrategy>("suggested");
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
+  // Raw server payload that failed validation; enables backup + reset on the error screen.
+  const [unreadable, setUnreadable] = useState<unknown>(null);
+  const [resetting, setResetting] = useState(false);
   const [revision, setRevision] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -113,11 +116,13 @@ function BudgetWorkspace() {
   const load = useCallback(async () => {
     setLoadState("loading");
     setConflict(false);
+    setUnreadable(null);
     const result = await loadBudget();
 
     if (result.status === "ok") {
       const parsed = parseBudgetData(result.data);
       if (!parsed.ok) {
+        setUnreadable(result.data ?? {});
         setLoadState("error");
         setLoadError(`Your saved budget could not be read: ${parsed.error}`);
         return;
@@ -312,6 +317,46 @@ function BudgetWorkspace() {
     });
   }
 
+  function handleUnreadableDownload() {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(
+      `budgetize-me-unreadable-${stamp}.json`,
+      new Blob([JSON.stringify(unreadable, null, 2)], {
+        type: "application/json",
+      }),
+    );
+  }
+
+  async function handleStartFresh() {
+    if (
+      !window.confirm(
+        "Permanently delete your saved budget from the server and start with an empty one? This cannot be undone.",
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    const result = await deleteBudget();
+    setResetting(false);
+
+    if (result.status !== "ok") {
+      setLoadError(
+        result.status === "unauthorized"
+          ? "Your session has expired. Sign in again to delete your saved budget."
+          : "Could not reach the server, so your saved budget was not deleted.",
+      );
+      return;
+    }
+    dispatch({ type: "hydrate", data: emptyBudget() });
+    setRevision(null);
+    setUnreadable(null);
+    setLoadState("ready");
+    setNotice({
+      kind: "info",
+      text: "Saved budget deleted. Import a spreadsheet or add data, then choose Save.",
+    });
+  }
+
   if (loadState === "loading") {
     return (
       <div className="budgetize">
@@ -329,13 +374,38 @@ function BudgetWorkspace() {
           <section className="card hero">
             <h2>Budget unavailable</h2>
             <p>{loadError}</p>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => void load()}
-            >
-              Try again
-            </button>
+            <div className="hero-actions">
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => void load()}
+                disabled={resetting}
+              >
+                Try again
+              </button>
+              {unreadable !== null && (
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handleUnreadableDownload}
+                    disabled={resetting}
+                  >
+                    Download saved data
+                  </button>
+                  <button
+                    type="button"
+                    className="btn danger"
+                    onClick={() => void handleStartFresh()}
+                    disabled={resetting}
+                  >
+                    {resetting
+                      ? "Deleting…"
+                      : "Delete saved budget & start fresh"}
+                  </button>
+                </>
+              )}
+            </div>
           </section>
         </div>
       </div>
@@ -566,7 +636,9 @@ function BudgetWorkspace() {
                       summary={summary}
                       paydayDepositCents={
                         summary.paydays.length > 0
-                          ? Math.round(summary.incomeCents / summary.paydays.length)
+                          ? Math.round(
+                              summary.incomeCents / summary.paydays.length,
+                            )
                           : 0
                       }
                     />
@@ -611,7 +683,9 @@ function BudgetWorkspace() {
               <BudgetAssistant
                 data={state.data}
                 strategy={strategy}
-                onApplyProposal={(ops) => dispatch({ type: "apply-proposal", ops })}
+                onApplyProposal={(ops) =>
+                  dispatch({ type: "apply-proposal", ops })
+                }
               />
             </section>
           )}
@@ -700,14 +774,17 @@ function BudgetWorkspace() {
               <section className="card">
                 <h3>Temporary changes</h3>
                 <p className="muted">
-                  Pause or re-price a bill or debt for a stretch of time. The item itself
-                  stays as it is and resumes on its own once the range ends.
+                  Pause or re-price a bill or debt for a stretch of time. The
+                  item itself stays as it is and resumes on its own once the
+                  range ends.
                 </p>
                 <OverridesEditor
                   overrides={state.data.overrides}
                   bills={state.data.bills}
                   debts={state.data.debts}
-                  onAdd={(override) => dispatch({ type: "add-override", override })}
+                  onAdd={(override) =>
+                    dispatch({ type: "add-override", override })
+                  }
                   onUpdate={(id, patch) =>
                     dispatch({ type: "update-override", id, patch })
                   }
