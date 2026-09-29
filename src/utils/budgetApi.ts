@@ -29,6 +29,11 @@ export type SaveBudgetResult =
   | { status: "unauthorized" }
   | { status: "error" };
 
+export type DeleteBudgetResult =
+  | { status: "ok" }
+  | { status: "unauthorized" }
+  | { status: "error" };
+
 function authHeader(): Record<string, string> {
   const token = useAuthStore.getState().accessToken;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -48,6 +53,21 @@ export async function loadBudget(): Promise<LoadBudgetResult> {
     };
     if (!body.revision) return { status: "error" };
     return { status: "ok", data: body.data, revision: body.revision };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+export async function deleteBudget(): Promise<DeleteBudgetResult> {
+  try {
+    const response = await fetch(BUDGET_URL, {
+      method: "DELETE",
+      headers: { ...authHeader() },
+    });
+    if (response.ok || response.status === 404) return { status: "ok" };
+    if (response.status === 401 || response.status === 403)
+      return { status: "unauthorized" };
+    return { status: "error" };
   } catch {
     return { status: "error" };
   }
