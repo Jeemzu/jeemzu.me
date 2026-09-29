@@ -561,6 +561,11 @@
   }
 
   /* ---- Import wizard ---- */
+  &.budgetize-portal {
+    min-height: 0;
+    background: none;
+  }
+
   .overlay {
     position: fixed;
     inset: 0;
@@ -569,7 +574,7 @@
     align-items: flex-start;
     justify-content: center;
     padding: 2rem 1rem;
-    z-index: 50;
+    z-index: 1300;
     overflow-y: auto;
   }
 
@@ -609,6 +614,11 @@
     gap: 0.75rem;
   }
 
+  /* Scroll the body instead of squashing the scrollable tables to zero height. */
+  .modal-body > * {
+    flex-shrink: 0;
+  }
+
   .modal-body h3 {
     margin: 0.5rem 0 0;
   }
@@ -627,6 +637,34 @@
 
   .file-btn {
     display: inline-block;
+  }
+
+  .modal.drag-active {
+    outline: 3px dashed var(--accent);
+    outline-offset: -6px;
+  }
+
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1rem;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-soft);
+    text-align: center;
+  }
+
+  .drag-active .dropzone {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .drop-hint {
+    margin: 0;
+    color: var(--accent);
+    font-weight: 700;
   }
 
   .sheet-tabs {

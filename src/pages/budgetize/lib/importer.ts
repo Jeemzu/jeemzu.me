@@ -2,6 +2,7 @@ import { read, utils, write } from 'xlsx';
 import type { Bill, DebtAccount, ImportedPerson, MonthlyIncome, MonthRef } from '../types';
 import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { parseMoney } from './money';
+import { downloadBlob } from './download';
 import { getPaydays } from './paydays';
 
 export type CellValue = string | number | boolean | Date | null;
@@ -705,4 +706,10 @@ export function buildTemplateWorkbook(): ArrayBuffer {
   utils.book_append_sheet(wb, bills, 'Regular Bills');
   utils.book_append_sheet(wb, income, 'Monthly Income');
   return write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+}
+
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+export function downloadTemplateWorkbook(): void {
+  downloadBlob('budgetize-me-template.xlsx', new Blob([buildTemplateWorkbook()], { type: XLSX_MIME }));
 }

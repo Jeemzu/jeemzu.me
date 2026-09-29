@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
 import { emptyBudget, monthlyRecurrence } from "./types";
 import { budgetReducer, initialState } from "./state/budget";
@@ -279,6 +280,19 @@ function BudgetWorkspace() {
     });
   }
 
+  async function handleTemplateDownload() {
+    try {
+      // Dynamic import keeps the xlsx library out of the main bundle.
+      const { downloadTemplateWorkbook } = await import("./lib/importer");
+      downloadTemplateWorkbook();
+    } catch {
+      setNotice({
+        kind: "error",
+        text: "Could not generate the spreadsheet template. Please try again.",
+      });
+    }
+  }
+
   async function handleRestoreFile(file: File) {
     const result = parseBackup(await file.text());
     if (!result.ok) {
@@ -354,6 +368,13 @@ function BudgetWorkspace() {
               onClick={() => setImportOpen(true)}
             >
               Import Excel
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void handleTemplateDownload()}
+            >
+              Download spreadsheet template
             </button>
             <button
               type="button"
@@ -445,6 +466,13 @@ function BudgetWorkspace() {
                 onClick={() => setImportOpen(true)}
               >
                 Import your workbook
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void handleTemplateDownload()}
+              >
+                Download spreadsheet template
               </button>
             </section>
           )}
@@ -715,33 +743,38 @@ function BudgetWorkspace() {
           }}
         />
 
-        {importOpen && (
-          <Suspense
-            fallback={
-              <div className="overlay">
-                <div className="modal modal-loading">Loading importer…</div>
-              </div>
-            }
-          >
-            <ImportWizard
-              dirty={state.dirty}
-              hasData={!isEmpty}
-              onImport={(payload) => {
-                dispatch({ type: "import-data", payload });
-                const parts = [
-                  payload.bills && `${payload.bills.length} bills`,
-                  payload.debts && `${payload.debts.length} debts`,
-                  payload.people && `${payload.people.length} people`,
-                ].filter(Boolean);
-                setNotice({
-                  kind: "info",
-                  text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
-                });
-              }}
-              onClose={() => setImportOpen(false)}
-            />
-          </Suspense>
-        )}
+        {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
+        {importOpen &&
+          createPortal(
+            <div className="budgetize budgetize-portal">
+              <Suspense
+                fallback={
+                  <div className="overlay">
+                    <div className="modal modal-loading">Loading importer…</div>
+                  </div>
+                }
+              >
+                <ImportWizard
+                  dirty={state.dirty}
+                  hasData={!isEmpty}
+                  onImport={(payload) => {
+                    dispatch({ type: "import-data", payload });
+                    const parts = [
+                      payload.bills && `${payload.bills.length} bills`,
+                      payload.debts && `${payload.debts.length} debts`,
+                      payload.people && `${payload.people.length} people`,
+                    ].filter(Boolean);
+                    setNotice({
+                      kind: "info",
+                      text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
+                    });
+                  }}
+                  onClose={() => setImportOpen(false)}
+                />
+              </Suspense>
+            </div>,
+            document.body,
+          )}
 
         <UserAuthModal
           open={loginOpen}

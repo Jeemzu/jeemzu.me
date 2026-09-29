@@ -1,22 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 import type { ImportPayload } from '../state/budget';
 import type { CellGrid, CellValue, ColumnMapping, RowReport, WorkbookGrids } from '../lib/importer';
 import {
   analyzeWorkbook,
-  buildTemplateWorkbook,
   columnLetter,
   detectMapping,
+  downloadTemplateWorkbook,
   extractBills,
   gridColumnCount,
   readWorkbook,
 } from '../lib/importer';
-import { downloadBlob } from '../lib/download';
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { monthlyGrossCents } from '../types';
 
-const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const PREVIEW_ROWS = 12;
+const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.xlsm', '.ods', '.csv'];
 
 interface Props {
   dirty: boolean;
@@ -66,6 +66,9 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
   const [manual, setManual] = useState(false);
   const [sheet, setSheet] = useState('');
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
+  const [dragging, setDragging] = useState(false);
+  // Counts nested dragenter/dragleave pairs so child elements don't flicker the highlight.
+  const dragDepth = useRef(0);
 
   const analysis = useMemo(() => (workbook ? analyzeWorkbook(workbook) : null), [workbook]);
 
@@ -92,6 +95,11 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
   }
 
   async function handleFile(file: File) {
+    const lowerName = file.name.toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
+      setFileError(`Unsupported file type. Use one of: ${ACCEPTED_EXTENSIONS.join(', ')}.`);
+      return;
+    }
     try {
       const grids = readWorkbook(await file.arrayBuffer());
       if (grids.sheetNames.length === 0) {
@@ -108,8 +116,36 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     }
   }
 
-  function downloadTemplate() {
-    downloadBlob('budgetize-me-template.xlsx', new Blob([buildTemplateWorkbook()], { type: XLSX_MIME }));
+  function hasFiles(e: DragEvent) {
+    return e.dataTransfer.types.includes('Files');
+  }
+
+  function handleDragEnter(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  }
+
+  function handleDrop(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) void handleFile(file);
   }
 
   function confirmReplace(sections: string[]): boolean {
@@ -171,9 +207,36 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     if (mapping) setMapping({ ...mapping, ...patch });
   }
 
+  function fileInput(label: string) {
+    return (
+      <label className="btn file-btn">
+        {label}
+        <input
+          type="file"
+          accept={ACCEPTED_EXTENSIONS.join(',')}
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+            e.target.value = '';
+          }}
+        />
+      </label>
+    );
+  }
+
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Import Excel workbook">
-      <div className="modal">
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Import Excel workbook"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className={`modal${dragging ? ' drag-active' : ''}`}>
         <div className="modal-head">
           <h2>Import from Excel</h2>
           <button type="button" className="btn ghost" onClick={onClose} aria-label="Close import">
@@ -182,29 +245,33 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
         </div>
 
         <div className="modal-body">
-          <div className="import-file-row">
-            <label className="btn file-btn">
-              {workbook ? `Change file (${fileName})` : 'Choose .xlsx file…'}
-              <input
-                type="file"
-                accept=".xlsx,.xls,.xlsm,.ods,.csv"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleFile(file);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <button type="button" className="btn ghost" onClick={downloadTemplate}>
-              Download template
-            </button>
-            {workbook && (
+          {workbook ? (
+            <div className="import-file-row">
+              {fileInput(`Change file (${fileName})`)}
+              <button type="button" className="btn ghost" onClick={downloadTemplateWorkbook}>
+                Download template
+              </button>
               <button type="button" className="btn ghost" onClick={() => setManual(!manual)}>
                 {manual ? '← Back to automatic import' : 'Map bill columns manually…'}
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="dropzone">
+              <p className="drop-hint">
+                {dragging ? 'Drop to import' : 'Drag & drop a workbook here'}
+              </p>
+              <span>or</span>
+              <div className="import-file-row">
+                {fileInput('Choose file…')}
+                <button type="button" className="btn ghost" onClick={downloadTemplateWorkbook}>
+                  Download template
+                </button>
+              </div>
+              <span className="muted">{ACCEPTED_EXTENSIONS.join(', ')}</span>
+            </div>
+          )}
+
+          {workbook && dragging && <p className="drop-hint">Drop to replace {fileName}</p>}
 
           {fileError && <p className="banner error">{fileError}</p>}
 
