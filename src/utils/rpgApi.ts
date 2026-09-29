@@ -10,7 +10,7 @@ import type { CampaignSummary, CharacterClass, PartyInfo, SaveCampaignResponse }
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
-    'http://localhost:5000/api';
+    'http://localhost:5050/api';
 
 // The hub is mapped at the API host root (/hubs/game), not under /api.
 const HUB_URL = `${API_BASE_URL.replace(/\/api\/?$/, '')}/hubs/game`;

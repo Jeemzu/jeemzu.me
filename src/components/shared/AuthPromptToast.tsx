@@ -81,7 +81,7 @@ const AuthPromptToast = () => {
                 variant="body2"
                 sx={{ ...headingSx, fontWeight: 600 }}
               >
-                Track Your Scores
+                Your Jeemzu Account
               </Typography>
             </Stack>
             <IconButton
@@ -103,8 +103,8 @@ const AuthPromptToast = () => {
               lineHeight: 1.6,
             }}
           >
-            Create a free account to save your personal bests and see where you
-            rank on the global leaderboard.
+            Create a free account to keep your game bests, RPG campaigns, and
+            Budgetize plan in one place.
           </Typography>
 
           <Stack direction="row" spacing={1}>

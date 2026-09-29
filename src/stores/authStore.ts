@@ -19,9 +19,11 @@ interface AuthState {
 }
 
 interface AuthActions {
-    register: (username: string, password: string, optedIn?: boolean) => Promise<{ success: boolean; conflict?: boolean; error?: string }>;
+    register: (username: string, email: string, password: string, optedIn?: boolean) => Promise<{ success: boolean; conflict?: boolean; error?: string }>;
     loginUser: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
+    /** Adopts a token pair reissued after a username or password change. */
+    applyToken: (token: ApiSchemas['TokenResponse'], username: string) => void;
     /**
      * Called once on app load. Silently attempts a token refresh using the
      * httpOnly cookie. If the cookie is absent or expired, resolves without
@@ -73,9 +75,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     isAuthenticated: false,
     isInitialized: false,
 
-    register: async (username, password, optedIn = false) => {
+    register: async (username, email, password, optedIn = false) => {
         try {
-            const result = await registerUserRequest({ username, password, optedIn });
+            const result = await registerUserRequest({ username, email, password, optedIn });
             if (!result) return { success: false, error: 'Registration failed.' };
             if ('conflict' in result) return { success: false, conflict: true, error: `'${username}' is already taken.` };
             set({ ...stateFromToken(result.token, username), isInitialized: true });
@@ -94,6 +96,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         } catch (err) {
             return { success: false, error: err instanceof Error ? err.message : 'Login failed.' };
         }
+    },
+
+    applyToken: (token, username) => {
+        set({ ...stateFromToken(token, username), isInitialized: true });
     },
 
     logout: async () => {

@@ -1,46 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { computeProjection, toISODate } from './projection';
-import type { BudgetData, DebtAccount, PersonIncome } from '../types';
+import type { BudgetData } from '../types';
+import { emptyBudget } from '../types';
+import { bill, debt, paidPerson, person } from '../testFixtures';
 
-function person(
-  partial: Partial<PersonIncome> & Pick<PersonIncome, 'name'>,
-): PersonIncome {
-  return {
-    id: partial.name,
-    personalPerPaycheckCents: 0,
-    essentialsPerPaycheckCents: 0,
-    personalBalanceCents: 0,
-    ...partial,
-  };
-}
-
-function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPaymentCents'>): DebtAccount {
-  return {
-    id: partial.name,
-    balanceCents: 0,
-    suggestedPaymentCents: null,
-    hasPromotion: false,
-    dueDay: 1,
-    paidFrom: 'shared',
-    ...partial,
-  };
-}
-
+// Sep 2026 has 5 Wednesdays (2, 9, 16, 23, 30); Oct 2026 has 4 (7, 14, 21, 28).
+// A grosses $500/paycheck and B $1,500, so the household need splits 25% / 75%.
 const data: BudgetData = {
+  ...emptyBudget(),
   people: [
-    person({ name: 'A', personalPerPaycheckCents: 100_00, essentialsPerPaycheckCents: 400_00, personalBalanceCents: 500_00 }),
-    person({ name: 'B', personalPerPaycheckCents: 200_00, essentialsPerPaycheckCents: 600_00 }),
+    paidPerson('A', 2026, 500_00, { personalBalanceCents: 500_00 }),
+    paidPerson('B', 2026, 1500_00),
   ],
-  bills: [
-    { id: 'rent', name: 'Rent', amountCents: 1000_00, dueDay: 1, category: '', paidFrom: 'shared' },
-    { id: 'eom', name: 'EndOfMonth', amountCents: 50_00, dueDay: 31, category: '', paidFrom: 'shared' },
-  ],
-  debts: [
-    debt({ name: 'Promo', minPaymentCents: 100_00, suggestedPaymentCents: 300_00, hasPromotion: true, dueDay: 13 }),
-    debt({ name: 'Plain', minPaymentCents: 70_00, dueDay: 2 }),
-  ],
+  bills: [bill({ name: 'Rent', amountCents: 1200_00, dueDay: 1 })],
+  debts: [debt({ name: 'Plain', minPaymentCents: 400_00, dueDay: 2, paidFrom: 'shared' })],
   essentialsBalanceCents: 2000_00,
-  autopayBalanceCents: 0,
 };
 
 describe('computeProjection', () => {
@@ -57,30 +31,27 @@ describe('computeProjection', () => {
     expect(weeks[0].essentials.endBalanceCents).toBe(2000_00);
   });
 
-  it('applies deposits on Wednesdays and outflows on clamped due days', () => {
+  it('splits each paycheck into essentials and personal using the month it lands in', () => {
     const { weeks } = computeProjection(data, start, 3);
     const week2 = weeks[1];
     expect(week2.startISO).toBe('2026-09-30');
     expect(week2.endISO).toBe('2026-10-06');
     expect(week2.paydayCount).toBe(1);
-    // Sep 30: EndOfMonth (31 clamps to 30) · Oct 1: Rent · Oct 2: Plain minimum.
+    expect(week2.incomeKnown).toBe(true);
+    // September: $1,600 of shared need over 5 paydays → $320 a payday, split 25/75.
+    expect(week2.essentials.depositCents).toBe(320_00);
+    expect(week2.personal.map((a) => a.depositCents)).toEqual([420_00, 1260_00]);
     expect(week2.outflows.map((o) => [o.name, o.amountCents, o.dateISO])).toEqual([
-      ['EndOfMonth', 50_00, '2026-09-30'],
-      ['Rent', 1000_00, '2026-10-01'],
-      ['Plain', 70_00, '2026-10-02'],
+      ['Rent', 1200_00, '2026-10-01'],
+      ['Plain', 400_00, '2026-10-02'],
     ]);
-    expect(week2.personal.map((a) => a.endBalanceCents)).toEqual([600_00, 200_00]);
-    // 2000 + (400+600) − (50+1000+70)
-    expect(week2.essentials.endBalanceCents).toBe(1880_00);
+    expect(week2.essentials.endBalanceCents).toBe(2000_00 + 320_00 - 1600_00);
 
+    // October has one fewer payday, so each one carries more of the same need.
     const week3 = weeks[2];
     expect(week3.startISO).toBe('2026-10-07');
-    // Promo debt pays its suggested amount on Oct 13.
-    expect(week3.outflows).toEqual([
-      { kind: 'debt', name: 'Promo', amountCents: 300_00, dateISO: '2026-10-13', source: 'shared' },
-    ]);
-    expect(week3.essentials.endBalanceCents).toBe(1880_00 + 1000_00 - 300_00);
-    expect(week3.personal.map((a) => a.endBalanceCents)).toEqual([700_00, 400_00]);
+    expect(week3.essentials.depositCents).toBe(400_00);
+    expect(week3.personal.map((a) => a.depositCents)).toEqual([400_00, 1200_00]);
   });
 
   it('starts week 1 as a full payday week when today is Wednesday', () => {
@@ -90,12 +61,24 @@ describe('computeProjection', () => {
     expect(weeks[0].paydayCount).toBe(1);
   });
 
-  it('charges minimum debt payments under the minimum strategy', () => {
-    const { weeks } = computeProjection(data, start, 3, 'minimum');
-    expect(weeks[2].outflows).toEqual([
-      { kind: 'debt', name: 'Promo', amountCents: 100_00, dateISO: '2026-10-13', source: 'shared' },
-    ]);
-    expect(weeks[2].essentials.endBalanceCents).toBe(1880_00 + 1000_00 - 100_00);
+  it('charges the promo payoff under the suggested strategy and the minimum otherwise', () => {
+    const promo = {
+      ...data,
+      debts: [
+        debt({
+          name: 'Promo',
+          minPaymentCents: 100_00,
+          suggestedPaymentCents: 300_00,
+          hasPromotion: true,
+          dueDay: 13,
+          paidFrom: 'shared',
+        }),
+      ],
+    };
+    const suggested = computeProjection(promo, start, 3);
+    expect(suggested.weeks[2].outflows.map((o) => o.amountCents)).toEqual([300_00]);
+    const minimum = computeProjection(promo, start, 3, 'minimum');
+    expect(minimum.weeks[2].outflows.map((o) => o.amountCents)).toEqual([100_00]);
   });
 
   it('produces the requested number of weeks (8 by default)', () => {
@@ -104,46 +87,61 @@ describe('computeProjection', () => {
   });
 });
 
+describe('computeProjection with missing income months', () => {
+  const start = new Date(2026, 8, 25);
+
+  it('deposits nothing and flags the week when a payday month has no schedule entry', () => {
+    const noIncome: BudgetData = {
+      ...emptyBudget(),
+      people: [person({ name: 'A', personalBalanceCents: 500_00 })],
+      bills: [bill({ name: 'Rent', amountCents: 1200_00, dueDay: 1 })],
+      essentialsBalanceCents: 2000_00,
+    };
+    const { weeks } = computeProjection(noIncome, start, 2);
+    expect(weeks[0].incomeKnown).toBe(true); // no payday at all
+    expect(weeks[1].incomeKnown).toBe(false);
+    expect(weeks[1].paydayCount).toBe(1);
+    expect(weeks[1].essentials.depositCents).toBe(0);
+    expect(weeks[1].personal[0].depositCents).toBe(0);
+    // Bills still draft, so the shortfall shows up as a falling balance.
+    expect(weeks[1].essentials.endBalanceCents).toBe(800_00);
+  });
+});
+
 describe('computeProjection auto-pay lane', () => {
   // Friday Sep 25 2026; paydays Sep 30, Oct 7, Oct 14.
   const start = new Date(2026, 8, 25);
-  // Gross: A 500, B 1500 → 25% / 75% of the $100 per-payday funding.
   const autopayData: BudgetData = {
-    people: [
-      person({ name: 'A', personalPerPaycheckCents: 100_00, essentialsPerPaycheckCents: 400_00 }),
-      person({ name: 'B', personalPerPaycheckCents: 500_00, essentialsPerPaycheckCents: 1000_00 }),
-    ],
-    bills: [{ id: 'el', name: 'Electric', amountCents: 400_00, dueDay: 15, category: '', paidFrom: 'autopay' }],
-    debts: [],
-    essentialsBalanceCents: 0,
-    autopayBalanceCents: 0,
+    ...emptyBudget(),
+    people: [paidPerson('A', 2026, 500_00), paidPerson('B', 2026, 1500_00)],
+    bills: [bill({ name: 'Electric', amountCents: 400_00, dueDay: 15, paidFrom: 'autopay' })],
   };
 
-  it('carves each payday auto-pay share out of the essentials deposits', () => {
+  it('carves each payday auto-pay share straight out of gross pay', () => {
     const { weeks } = computeProjection(autopayData, start, 2);
     const week2 = weeks[1];
     expect(week2.paydayCount).toBe(1);
-    expect(week2.autopay).toEqual({ depositCents: 100_00, outflowCents: 0, endBalanceCents: 100_00 });
-    // (400−25) + (1000−75)
-    expect(week2.essentials.depositCents).toBe(1300_00);
-    expect(week2.personal.map((a) => a.depositCents)).toEqual([100_00, 500_00]);
+    // September: $400 of auto-pay need over 5 paydays → $80 a payday, split 25/75.
+    expect(week2.autopay).toEqual({ depositCents: 80_00, outflowCents: 0, endBalanceCents: 80_00 });
+    expect(week2.essentials.depositCents).toBe(0);
+    expect(week2.personal.map((a) => a.depositCents)).toEqual([480_00, 1440_00]);
   });
 
   it('drafts auto-pay items from the auto-pay lane, not essentials', () => {
     const { weeks } = computeProjection(autopayData, start, 4);
     const week4 = weeks[3];
     expect(week4.outflows).toEqual([
-      { kind: 'bill', name: 'Electric', amountCents: 400_00, dateISO: '2026-10-15', source: 'autopay' },
+      { kind: 'bill', name: 'Electric', amountCents: 400_00, dateISO: '2026-10-15', source: 'autopay', personId: null },
     ]);
     expect(week4.essentials.outflowCents).toBe(0);
-    // 3 paydays × $100 − $400
-    expect(week4.autopay.endBalanceCents).toBe(-100_00);
+    // Sep 30 ($80) + Oct 7 ($100) + Oct 14 ($100) − $400
+    expect(week4.autopay.endBalanceCents).toBe(-120_00);
   });
 
   it('starts the auto-pay lane from the current balance', () => {
     const seeded = { ...autopayData, autopayBalanceCents: 500_00 };
     const { weeks } = computeProjection(seeded, start, 4);
-    expect(weeks[3].autopay.endBalanceCents).toBe(400_00);
+    expect(weeks[3].autopay.endBalanceCents).toBe(380_00);
   });
 });
 

@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { computeAutopayPlan } from './autopay';
-import type { BudgetData, PersonIncome } from '../types';
-
-function person(
-  partial: Partial<PersonIncome> & Pick<PersonIncome, 'name'>,
-): PersonIncome {
-  return {
-    id: partial.name,
-    personalPerPaycheckCents: 0,
-    essentialsPerPaycheckCents: 0,
-    personalBalanceCents: 0,
-    ...partial,
-  };
-}
+import type { BudgetData } from '../types';
+import { emptyBudget } from '../types';
+import { bill, debt, paidPerson, person } from '../testFixtures';
 
 function budget(partial: Partial<BudgetData>): BudgetData {
-  return { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0, ...partial };
+  return { ...emptyBudget(), ...partial };
 }
 
 // Fixed reference date: Friday Sep 25 2026 → simulation starts Oct 1 2026.
@@ -23,22 +13,16 @@ const start = new Date(2026, 8, 25);
 
 describe('computeAutopayPlan', () => {
   const data = budget({
-    people: [
-      person({ name: 'A', essentialsPerPaycheckCents: 500_00 }),
-      person({ name: 'B', personalPerPaycheckCents: 500_00, essentialsPerPaycheckCents: 1000_00 }),
-    ],
-    bills: [{ id: 'rent', name: 'Rent', amountCents: 1000_00, dueDay: 1, category: '', paidFrom: 'autopay' }],
+    people: [paidPerson('A', 2026, 500_00), paidPerson('B', 2026, 1500_00)],
+    bills: [bill({ name: 'Rent', amountCents: 1000_00, dueDay: 1, paidFrom: 'autopay' })],
     debts: [
-      {
-        id: 'promo',
+      debt({
         name: 'Promo',
-        balanceCents: 0,
         minPaymentCents: 200_00,
         suggestedPaymentCents: 900_00,
         hasPromotion: true,
         dueDay: 13,
-        paidFrom: 'autopay',
-      },
+      }),
     ],
   });
 
@@ -59,19 +43,8 @@ describe('computeAutopayPlan', () => {
 
   it('ignores bills and debts flagged as paid from shared', () => {
     const mixed = budget({
-      bills: [{ id: 'rent', name: 'Rent', amountCents: 1000_00, dueDay: 1, category: '', paidFrom: 'shared' }],
-      debts: [
-        {
-          id: 'card',
-          name: 'Card',
-          balanceCents: 0,
-          minPaymentCents: 200_00,
-          suggestedPaymentCents: null,
-          hasPromotion: false,
-          dueDay: 13,
-          paidFrom: 'autopay',
-        },
-      ],
+      bills: [bill({ name: 'Rent', amountCents: 1000_00, dueDay: 1 })],
+      debts: [debt({ name: 'Card', minPaymentCents: 200_00, dueDay: 13 })],
     });
     const plan = computeAutopayPlan(mixed, start);
     expect(plan.billsMonthlyCents).toBe(0);
@@ -90,8 +63,8 @@ describe('computeAutopayPlan', () => {
 
   it('distributes odd cents without losing any', () => {
     const odd = budget({
-      people: [person({ name: 'A', essentialsPerPaycheckCents: 1 }), person({ name: 'B', essentialsPerPaycheckCents: 1 })],
-      bills: [{ id: 'x', name: 'X', amountCents: 100_01, dueDay: 1, category: '', paidFrom: 'autopay' }],
+      people: [paidPerson('A', 2026, 1), paidPerson('B', 2026, 1)],
+      bills: [bill({ name: 'X', amountCents: 100_01, dueDay: 1, paidFrom: 'autopay' })],
     });
     const plan = computeAutopayPlan(odd, start);
     expect(plan.shares.map((s) => s.monthlyCents)).toEqual([50_01, 50_00]);
@@ -101,7 +74,7 @@ describe('computeAutopayPlan', () => {
   it('splits evenly when nobody has income yet', () => {
     const zero = budget({
       people: [person({ name: 'A' }), person({ name: 'B' })],
-      bills: [{ id: 'x', name: 'X', amountCents: 100_00, dueDay: 1, category: '', paidFrom: 'autopay' }],
+      bills: [bill({ name: 'X', amountCents: 100_00, dueDay: 1, paidFrom: 'autopay' })],
     });
     const plan = computeAutopayPlan(zero, start);
     expect(plan.shares.map((s) => s.monthlyCents)).toEqual([50_00, 50_00]);
@@ -109,7 +82,7 @@ describe('computeAutopayPlan', () => {
 
   it('sizes the buffer so the simulated balance never goes negative', () => {
     const rentOnly = budget({
-      bills: [{ id: 'rent', name: 'Rent', amountCents: 700_00, dueDay: 1, category: '', paidFrom: 'autopay' }],
+      bills: [bill({ name: 'Rent', amountCents: 700_00, dueDay: 1, paidFrom: 'autopay' })],
     });
     const plan = computeAutopayPlan(rentOnly, start);
     expect(plan.simStartISO).toBe('2026-10-01');
@@ -120,7 +93,7 @@ describe('computeAutopayPlan', () => {
 
   it('credits the current balance against the needed buffer', () => {
     const rentOnly = budget({
-      bills: [{ id: 'rent', name: 'Rent', amountCents: 700_00, dueDay: 1, category: '', paidFrom: 'autopay' }],
+      bills: [bill({ name: 'Rent', amountCents: 700_00, dueDay: 1, paidFrom: 'autopay' })],
       autopayBalanceCents: 300_00,
     });
     expect(computeAutopayPlan(rentOnly, start).bufferCents).toBe(400_00);

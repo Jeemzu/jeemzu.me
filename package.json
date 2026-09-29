@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "generate-api-types": "openapi-typescript http://localhost:5000/swagger/v1/swagger.json -o src/types/api.generated.ts",
+    "generate-api-types": "openapi-typescript http://localhost:5050/swagger/v1/swagger.json -o src/types/api.generated.ts",
     "generate-api-types:prod": "openapi-typescript https://jeemzu-prod-eza9c8edcdhhbqhw.canadaeast-01.azurewebsites.net/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
   "dependencies": {

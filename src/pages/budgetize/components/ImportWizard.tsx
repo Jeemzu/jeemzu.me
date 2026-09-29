@@ -1,20 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 import type { ImportPayload } from '../state/budget';
 import type { CellGrid, CellValue, ColumnMapping, RowReport, WorkbookGrids } from '../lib/importer';
 import {
   analyzeWorkbook,
-  buildTemplateWorkbook,
   columnLetter,
   detectMapping,
+  downloadTemplateWorkbook,
   extractBills,
   gridColumnCount,
   readWorkbook,
 } from '../lib/importer';
-import { downloadBlob } from '../lib/download';
 import { formatMoney } from '../lib/money';
+import { monthLabel } from '../lib/paydays';
+import { monthlyGrossCents } from '../types';
 
-const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const PREVIEW_ROWS = 12;
+const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.xlsm', '.ods', '.csv'];
 
 interface Props {
   dirty: boolean;
@@ -64,6 +66,9 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
   const [manual, setManual] = useState(false);
   const [sheet, setSheet] = useState('');
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
+  const [dragging, setDragging] = useState(false);
+  // Counts nested dragenter/dragleave pairs so child elements don't flicker the highlight.
+  const dragDepth = useRef(0);
 
   const analysis = useMemo(() => (workbook ? analyzeWorkbook(workbook) : null), [workbook]);
 
@@ -81,15 +86,20 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     setMapping(
       detected ?? {
         headerRow: 0,
+        bodyEndRow: grids.grids[name].length,
         nameCol: 0,
         amountCol: Math.min(1, gridColumnCount(grids.grids[name]) - 1),
         dueDayCol: null,
-        categoryCol: null,
       },
     );
   }
 
   async function handleFile(file: File) {
+    const lowerName = file.name.toLowerCase();
+    if (!ACCEPTED_EXTENSIONS.some((ext) => lowerName.endsWith(ext))) {
+      setFileError(`Unsupported file type. Use one of: ${ACCEPTED_EXTENSIONS.join(', ')}.`);
+      return;
+    }
     try {
       const grids = readWorkbook(await file.arrayBuffer());
       if (grids.sheetNames.length === 0) {
@@ -106,8 +116,36 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     }
   }
 
-  function downloadTemplate() {
-    downloadBlob('budgetize-me-template.xlsx', new Blob([buildTemplateWorkbook()], { type: XLSX_MIME }));
+  function hasFiles(e: DragEvent) {
+    return e.dataTransfer.types.includes('Files');
+  }
+
+  function handleDragEnter(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setDragging(true);
+  }
+
+  function handleDragOver(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragging(false);
+  }
+
+  function handleDrop(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) void handleFile(file);
   }
 
   function confirmReplace(sections: string[]): boolean {
@@ -169,9 +207,36 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     if (mapping) setMapping({ ...mapping, ...patch });
   }
 
+  function fileInput(label: string) {
+    return (
+      <label className="btn file-btn">
+        {label}
+        <input
+          type="file"
+          accept={ACCEPTED_EXTENSIONS.join(',')}
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+            e.target.value = '';
+          }}
+        />
+      </label>
+    );
+  }
+
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Import Excel workbook">
-      <div className="modal">
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Import Excel workbook"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <div className={`modal${dragging ? ' drag-active' : ''}`}>
         <div className="modal-head">
           <h2>Import from Excel</h2>
           <button type="button" className="btn ghost" onClick={onClose} aria-label="Close import">
@@ -180,29 +245,33 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
         </div>
 
         <div className="modal-body">
-          <div className="import-file-row">
-            <label className="btn file-btn">
-              {workbook ? `Change file (${fileName})` : 'Choose .xlsx file…'}
-              <input
-                type="file"
-                accept=".xlsx,.xls,.xlsm,.ods,.csv"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleFile(file);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <button type="button" className="btn ghost" onClick={downloadTemplate}>
-              Download template
-            </button>
-            {workbook && (
+          {workbook ? (
+            <div className="import-file-row">
+              {fileInput(`Change file (${fileName})`)}
+              <button type="button" className="btn ghost" onClick={downloadTemplateWorkbook}>
+                Download template
+              </button>
               <button type="button" className="btn ghost" onClick={() => setManual(!manual)}>
                 {manual ? '← Back to automatic import' : 'Map bill columns manually…'}
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="dropzone">
+              <p className="drop-hint">
+                {dragging ? 'Drop to import' : 'Drag & drop a workbook here'}
+              </p>
+              <span>or</span>
+              <div className="import-file-row">
+                {fileInput('Choose file…')}
+                <button type="button" className="btn ghost" onClick={downloadTemplateWorkbook}>
+                  Download template
+                </button>
+              </div>
+              <span className="muted">{ACCEPTED_EXTENSIONS.join(', ')}</span>
+            </div>
+          )}
+
+          {workbook && dragging && <p className="drop-hint">Drop to replace {fileName}</p>}
 
           {fileError && <p className="banner error">{fileError}</p>}
 
@@ -238,42 +307,49 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
               <h3>
                 Income{' '}
                 <span className="muted">
-                  {autoPeopleCount > 0
-                    ? `${autoPeopleCount} people found`
-                    : 'no income sheets found (looked for “Personal” / “Essential” sheet names)'}
+                  {analysis.income
+                    ? `${autoPeopleCount} people · ${analysis.income.extraction.months.length} months on “${analysis.income.sheet}”`
+                    : 'no Gross Income table found (needs Year, Month, and “… Deposit Amount per Paycheck” columns)'}
                 </span>
               </h3>
-              {autoPeopleCount > 0 && (
-                <div className="table-wrap report-wrap">
-                  <table className="report-table">
-                    <thead>
-                      <tr>
-                        <th>Person</th>
-                        <th>Personal / paycheck</th>
-                        <th>Essentials / paycheck</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analysis.people.map((person) => (
-                        <tr key={person.name}>
-                          <td>{person.name}</td>
-                          <td>{formatMoney(person.personalPerPaycheckCents)}</td>
-                          <td>{formatMoney(person.essentialsPerPaycheckCents)}</td>
+              {analysis.income && (
+                <>
+                  <div className="table-wrap report-wrap">
+                    <table className="report-table">
+                      <thead>
+                        <tr>
+                          <th>Person</th>
+                          <th>Months</th>
+                          <th>Range</th>
+                          <th>First month gross</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {(analysis.personalIncome || analysis.essentialsIncome) && (
-                <p className="muted">
-                  Amounts are each person's first non-zero “Deposit Amount per Paycheck” from{' '}
-                  {[analysis.personalIncome?.sheet, analysis.essentialsIncome?.sheet]
-                    .filter(Boolean)
-                    .map((s) => `“${s}”`)
-                    .join(' and ')}
-                  .
-                </p>
+                      </thead>
+                      <tbody>
+                        {analysis.people.map((person) => {
+                          const first = person.schedule[0];
+                          const last = person.schedule[person.schedule.length - 1];
+                          return (
+                            <tr key={person.name}>
+                              <td>{person.name}</td>
+                              <td>{person.schedule.length}</td>
+                              <td>
+                                {first
+                                  ? `${monthLabel(first)} – ${monthLabel(last)}`
+                                  : '—'}
+                              </td>
+                              <td>{first ? formatMoney(monthlyGrossCents(first)) : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ReportTable reports={analysis.income.extraction.reports} />
+                  <p className="muted">
+                    Months outside this range stay blank in the projection until you add them by
+                    hand.
+                  </p>
+                </>
               )}
             </>
           )}
@@ -330,16 +406,6 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
                   <select
                     value={mapping.dueDayCol ?? ''}
                     onChange={(e) => updateMapping({ dueDayCol: e.target.value === '' ? null : Number(e.target.value) })}
-                  >
-                    <option value="">— none —</option>
-                    {columnOptions}
-                  </select>
-                </label>
-                <label>
-                  Category (optional)
-                  <select
-                    value={mapping.categoryCol ?? ''}
-                    onChange={(e) => updateMapping({ categoryCol: e.target.value === '' ? null : Number(e.target.value) })}
                   >
                     <option value="">— none —</option>
                     {columnOptions}
@@ -425,6 +491,5 @@ function mappedClass(col: number, mapping: ColumnMapping): string {
   if (col === mapping.nameCol) return 'map-name';
   if (col === mapping.amountCol) return 'map-amount';
   if (col === mapping.dueDayCol) return 'map-due';
-  if (col === mapping.categoryCol) return 'map-category';
   return '';
 }

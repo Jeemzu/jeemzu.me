@@ -1,8 +1,8 @@
-import type { BudgetData, DebtPaymentStrategy } from '../types';
-import { perPaydayEssentialsCents, plannedDebtPaymentCents } from '../types';
+import type { BudgetData, DebtPaymentStrategy, MonthRef } from '../types';
 import type { AutopayPlan } from './autopay';
-import { autopayPaydaySharesCents } from './autopay';
+import { allocateMonth } from './allocation';
 import { formatMoney } from './money';
+import { monthLabel, parseMonthRef } from './paydays';
 import type { Projection, ProjectionWeek } from './projection';
 
 export interface FundingWarning {
@@ -11,9 +11,10 @@ export interface FundingWarning {
 }
 
 /**
- * Flags every way the funding plan fails to add up: paychecks too small for
- * their auto-pay share, essentials underfunded for shared bills, projected
- * negative balances, and missing auto-pay opening funds. Errors come first.
+ * Flags every way the funding plan fails to add up: months the projection covers
+ * with no income data, paychecks too small for their auto-pay and essentials
+ * carve-outs, projected negative balances, and missing auto-pay opening funds.
+ * Errors come first.
  */
 export function computeFundingWarnings(
   data: BudgetData,
@@ -22,33 +23,38 @@ export function computeFundingWarnings(
   strategy: DebtPaymentStrategy = 'suggested',
 ): FundingWarning[] {
   const warnings: FundingWarning[] = [];
-  const shares = autopayPaydaySharesCents(data, strategy);
 
-  // Gross = personal + essentials, so a share above the essentials contribution
-  // also means the paycheck can't cover personal deposit + auto-pay share.
-  data.people.forEach((person, i) => {
-    const share = shares[i] ?? 0;
-    if (share > person.essentialsPerPaycheckCents) {
+  const months: MonthRef[] = [];
+  const seen = new Set<string>();
+  for (const week of projection.weeks) {
+    for (const iso of [week.startISO, week.endISO]) {
+      const ref = parseMonthRef(iso);
+      if (!ref) continue;
+      const key = `${ref.year}-${ref.month}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      months.push(ref);
+    }
+  }
+
+  const blankMonths = months.filter((ref) => !allocateMonth(data, ref, strategy).hasIncome);
+  if (data.people.length > 0 && blankMonths.length > 0) {
+    warnings.push({
+      severity: 'warn',
+      message: `No income data for ${blankMonths.map(monthLabel).join(', ')}, so those weeks show no deposits. Add the months to each person's pay schedule.`,
+    });
+  }
+
+  for (const ref of months) {
+    const allocation = allocateMonth(data, ref, strategy);
+    if (!allocation.hasIncome) continue;
+    for (const person of allocation.people) {
+      if (!person.hasIncome || person.personalPerPaycheckCents >= 0) continue;
       warnings.push({
         severity: 'error',
-        message: `${person.name}'s paycheck can't cover their auto-pay share: ${formatMoney(share)}/payday is more than their ${formatMoney(person.essentialsPerPaycheckCents)} essentials contribution, so their essentials deposit goes negative.`,
+        message: `${person.name}'s ${monthLabel(ref)} paycheck can't cover their share of the bills: ${formatMoney(person.grossPerPaycheckCents)} gross is less than the ${formatMoney(person.autopayPerPaycheckCents + person.essentialsPerPaycheckCents)} auto-pay plus essentials carve-out, so nothing is left for personal spending.`,
       });
     }
-  });
-
-  const essentialsMonthlyCents = 4 * perPaydayEssentialsCents(data.people);
-  const autopayMonthlyCents = 4 * shares.reduce((a, b) => a + b, 0);
-  const sharedMonthlyCents =
-    data.bills.reduce((sum, bill) => (bill.paidFrom === 'shared' ? sum + bill.amountCents : sum), 0) +
-    data.debts.reduce(
-      (sum, debt) => (debt.paidFrom === 'shared' ? sum + plannedDebtPaymentCents(debt, strategy) : sum),
-      0,
-    );
-  if (essentialsMonthlyCents < autopayMonthlyCents + sharedMonthlyCents) {
-    warnings.push({
-      severity: 'error',
-      message: `In a 4-payday month, essentials deposits (${formatMoney(essentialsMonthlyCents)}) don't cover auto-pay funding (${formatMoney(autopayMonthlyCents)}) plus shared bills and debts (${formatMoney(sharedMonthlyCents)}).`,
-    });
   }
 
   const accounts: { label: string; balance: (week: ProjectionWeek) => number }[] = [
@@ -76,5 +82,5 @@ export function computeFundingWarnings(
     });
   }
 
-  return warnings;
+  return warnings.sort((a, b) => Number(b.severity === 'error') - Number(a.severity === 'error'));
 }

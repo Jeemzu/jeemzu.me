@@ -1,6 +1,19 @@
-import type { AccountSource, Bill, BudgetData, DebtAccount, PersonIncome } from '../types';
+import type {
+  AccountSource,
+  Bill,
+  BudgetData,
+  DebtAccount,
+  MonthlyIncome,
+  OneOffEvent,
+  PersonIncome,
+  Recurrence,
+  RecurrenceFrequency,
+  ScheduleOverride,
+} from '../types';
+import { compareMonthlyIncome, monthlyRecurrence } from '../types';
+import { getPaydays } from './paydays';
 
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 4;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -31,12 +44,51 @@ function isSignedCents(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
 }
 
+function isInteger(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Interest rates are reference-only, so anything unparseable is simply dropped. */
+function readBps(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 function readPaidFrom(value: unknown, fallback: AccountSource): AccountSource {
   return value === 'shared' || value === 'autopay' ? value : fallback;
 }
 
 function readId(obj: Record<string, unknown>): string {
   return typeof obj.id === 'string' && obj.id ? obj.id : crypto.randomUUID();
+}
+
+const FREQUENCIES: RecurrenceFrequency[] = ['monthly', 'weekly', 'biweekly', 'quarterly', 'annual'];
+
+function isISODate(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function readISODate(value: unknown): string | null {
+  return isISODate(value) ? value : null;
+}
+
+/** Backups written before frequencies existed have no recurrence fields; those items are monthly. */
+function sanitizeRecurrence(obj: Record<string, unknown>, label: string): Recurrence | string {
+  const raw = obj.frequency;
+  if (raw === undefined || raw === null) return monthlyRecurrence();
+  if (typeof raw !== 'string' || !FREQUENCIES.includes(raw as RecurrenceFrequency)) {
+    return `${label} has an unknown frequency.`;
+  }
+  const frequency = raw as RecurrenceFrequency;
+  const anchorISO = readISODate(obj.anchorISO);
+  if (frequency !== 'monthly' && anchorISO === null) {
+    return `${label} is ${frequency} but has no valid first-occurrence date.`;
+  }
+  const startISO = readISODate(obj.startISO);
+  const endISO = readISODate(obj.endISO);
+  if (startISO && endISO && endISO < startISO) {
+    return `${label} ends before it starts.`;
+  }
+  return { frequency, anchorISO, startISO, endISO };
 }
 
 function sanitizeBill(raw: unknown, index: number): Bill | string {
@@ -49,13 +101,15 @@ function sanitizeBill(raw: unknown, index: number): Bill | string {
   if (typeof dueDay !== 'number' || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
     return `Bill "${name}" has an invalid due day (must be 1-31).`;
   }
+  const recurrence = sanitizeRecurrence(obj, `Bill "${name}"`);
+  if (typeof recurrence === 'string') return recurrence;
   return {
     id: readId(obj),
     name,
     amountCents: obj.amountCents,
     dueDay,
-    category: typeof obj.category === 'string' ? obj.category.trim() : '',
     paidFrom: readPaidFrom(obj.paidFrom, 'shared'),
+    ...recurrence,
   };
 }
 
@@ -74,6 +128,8 @@ function sanitizeDebt(raw: unknown, index: number): DebtAccount | string {
   if (typeof dueDay !== 'number' || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
     return `Debt "${name}" has an invalid due day (must be 1-31).`;
   }
+  const recurrence = sanitizeRecurrence(obj, `Debt "${name}"`);
+  if (typeof recurrence === 'string') return recurrence;
   return {
     id: readId(obj),
     name,
@@ -81,8 +137,70 @@ function sanitizeDebt(raw: unknown, index: number): DebtAccount | string {
     minPaymentCents: obj.minPaymentCents,
     suggestedPaymentCents: suggested,
     hasPromotion: obj.hasPromotion === true,
+    interestRateBps: readBps(obj.interestRateBps),
+    promoEndISO: readISODate(obj.promoEndISO),
+    postPromoRateBps: readBps(obj.postPromoRateBps),
     dueDay,
     paidFrom: readPaidFrom(obj.paidFrom, 'autopay'),
+    ...recurrence,
+  };
+}
+
+function sanitizeOverride(raw: unknown, index: number): ScheduleOverride | string {
+  if (typeof raw !== 'object' || raw === null) return `Override #${index + 1} is not an object.`;
+  const obj = raw as Record<string, unknown>;
+  const label = `Override #${index + 1}`;
+  if (obj.targetKind !== 'bill' && obj.targetKind !== 'debt') {
+    return `${label} does not target a bill or debt.`;
+  }
+  if (typeof obj.targetId !== 'string' || !obj.targetId) return `${label} is missing its target.`;
+  const fromISO = readISODate(obj.fromISO);
+  const toISO = readISODate(obj.toISO);
+  if (!fromISO || !toISO) return `${label} has an invalid date range.`;
+  if (toISO < fromISO) return `${label} ends before it starts.`;
+  if (obj.mode !== 'skip' && obj.mode !== 'amount') return `${label} has an unknown mode.`;
+  const amountCents = obj.mode === 'amount' ? obj.amountCents : null;
+  if (obj.mode === 'amount' && !isCents(amountCents)) {
+    return `${label} has an invalid replacement amount.`;
+  }
+  return {
+    id: readId(obj),
+    targetKind: obj.targetKind,
+    targetId: obj.targetId,
+    fromISO,
+    toISO,
+    mode: obj.mode,
+    amountCents: (amountCents as number | null) ?? null,
+    note: typeof obj.note === 'string' ? obj.note.trim() : '',
+  };
+}
+
+function sanitizeOneOff(raw: unknown, index: number): OneOffEvent | string {
+  if (typeof raw !== 'object' || raw === null) return `One-time entry #${index + 1} is not an object.`;
+  const obj = raw as Record<string, unknown>;
+  const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+  if (!name) return `One-time entry #${index + 1} is missing a name.`;
+  if (obj.kind !== 'expense' && obj.kind !== 'income') return `"${name}" must be an expense or income.`;
+  if (!isCents(obj.amountCents)) return `"${name}" has an invalid amount.`;
+  const dateISO = readISODate(obj.dateISO);
+  if (!dateISO) return `"${name}" has an invalid date.`;
+  const account = obj.account;
+  if (account !== 'shared' && account !== 'autopay' && account !== 'personal') {
+    return `"${name}" has an unknown account.`;
+  }
+  const personId = typeof obj.personId === 'string' && obj.personId ? obj.personId : null;
+  if (account === 'personal' && personId === null) {
+    return `"${name}" is a personal entry but names no person.`;
+  }
+  return {
+    id: readId(obj),
+    kind: obj.kind,
+    name,
+    amountCents: obj.amountCents,
+    dateISO,
+    account,
+    personId: account === 'personal' ? personId : null,
+    note: typeof obj.note === 'string' ? obj.note.trim() : '',
   };
 }
 
@@ -91,16 +209,60 @@ function sanitizePerson(raw: unknown, index: number): PersonIncome | string {
   const obj = raw as Record<string, unknown>;
   const name = typeof obj.name === 'string' ? obj.name.trim() : '';
   if (!name) return `Person #${index + 1} is missing a name.`;
-  if (!isCents(obj.personalPerPaycheckCents)) return `"${name}" has an invalid personal deposit.`;
-  if (!isCents(obj.essentialsPerPaycheckCents)) return `"${name}" has an invalid essentials deposit.`;
   if (!isSignedCents(obj.personalBalanceCents)) return `"${name}" has an invalid personal balance.`;
+  const schedule = sanitizeSchedule(obj, name);
+  if (typeof schedule === 'string') return schedule;
   return {
     id: readId(obj),
     name,
-    personalPerPaycheckCents: obj.personalPerPaycheckCents,
-    essentialsPerPaycheckCents: obj.essentialsPerPaycheckCents,
+    schedule,
     personalBalanceCents: obj.personalBalanceCents,
   };
+}
+
+function sanitizeSchedule(obj: Record<string, unknown>, name: string): MonthlyIncome[] | string {
+  if (obj.schedule === undefined || obj.schedule === null) return legacySchedule(obj);
+  if (!Array.isArray(obj.schedule)) return `"${name}" has an invalid pay schedule.`;
+  const entries: MonthlyIncome[] = [];
+  for (const raw of obj.schedule) {
+    if (typeof raw !== 'object' || raw === null) return `"${name}" has an invalid pay schedule entry.`;
+    const entry = raw as Record<string, unknown>;
+    const { year, month, paycheckCount, perPaycheckCents } = entry;
+    if (!isInteger(year, 1900, 2999)) return `"${name}" has a pay schedule entry with an invalid year.`;
+    if (!isInteger(month, 0, 11)) return `"${name}" has a pay schedule entry with an invalid month.`;
+    if (!isInteger(paycheckCount, 1, 6)) {
+      return `"${name}" has a pay schedule entry with an invalid paycheck count.`;
+    }
+    if (!isCents(perPaycheckCents)) {
+      return `"${name}" has a pay schedule entry with an invalid paycheck amount.`;
+    }
+    entries.push({
+      year: year as number,
+      month: month as number,
+      paycheckCount: paycheckCount as number,
+      perPaycheckCents: perPaycheckCents as number,
+    });
+  }
+  return entries.sort(compareMonthlyIncome);
+}
+
+/**
+ * People saved before per-month schedules existed carried a single fixed
+ * paycheck split, which is spread over the current calendar year so their
+ * projection keeps working after the upgrade.
+ */
+function legacySchedule(obj: Record<string, unknown>): MonthlyIncome[] {
+  const personal = isCents(obj.personalPerPaycheckCents) ? obj.personalPerPaycheckCents : 0;
+  const essentials = isCents(obj.essentialsPerPaycheckCents) ? obj.essentialsPerPaycheckCents : 0;
+  const perPaycheckCents = personal + essentials;
+  if (perPaycheckCents <= 0) return [];
+  const year = new Date().getFullYear();
+  return Array.from({ length: 12 }, (_, month) => ({
+    year,
+    month,
+    paycheckCount: getPaydays(year, month).length,
+    perPaycheckCents,
+  }));
 }
 
 function sanitizeList<T>(
@@ -131,13 +293,23 @@ function migrateV1(dataObj: Record<string, unknown>, bills: Bill[]): ParseBackup
           {
             id: crypto.randomUUID(),
             name: 'Household',
-            personalPerPaycheckCents: 0,
-            essentialsPerPaycheckCents: weekly,
+            schedule: legacySchedule({ essentialsPerPaycheckCents: weekly }),
             personalBalanceCents: 0,
           },
         ]
       : [];
-  return { ok: true, data: { people, bills, debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0 } };
+  return {
+    ok: true,
+    data: {
+      people,
+      bills,
+      debts: [],
+      overrides: [],
+      oneOffs: [],
+      essentialsBalanceCents: 0,
+      autopayBalanceCents: 0,
+    },
+  };
 }
 
 export function parseBackup(json: string): ParseBackupResult {
@@ -185,6 +357,25 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (typeof debts === 'string') return { ok: false, error: debts };
   const people = sanitizeList(dataObj.people, 'people', sanitizePerson);
   if (typeof people === 'string') return { ok: false, error: people };
+  const overrides = sanitizeList(dataObj.overrides, 'overrides', sanitizeOverride);
+  if (typeof overrides === 'string') return { ok: false, error: overrides };
+  const oneOffs = sanitizeList(dataObj.oneOffs, 'one-time entries', sanitizeOneOff);
+  if (typeof oneOffs === 'string') return { ok: false, error: oneOffs };
+
+  const billIds = new Set(bills.map((b) => b.id));
+  const debtIds = new Set(debts.map((d) => d.id));
+  const orphan = overrides.find((o) =>
+    o.targetKind === 'bill' ? !billIds.has(o.targetId) : !debtIds.has(o.targetId),
+  );
+  if (orphan) {
+    return { ok: false, error: `An override points at a ${orphan.targetKind} that no longer exists.` };
+  }
+  const personIds = new Set(people.map((p) => p.id));
+  const strayEvent = oneOffs.find((e) => e.personId !== null && !personIds.has(e.personId));
+  if (strayEvent) {
+    return { ok: false, error: `"${strayEvent.name}" points at a person who no longer exists.` };
+  }
+
   const essentialsBalanceCents = dataObj.essentialsBalanceCents ?? 0;
   if (!isSignedCents(essentialsBalanceCents)) {
     return { ok: false, error: 'Backup has an invalid essentials balance.' };
@@ -193,5 +384,16 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (!isSignedCents(autopayBalanceCents)) {
     return { ok: false, error: 'Backup has an invalid auto-pay balance.' };
   }
-  return { ok: true, data: { people, bills, debts, essentialsBalanceCents, autopayBalanceCents } };
+  return {
+    ok: true,
+    data: {
+      people,
+      bills,
+      debts,
+      overrides,
+      oneOffs,
+      essentialsBalanceCents,
+      autopayBalanceCents,
+    },
+  };
 }

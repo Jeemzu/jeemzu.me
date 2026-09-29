@@ -8,8 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
-import { emptyBudget, perPaydayDepositCents } from "./types";
+import { emptyBudget, monthlyRecurrence } from "./types";
 import { budgetReducer, initialState } from "./state/budget";
 import { computeMonthSummary } from "./lib/schedule";
 import { addMonths, monthLabel } from "./lib/paydays";
@@ -25,9 +26,12 @@ import { CategoryBreakdown } from "./components/CategoryBreakdown";
 import { PeopleEditor } from "./components/PeopleEditor";
 import { BillsEditor } from "./components/BillsEditor";
 import { DebtsEditor } from "./components/DebtsEditor";
+import { OverridesEditor } from "./components/OverridesEditor";
+import { OneOffsEditor } from "./components/OneOffsEditor";
 import { ProjectionView } from "./components/ProjectionView";
 import { AutopayCard } from "./components/AutopayCard";
 import { FundingWarnings } from "./components/FundingWarnings";
+import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useAuthStore } from "../../stores/authStore";
 import { loadBudget, saveBudget } from "../../utils/budgetApi";
 import UserAuthModal from "../../components/shared/UserAuthModal";
@@ -54,6 +58,7 @@ const VIEW_TABS = [
   { id: "month", label: "This month" },
   { id: "projections", label: "Projections" },
   { id: "data", label: "Edit data" },
+  { id: "assistant", label: "Assistant" },
 ] as const;
 
 type ViewTab = (typeof VIEW_TABS)[number]["id"];
@@ -96,16 +101,6 @@ function BudgetWorkspace() {
     () =>
       computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
     [state.data, monthRef, strategy],
-  );
-
-  const categories = useMemo(
-    () =>
-      [
-        ...new Set(
-          state.data.bills.map((bill) => bill.category.trim()).filter(Boolean),
-        ),
-      ].sort(),
-    [state.data.bills],
   );
 
   const fundingWarnings = useMemo(() => {
@@ -285,6 +280,19 @@ function BudgetWorkspace() {
     });
   }
 
+  async function handleTemplateDownload() {
+    try {
+      // Dynamic import keeps the xlsx library out of the main bundle.
+      const { downloadTemplateWorkbook } = await import("./lib/importer");
+      downloadTemplateWorkbook();
+    } catch {
+      setNotice({
+        kind: "error",
+        text: "Could not generate the spreadsheet template. Please try again.",
+      });
+    }
+  }
+
   async function handleRestoreFile(file: File) {
     const result = parseBackup(await file.text());
     if (!result.ok) {
@@ -360,6 +368,13 @@ function BudgetWorkspace() {
               onClick={() => setImportOpen(true)}
             >
               Import Excel
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void handleTemplateDownload()}
+            >
+              Download spreadsheet template
             </button>
             <button
               type="button"
@@ -452,6 +467,13 @@ function BudgetWorkspace() {
               >
                 Import your workbook
               </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void handleTemplateDownload()}
+              >
+                Download spreadsheet template
+              </button>
             </section>
           )}
 
@@ -463,6 +485,8 @@ function BudgetWorkspace() {
                   type="button"
                   role="tab"
                   aria-selected={tab === entry.id}
+                  // The assistant needs a signed-in session to reach the API.
+                  disabled={entry.id === "assistant" && !isAuthenticated}
                   className={`view-tab${tab === entry.id ? " active" : ""}`}
                   onClick={() => setTab(entry.id)}
                 >
@@ -540,9 +564,11 @@ function BudgetWorkspace() {
                     <UpcomingList
                       monthRef={monthRef}
                       summary={summary}
-                      paydayDepositCents={perPaydayDepositCents(
-                        state.data.people,
-                      )}
+                      paydayDepositCents={
+                        summary.paydays.length > 0
+                          ? Math.round(summary.incomeCents / summary.paydays.length)
+                          : 0
+                      }
                     />
                   </section>
                   <section className="card">
@@ -579,21 +605,32 @@ function BudgetWorkspace() {
             </div>
           )}
 
+          {tab === "assistant" && (
+            <section className="card">
+              <h3>Budget assistant</h3>
+              <BudgetAssistant
+                data={state.data}
+                strategy={strategy}
+                onApplyProposal={(ops) => dispatch({ type: "apply-proposal", ops })}
+              />
+            </section>
+          )}
+
           {tab === "data" && (
             <>
               <div className="columns editors">
                 <section className="card">
                   <h3>Income &amp; people</h3>
                   <PeopleEditor
-                    people={state.data.people}
+                    data={state.data}
+                    strategy={strategy}
                     onAdd={() =>
                       dispatch({
                         type: "add-person",
                         person: {
                           id: crypto.randomUUID(),
                           name: "New person",
-                          personalPerPaycheckCents: 0,
-                          essentialsPerPaycheckCents: 0,
+                          schedule: [],
                           personalBalanceCents: 0,
                         },
                       })
@@ -608,7 +645,6 @@ function BudgetWorkspace() {
                   <h3>Monthly bills</h3>
                   <BillsEditor
                     bills={state.data.bills}
-                    categories={categories}
                     onAdd={() =>
                       dispatch({
                         type: "add-bill",
@@ -617,8 +653,8 @@ function BudgetWorkspace() {
                           name: "New bill",
                           amountCents: 0,
                           dueDay: 1,
-                          category: "",
                           paidFrom: "shared",
+                          ...monthlyRecurrence(),
                         },
                       })
                     }
@@ -645,8 +681,12 @@ function BudgetWorkspace() {
                         minPaymentCents: 0,
                         suggestedPaymentCents: null,
                         hasPromotion: false,
+                        interestRateBps: null,
+                        promoEndISO: null,
+                        postPromoRateBps: null,
                         dueDay: 1,
                         paidFrom: "autopay",
+                        ...monthlyRecurrence(),
                       },
                     })
                   }
@@ -654,6 +694,37 @@ function BudgetWorkspace() {
                     dispatch({ type: "update-debt", id, patch })
                   }
                   onRemove={(id) => dispatch({ type: "remove-debt", id })}
+                />
+              </section>
+
+              <section className="card">
+                <h3>Temporary changes</h3>
+                <p className="muted">
+                  Pause or re-price a bill or debt for a stretch of time. The item itself
+                  stays as it is and resumes on its own once the range ends.
+                </p>
+                <OverridesEditor
+                  overrides={state.data.overrides}
+                  bills={state.data.bills}
+                  debts={state.data.debts}
+                  onAdd={(override) => dispatch({ type: "add-override", override })}
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-override", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-override", id })}
+                />
+              </section>
+
+              <section className="card">
+                <h3>One-time entries</h3>
+                <OneOffsEditor
+                  oneOffs={state.data.oneOffs}
+                  people={state.data.people}
+                  onAdd={(event) => dispatch({ type: "add-one-off", event })}
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-one-off", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-one-off", id })}
                 />
               </section>
             </>
@@ -672,33 +743,38 @@ function BudgetWorkspace() {
           }}
         />
 
-        {importOpen && (
-          <Suspense
-            fallback={
-              <div className="overlay">
-                <div className="modal modal-loading">Loading importer…</div>
-              </div>
-            }
-          >
-            <ImportWizard
-              dirty={state.dirty}
-              hasData={!isEmpty}
-              onImport={(payload) => {
-                dispatch({ type: "import-data", payload });
-                const parts = [
-                  payload.bills && `${payload.bills.length} bills`,
-                  payload.debts && `${payload.debts.length} debts`,
-                  payload.people && `${payload.people.length} people`,
-                ].filter(Boolean);
-                setNotice({
-                  kind: "info",
-                  text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
-                });
-              }}
-              onClose={() => setImportOpen(false)}
-            />
-          </Suspense>
-        )}
+        {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
+        {importOpen &&
+          createPortal(
+            <div className="budgetize budgetize-portal">
+              <Suspense
+                fallback={
+                  <div className="overlay">
+                    <div className="modal modal-loading">Loading importer…</div>
+                  </div>
+                }
+              >
+                <ImportWizard
+                  dirty={state.dirty}
+                  hasData={!isEmpty}
+                  onImport={(payload) => {
+                    dispatch({ type: "import-data", payload });
+                    const parts = [
+                      payload.bills && `${payload.bills.length} bills`,
+                      payload.debts && `${payload.debts.length} debts`,
+                      payload.people && `${payload.people.length} people`,
+                    ].filter(Boolean);
+                    setNotice({
+                      kind: "info",
+                      text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
+                    });
+                  }}
+                  onClose={() => setImportOpen(false)}
+                />
+              </Suspense>
+            </div>,
+            document.body,
+          )}
 
         <UserAuthModal
           open={loginOpen}

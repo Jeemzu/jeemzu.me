@@ -561,6 +561,11 @@
   }
 
   /* ---- Import wizard ---- */
+  &.budgetize-portal {
+    min-height: 0;
+    background: none;
+  }
+
   .overlay {
     position: fixed;
     inset: 0;
@@ -569,7 +574,7 @@
     align-items: flex-start;
     justify-content: center;
     padding: 2rem 1rem;
-    z-index: 50;
+    z-index: 1300;
     overflow-y: auto;
   }
 
@@ -609,6 +614,11 @@
     gap: 0.75rem;
   }
 
+  /* Scroll the body instead of squashing the scrollable tables to zero height. */
+  .modal-body > * {
+    flex-shrink: 0;
+  }
+
   .modal-body h3 {
     margin: 0.5rem 0 0;
   }
@@ -627,6 +637,34 @@
 
   .file-btn {
     display: inline-block;
+  }
+
+  .modal.drag-active {
+    outline: 3px dashed var(--accent);
+    outline-offset: -6px;
+  }
+
+  .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1rem;
+    border: 2px dashed var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-soft);
+    text-align: center;
+  }
+
+  .drag-active .dropzone {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .drop-hint {
+    margin: 0;
+    color: var(--accent);
+    font-weight: 700;
   }
 
   .sheet-tabs {
@@ -721,8 +759,28 @@
     background: #ece3f2 !important;
   }
 
-  .map-category {
-    background: var(--warn-soft) !important;
+  .schedule-table td.negative {
+    color: var(--danger, #b3261e);
+  }
+
+  .schedule-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin: 0.75rem 0;
+  }
+
+  .schedule-add label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .projection-table tr.income-unknown td {
+    background: var(--warn-soft);
+    opacity: 0.75;
   }
 
   .report-table th {
@@ -924,6 +982,180 @@
 
   .checkbox-cell {
     text-align: center;
+  }
+
+  /* ---- Overrides & one-time entries ---- */
+  .recurrence-anchor {
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  .override-hint {
+    margin: 0.4rem 0;
+    font-size: 0.8rem;
+  }
+
+  /* ---- Assistant ---- */
+  .assistant {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .assistant-intro p {
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+  }
+
+  .assistant-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .assistant-suggestions .chip {
+    border: 1px solid var(--line);
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .assistant-suggestions .chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .assistant-thread {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 30rem;
+    overflow-y: auto;
+  }
+
+  .assistant-turn {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    background: var(--card);
+  }
+
+  .assistant-turn.user {
+    background: var(--accent-soft);
+    /* Reads as the user's own words rather than the assistant's */
+    border-color: var(--accent);
+  }
+
+  .assistant-text {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+
+  .assistant-gap {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+    background: var(--warn-soft);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.55rem;
+  }
+
+  .assistant-input {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .assistant-input input {
+    flex: 1;
+  }
+
+  /* ---- Proposal preview ---- */
+  .proposal-preview {
+    margin-top: 0.75rem;
+    border: 1px solid var(--accent);
+  }
+
+  .proposal-preview h4,
+  .proposal-preview h5 {
+    margin: 0 0 0.4rem;
+  }
+
+  .proposal-preview h5 {
+    margin-top: 0.9rem;
+  }
+
+  .proposal-summary {
+    margin: 0 0 0.6rem;
+  }
+
+  .proposal-ops {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .proposal-ops li {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.6rem;
+  }
+
+  .proposal-op-label {
+    display: block;
+    font-weight: 700;
+  }
+
+  .proposal-op-why {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .proposal-delta {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .proposal-delta th,
+  .proposal-delta td {
+    border-bottom: 1px solid var(--line);
+    padding: 0.3rem 0.4rem;
+    text-align: right;
+  }
+
+  .proposal-delta th[scope="row"],
+  .proposal-delta th[scope="col"]:first-child {
+    text-align: left;
+  }
+
+  .proposal-delta .neg {
+    color: var(--danger);
+  }
+
+  .proposal-abs {
+    color: var(--ink-soft);
+  }
+
+  .proposal-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .proposal-note {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
   }
 
   /* ---- Responsive ---- */

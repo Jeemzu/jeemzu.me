@@ -1,17 +1,19 @@
-import type { AccountSource, BudgetData, DebtPaymentStrategy } from '../types';
-import { plannedDebtPaymentCents } from '../types';
-import { PAYDAY_WEEKDAY, resolveDueDay, toISODate } from './paydays';
-import { autopayPaydaySharesCents } from './autopay';
+import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
+import { PAYDAY_WEEKDAY, toISODate } from './paydays';
+import { createAllocator } from './allocation';
+import { billAmountOn, debtAmountOn } from './recurrence';
 
 export { toISODate } from './paydays';
 
 export interface ProjectionOutflow {
-  kind: 'bill' | 'debt';
+  kind: 'bill' | 'debt' | 'one-off';
   name: string;
   amountCents: number;
   dateISO: string;
-  /** Account the payment drafts from. */
-  source: AccountSource;
+  /** Account the money moves through. */
+  source: OneOffAccount;
+  /** Set only when `source` is 'personal'. */
+  personId: string | null;
 }
 
 export interface AccountWeek {
@@ -25,11 +27,15 @@ export interface ProjectionWeek {
   /** Inclusive last day of the week. */
   endISO: string;
   paydayCount: number;
+  /** False when a payday fell in a month with no income data, so deposits are unknown rather than zero. */
+  incomeKnown: boolean;
   /** Parallel to Projection.people. */
   personal: AccountWeek[];
   essentials: AccountWeek;
   autopay: AccountWeek;
   outflows: ProjectionOutflow[];
+  /** One-off deposits landing this week, on top of the regular paychecks. */
+  inflows: ProjectionOutflow[];
 }
 
 export interface Projection {
@@ -49,8 +55,10 @@ function addDays(d: Date, days: number): Date {
  * Weekly balance forecast anchored on Wednesday paydays. Week 1 runs from `start`
  * to the day before the next Wednesday, so money already reflected in current
  * balances is never double-counted; it only contains a payday when `start` is one.
- * Each payday, every person's auto-pay share is carved out of their essentials
- * deposit; bills and debts draft from the account named by `paidFrom`.
+ * Each payday is split into auto-pay, essentials, and personal deposits by the
+ * month's allocation; paydays in months with no income data deposit nothing and
+ * mark the week `incomeKnown: false`. Bills and debts draft from the account
+ * named by `paidFrom`, at the amount left after any schedule override for that date.
  */
 export function computeProjection(
   data: BudgetData,
@@ -64,7 +72,8 @@ export function computeProjection(
   const balances = data.people.map((p) => p.personalBalanceCents);
   let essentialsBalance = data.essentialsBalanceCents;
   let autopayBalance = data.autopayBalanceCents;
-  const autopayShares = autopayPaydaySharesCents(data, strategy);
+  const allocationFor = createAllocator(data, strategy);
+  const personIndex = new Map(data.people.map((p, i) => [p.id, i]));
 
   const weeks: ProjectionWeek[] = [];
   let weekStart = startDate;
@@ -78,34 +87,61 @@ export function computeProjection(
     const essentials: AccountWeek = { depositCents: 0, outflowCents: 0, endBalanceCents: 0 };
     const autopay: AccountWeek = { depositCents: 0, outflowCents: 0, endBalanceCents: 0 };
     const outflows: ProjectionOutflow[] = [];
+    const inflows: ProjectionOutflow[] = [];
     let paydayCount = 0;
+    let incomeKnown = true;
+
+    const account = (source: OneOffAccount, personId: string | null): AccountWeek | null => {
+      if (source === 'autopay') return autopay;
+      if (source === 'shared') return essentials;
+      const i = personId === null ? -1 : personIndex.get(personId) ?? -1;
+      return i >= 0 ? personal[i] : null;
+    };
 
     for (let d = weekStart; d <= weekEnd; d = addDays(d, 1)) {
       if (d.getDay() === PAYDAY_WEEKDAY) {
         paydayCount++;
-        data.people.forEach((person, i) => {
-          const share = autopayShares[i] ?? 0;
-          personal[i].depositCents += person.personalPerPaycheckCents;
-          autopay.depositCents += share;
-          essentials.depositCents += person.essentialsPerPaycheckCents - share;
+        const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
+        if (!allocation.hasIncome) incomeKnown = false;
+        allocation.people.forEach((share, i) => {
+          personal[i].depositCents += share.personalPerPaycheckCents;
+          autopay.depositCents += share.autopayPerPaycheckCents;
+          essentials.depositCents += share.essentialsPerPaycheckCents;
         });
       }
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      const day = d.getDate();
+      const dateISO = toISODate(d);
       for (const bill of data.bills) {
-        if (resolveDueDay(year, month, bill.dueDay) === day) {
-          const target = bill.paidFrom === 'autopay' ? autopay : essentials;
-          target.outflowCents += bill.amountCents;
-          outflows.push({ kind: 'bill', name: bill.name, amountCents: bill.amountCents, dateISO: toISODate(d), source: bill.paidFrom });
-        }
+        const amountCents = billAmountOn(bill, d, data.overrides);
+        if (amountCents === null) continue;
+        const target = bill.paidFrom === 'autopay' ? autopay : essentials;
+        target.outflowCents += amountCents;
+        outflows.push({ kind: 'bill', name: bill.name, amountCents, dateISO, source: bill.paidFrom, personId: null });
       }
       for (const debt of data.debts) {
-        if (resolveDueDay(year, month, debt.dueDay) === day) {
-          const amountCents = plannedDebtPaymentCents(debt, strategy);
-          const target = debt.paidFrom === 'autopay' ? autopay : essentials;
-          target.outflowCents += amountCents;
-          outflows.push({ kind: 'debt', name: debt.name, amountCents, dateISO: toISODate(d), source: debt.paidFrom });
+        const amountCents = debtAmountOn(debt, d, data.overrides, strategy);
+        if (amountCents === null) continue;
+        const target = debt.paidFrom === 'autopay' ? autopay : essentials;
+        target.outflowCents += amountCents;
+        outflows.push({ kind: 'debt', name: debt.name, amountCents, dateISO, source: debt.paidFrom, personId: null });
+      }
+      for (const event of data.oneOffs) {
+        if (event.dateISO !== dateISO) continue;
+        const target = account(event.account, event.personId);
+        if (!target) continue;
+        const entry: ProjectionOutflow = {
+          kind: 'one-off',
+          name: event.name,
+          amountCents: event.amountCents,
+          dateISO,
+          source: event.account,
+          personId: event.personId,
+        };
+        if (event.kind === 'income') {
+          target.depositCents += event.amountCents;
+          inflows.push(entry);
+        } else {
+          target.outflowCents += event.amountCents;
+          outflows.push(entry);
         }
       }
     }
@@ -123,10 +159,12 @@ export function computeProjection(
       startISO: toISODate(weekStart),
       endISO: toISODate(weekEnd),
       paydayCount,
+      incomeKnown,
       personal,
       essentials,
       autopay,
       outflows,
+      inflows,
     });
     weekStart = addDays(weekEnd, 1);
   }
