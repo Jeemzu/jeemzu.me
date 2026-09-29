@@ -52,8 +52,6 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    const RPGModal = null;
-
     const LevelSelectModal = (
         <PlatformerLevelSelect
             open={platformerOpen && !selectedLevel}
@@ -74,7 +72,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, RPGModal, WasmModal, LevelSelectModal };
+    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, WasmModal, LevelSelectModal };
 };
 
 // Create game data with launcher functions

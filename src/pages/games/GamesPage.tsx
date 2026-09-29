@@ -14,7 +14,6 @@ const GamesPage = () => {
     showComingSoon,
     GameModal,
     ComingSoonGameModal,
-    RPGModal,
     WasmModal,
     LevelSelectModal,
   } = useGameLauncher();
@@ -47,7 +46,6 @@ const GamesPage = () => {
 
       {GameModal}
       {ComingSoonGameModal}
-      {RPGModal}
       {LevelSelectModal}
       {WasmModal}
       <AuthPromptToast />

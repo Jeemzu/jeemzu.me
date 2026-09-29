@@ -91,7 +91,6 @@ const LevelEditorPage = LC(
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
-const RPGPage = LC(lazy(() => import("./pages/rpg/RPGPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
 const ProfilePage = LC(lazy(() => import("./pages/account/ProfilePage")));
 const VerifyEmailPage = LC(
@@ -128,7 +127,6 @@ export function Routes() {
             <Route path="/editor" component={LevelEditorPage} />
             <Route path="/algoviz" component={AlgoVizPage} />
             <Route path="/admin" component={AdminPage} />
-            <Route path="/rpg" component={RPGPage} />
             <Route path="/budgetize" component={BudgetizePage} />
             <Route path="/account" component={ProfilePage} />
             <Route path="/verify-email" component={VerifyEmailPage} />

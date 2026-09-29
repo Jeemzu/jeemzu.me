@@ -292,7 +292,7 @@ export default function ProfilePage() {
 
         <SectionPanel
           title="Username"
-          description="Your display name on leaderboards and in RPG parties."
+          description="Your display name on leaderboards."
         >
           <Box component="form" onSubmit={handleUsernameSubmit}>
             <Stack spacing={2}>

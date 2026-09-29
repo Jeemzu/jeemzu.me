@@ -91,12 +91,12 @@ Generated types from backend OpenAPI spec live in `src/types/api.generated.ts` â
 | Service           | Responsibility                                                                                                                                                                            |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Netlify           | Hosts the static SPA, serves the `dist/` build, and applies the SPA fallback and response headers in `public/`.                                                                           |
-| Azure App Service | Hosts the .NET API used for authentication, game scores and profiles, budgets, contact requests, RPG requests, and chat fallback. The deployed API URL is configured with `VITE_API_URL`. |
-| Render            | Hosts the Python chat-agent endpoint selected by `VITE_AGENT_URL`. Chat tries this service first and falls back to the .NET API.                                                          |
+| Render | Hosts the .NET API used for authentication, game scores and profiles, budgets, contact requests, and chat. The deployed API URL is configured with `VITE_API_URL` and is served from `api.jeemzu.me`. |
+| Render            | Hosts the .NET API and the Python agents service. The agents service is private to Render's network, so the browser never calls it directly.                                              |
 | Google Fonts      | Serves the Cinzel and Caudex web fonts referenced by `index.html`.                                                                                                                        |
 | GitHub Actions    | Backend deployment dispatches `api-types-update` to regenerate this repo's OpenAPI types; this is CI automation, not a runtime dependency for visitors.                                   |
 
-`VITE_API_URL` and `VITE_AGENT_URL` are deployment configuration. The API repo's `API.md` documents a different Azure API hostname, so reconcile that reference before treating it as the canonical endpoint. A Turnstile site key is present in production environment configuration, but the frontend currently has no Turnstile integration.
+`VITE_API_URL` is deployment configuration and should point at `https://api.jeemzu.me/api`. The Python agents service is private to Render's network, so the frontend never calls it directly and there is no `VITE_AGENT_URL`. A Turnstile site key is present in production environment configuration, but the frontend currently has no Turnstile integration.
 
 ## Project Structure
 

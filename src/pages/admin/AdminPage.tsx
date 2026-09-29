@@ -35,7 +35,6 @@ import { goldButtonSx, headingSx, panelSx } from "../../lib/medievalStyles";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5050/api";
-const AGENT_URL = import.meta.env.VITE_AGENT_URL || "";
 
 function authHeader(): Record<string, string> {
   const token = useAuthStore.getState().accessToken;
@@ -123,38 +122,19 @@ function HealthPanel() {
       const sw = performance.now();
       const resp = await fetch(`${API_BASE_URL.replace("/api", "")}/health`);
       results.push({
-        service: ".NET API (Azure)",
+        service: ".NET API",
         healthy: resp.ok,
         responseTimeMs: Math.round(performance.now() - sw),
       });
     } catch (e) {
       results.push({
-        service: ".NET API (Azure)",
+        service: ".NET API",
         healthy: false,
         error: String(e),
       });
     }
 
-    // Agent service
-    if (AGENT_URL) {
-      try {
-        const sw = performance.now();
-        const resp = await fetch(`${AGENT_URL}/health`);
-        results.push({
-          service: "Agent (Render)",
-          healthy: resp.ok,
-          responseTimeMs: Math.round(performance.now() - sw),
-        });
-      } catch (e) {
-        results.push({
-          service: "Agent (Render)",
-          healthy: false,
-          error: String(e),
-        });
-      }
-    }
-
-    // DB (via admin endpoint)
+    // Database and agent service, both probed server-side — the agent is private.
     try {
       const resp = await fetch(`${API_BASE_URL}/admin/health`, {
         headers: authHeader(),
