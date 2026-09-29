@@ -3,31 +3,14 @@ import { applyProposal } from './proposal';
 import { computeMonthSummary } from './schedule';
 import type { BudgetOp } from '../../../utils/budgetAgentApi';
 import type { BudgetData } from '../types';
-import { emptyBudget, monthlyRecurrence } from '../types';
+import { emptyBudget } from '../types';
+import { bill, paidPerson } from '../testFixtures';
 
 function budget(): BudgetData {
   return {
     ...emptyBudget(),
-    people: [
-      {
-        id: 'p1',
-        name: 'James',
-        personalPerPaycheckCents: 100_00,
-        essentialsPerPaycheckCents: 400_00,
-        personalBalanceCents: 50_00,
-      },
-    ],
-    bills: [
-      {
-        ...monthlyRecurrence(),
-        id: 'rent',
-        name: 'Rent',
-        amountCents: 2000_00,
-        dueDay: 1,
-        category: 'Housing',
-        paidFrom: 'shared',
-      },
-    ],
+    people: [paidPerson('James', 2026, 500_00, { id: 'p1', personalBalanceCents: 50_00 })],
+    bills: [bill({ id: 'rent', name: 'Rent', amountCents: 2000_00, dueDay: 1 })],
     essentialsBalanceCents: 5000_00,
   };
 }
@@ -83,8 +66,31 @@ describe('applyProposal', () => {
     ]);
 
     expect(next.bills[0].amountCents).toBe(2100_00);
-    expect(next.bills[0].category).toBe('Housing');
+    expect(next.bills[0].name).toBe('Rent');
     expect(next.bills[0].dueDay).toBe(1);
+  });
+
+  it('replaces one month of pay without touching the rest of the schedule', () => {
+    const next = applyProposal(budget(), [
+      {
+        op: 'set_month_income',
+        rationale: 'Raise starts in December.',
+        targetId: 'p1',
+        year: 2026,
+        month: 11,
+        perPaycheckCents: 700_00,
+      },
+    ]);
+
+    const schedule = next.people[0].schedule;
+    expect(schedule).toHaveLength(12);
+    expect(schedule[11]).toEqual({
+      year: 2026,
+      month: 11,
+      paycheckCount: 5,
+      perPaycheckCents: 700_00,
+    });
+    expect(schedule[0].perPaycheckCents).toBe(500_00);
   });
 
   it('drops overrides belonging to a bill it deletes', () => {

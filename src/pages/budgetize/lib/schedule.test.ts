@@ -1,30 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { computeMonthSummary, DEBT_CATEGORY, resolveDueDay, UNCATEGORIZED } from './schedule';
-import type { Bill, BudgetData, DebtAccount, PersonIncome } from '../types';
-import { emptyBudget, monthlyRecurrence } from '../types';
-
-function bill(partial: Partial<Bill> & Pick<Bill, 'name' | 'amountCents' | 'dueDay'>): Bill {
-  return { id: partial.name, category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
-}
-
-function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPaymentCents'>): DebtAccount {
-  return {
-    id: partial.name,
-    balanceCents: 0,
-    suggestedPaymentCents: null,
-    hasPromotion: false,
-    dueDay: 1,
-    paidFrom: 'shared',
-    ...monthlyRecurrence(),
-    ...partial,
-  };
-}
-
-function person(
-  partial: Partial<PersonIncome> & Pick<PersonIncome, 'name' | 'essentialsPerPaycheckCents'>,
-): PersonIncome {
-  return { id: partial.name, personalPerPaycheckCents: 0, personalBalanceCents: 0, ...partial };
-}
+import { BILL_CATEGORY, computeMonthSummary, DEBT_CATEGORY, resolveDueDay } from './schedule';
+import type { BudgetData } from '../types';
+import { emptyBudget } from '../types';
+import { bill, debt, paidPerson } from '../testFixtures';
 
 function budget(partial: Partial<BudgetData>): BudgetData {
   return { ...emptyBudget(), ...partial };
@@ -46,19 +24,21 @@ describe('resolveDueDay', () => {
 
 describe('computeMonthSummary', () => {
   const data = budget({
-    people: [person({ name: 'A', essentialsPerPaycheckCents: 2300_00 })],
+    people: [paidPerson('A', 2026, 2300_00)],
     bills: [
-      bill({ name: 'Rent', amountCents: 3250_00, dueDay: 1, category: 'Housing' }),
-      bill({ name: 'Electric', amountCents: 300_00, dueDay: 1, category: 'Utilities' }),
-      bill({ name: 'Spectrum', amountCents: 90_00, dueDay: 21, category: 'Utilities' }),
+      bill({ name: 'Rent', amountCents: 3250_00, dueDay: 1, paidFrom: 'shared' }),
+      bill({ name: 'Electric', amountCents: 300_00, dueDay: 1, paidFrom: 'shared' }),
+      bill({ name: 'Spectrum', amountCents: 90_00, dueDay: 21, paidFrom: 'shared' }),
     ],
   });
 
   it('computes a five-payday month (September 2026)', () => {
     const summary = computeMonthSummary(data, 2026, 8);
     expect(summary.paydays).toHaveLength(5);
+    expect(summary.incomeKnown).toBe(true);
     expect(summary.incomeCents).toBe(11500_00);
-    expect(summary.essentialsIncomeCents).toBe(11500_00);
+    // Essentials deposits are sized to the shared bills themselves.
+    expect(summary.essentialsIncomeCents).toBe(3640_00);
     expect(summary.billsTotalCents).toBe(3640_00);
     expect(summary.debtsTotalCents).toBe(0);
     expect(summary.remainingCents).toBe(7860_00);
@@ -73,22 +53,27 @@ describe('computeMonthSummary', () => {
     expect(summary.perPaydayCents).toBe(1390_00);
   });
 
-  it('counts personal deposits in income but not in essentials', () => {
+  it('reports no income for months outside the pay schedule', () => {
+    const summary = computeMonthSummary(data, 2028, 0);
+    expect(summary.incomeKnown).toBe(false);
+    expect(summary.incomeCents).toBe(0);
+    expect(summary.essentialsIncomeCents).toBe(0);
+    expect(summary.remainingCents).toBe(-3640_00);
+  });
+
+  it('sums gross pay across everyone', () => {
     const mixed = budget({
-      people: [
-        person({ name: 'A', personalPerPaycheckCents: 100_00, essentialsPerPaycheckCents: 200_00 }),
-        person({ name: 'B', personalPerPaycheckCents: 50_00, essentialsPerPaycheckCents: 400_00 }),
-      ],
+      people: [paidPerson('A', 2026, 300_00), paidPerson('B', 2026, 450_00)],
     });
     const summary = computeMonthSummary(mixed, 2026, 9); // 4 paydays
     expect(summary.incomeCents).toBe(3000_00);
-    expect(summary.essentialsIncomeCents).toBe(2400_00);
-    expect(summary.remainingCents).toBe(2400_00);
+    expect(summary.essentialsIncomeCents).toBe(0);
+    expect(summary.remainingCents).toBe(3000_00);
   });
 
   it('supports negative remaining balances', () => {
     const tight = budget({
-      people: [person({ name: 'A', essentialsPerPaycheckCents: 500_00 })],
+      people: [paidPerson('A', 2026, 500_00)],
       bills: data.bills,
     });
     const summary = computeMonthSummary(tight, 2026, 9);
@@ -96,33 +81,33 @@ describe('computeMonthSummary', () => {
     expect(summary.perPaydayCents).toBe(Math.round((2000_00 - 3640_00) / 4));
   });
 
-  it('carves auto-pay funding out of the essentials remainder', () => {
+  it('carves auto-pay funding out of gross pay', () => {
     const withAutopay = budget({
-      people: [person({ name: 'A', essentialsPerPaycheckCents: 500_00 })],
+      people: [paidPerson('A', 2026, 500_00)],
       bills: [
         bill({ name: 'Electric', amountCents: 400_00, dueDay: 15, paidFrom: 'autopay' }),
-        bill({ name: 'Rent', amountCents: 1000_00, dueDay: 1 }),
+        bill({ name: 'Rent', amountCents: 1000_00, dueDay: 1, paidFrom: 'shared' }),
       ],
     });
-    // October 2026: 4 paydays → funding = 4 × ceil(400/4) = 400.
+    // October 2026: 4 paydays → funding = 4 × $100.
     const summary = computeMonthSummary(withAutopay, 2026, 9);
     expect(summary.autopayFundingCents).toBe(400_00);
+    expect(summary.essentialsIncomeCents).toBe(1000_00);
     expect(summary.outflowTotalCents).toBe(1400_00);
-    // 2000 essentials in − 400 auto-pay funding − 1000 shared rent.
     expect(summary.remainingCents).toBe(600_00);
 
-    // September 2026: 5 paydays over-fund auto-pay for cushion.
+    // September 2026 pays five times, so the same need spreads thinner per payday.
     const five = computeMonthSummary(withAutopay, 2026, 8);
-    expect(five.autopayFundingCents).toBe(500_00);
-    expect(five.remainingCents).toBe(2500_00 - 500_00 - 1000_00);
+    expect(five.autopayFundingCents).toBe(400_00);
+    expect(five.remainingCents).toBe(2500_00 - 1400_00);
   });
 
   it('budgets suggested payments for promo debts and minimums otherwise', () => {
     const withDebts = budget({
       debts: [
-        debt({ name: 'Promo', minPaymentCents: 100_00, suggestedPaymentCents: 500_00, hasPromotion: true }),
-        debt({ name: 'Plain', minPaymentCents: 200_00, suggestedPaymentCents: 999_00 }),
-        debt({ name: 'PromoNoSuggestion', minPaymentCents: 75_00, hasPromotion: true }),
+        debt({ name: 'Promo', minPaymentCents: 100_00, suggestedPaymentCents: 500_00, hasPromotion: true, paidFrom: 'shared' }),
+        debt({ name: 'Plain', minPaymentCents: 200_00, suggestedPaymentCents: 999_00, paidFrom: 'shared' }),
+        debt({ name: 'PromoNoSuggestion', minPaymentCents: 75_00, hasPromotion: true, paidFrom: 'shared' }),
       ],
     });
     const summary = computeMonthSummary(withDebts, 2026, 8);
@@ -140,8 +125,8 @@ describe('computeMonthSummary', () => {
     const mixed = budget({
       bills: [bill({ name: 'Rent', amountCents: 100_00, dueDay: 13 })],
       debts: [
-        debt({ name: 'Card', minPaymentCents: 50_00, dueDay: 13 }),
-        debt({ name: 'Loan', minPaymentCents: 60_00, dueDay: 2 }),
+        debt({ name: 'Card', minPaymentCents: 50_00, dueDay: 13, paidFrom: 'shared' }),
+        debt({ name: 'Loan', minPaymentCents: 60_00, dueDay: 2, paidFrom: 'shared' }),
       ],
     });
     const summary = computeMonthSummary(mixed, 2026, 8);
@@ -165,19 +150,18 @@ describe('computeMonthSummary', () => {
     expect(january.scheduled[0].moved).toBe(false);
   });
 
-  it('groups categories with debt payments under a Debt category', () => {
+  it('separates bills from debt payments in the breakdown', () => {
     const mixed = budget({
       bills: [
-        bill({ name: 'Rent', amountCents: 600_00, dueDay: 1, category: 'Housing' }),
-        bill({ name: 'Misc', amountCents: 100_00, dueDay: 3, category: '  ' }),
+        bill({ name: 'Rent', amountCents: 600_00, dueDay: 1 }),
+        bill({ name: 'Misc', amountCents: 100_00, dueDay: 3 }),
       ],
-      debts: [debt({ name: 'Card', minPaymentCents: 300_00 })],
+      debts: [debt({ name: 'Card', minPaymentCents: 300_00, paidFrom: 'shared' })],
     });
     const summary = computeMonthSummary(mixed, 2026, 8);
     expect(summary.categories).toEqual([
-      { category: 'Housing', totalCents: 600_00, share: 0.6 },
+      { category: BILL_CATEGORY, totalCents: 700_00, share: 0.7 },
       { category: DEBT_CATEGORY, totalCents: 300_00, share: 0.3 },
-      { category: UNCATEGORIZED, totalCents: 100_00, share: 0.1 },
     ]);
   });
 });

@@ -6,13 +6,12 @@ import { isDayStrided, monthlyEquivalentCents } from '../lib/recurrence';
 
 interface Props {
   bills: Bill[];
-  categories: string[];
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Omit<Bill, 'id'>>) => void;
   onRemove: (id: string) => void;
 }
 
-export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Props) {
+export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
   // Non-monthly bills are normalized so the total stays comparable month to month.
   const totalCents = bills.reduce(
     (sum, bill) => sum + monthlyEquivalentCents(bill, bill.amountCents),
@@ -33,7 +32,6 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
                 <th>Repeats</th>
                 <th title="Leave blank for no start date">Starts</th>
                 <th title="Leave blank for no end date">Ends</th>
-                <th>Category</th>
                 <th title="Which account the payment drafts from">Paid from</th>
                 <th aria-label="Actions" />
               </tr>
@@ -75,16 +73,6 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
                     onChange={(patch) => onUpdate(bill.id, patch)}
                   />
                   <td>
-                    <input
-                      className="text-input"
-                      value={bill.category}
-                      list="category-options"
-                      placeholder="Uncategorized"
-                      aria-label={`Category for ${bill.name}`}
-                      onChange={(e) => onUpdate(bill.id, { category: e.target.value })}
-                    />
-                  </td>
-                  <td>
                     <select
                       className="select-input"
                       value={bill.paidFrom}
@@ -112,17 +100,12 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
               <tr>
                 <td>Total per month</td>
                 <td className="total-cell">{formatMoney(totalCents)}</td>
-                <td colSpan={7} />
+                <td colSpan={6} />
               </tr>
             </tfoot>
           </table>
         </div>
       )}
-      <datalist id="category-options">
-        {categories.map((category) => (
-          <option key={category} value={category} />
-        ))}
-      </datalist>
       <button type="button" className="btn" onClick={onAdd}>
         + Add bill
       </button>

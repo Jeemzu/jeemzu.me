@@ -1,17 +1,17 @@
 import type { BudgetData, DebtPaymentStrategy } from '../types';
-import { perPaydayDepositCents, perPaydayEssentialsCents, plannedDebtPaymentCents } from '../types';
+import { plannedDebtPaymentCents } from '../types';
 import { getPaydays, toISODate } from './paydays';
-import { autopayPaydaySharesCents } from './autopay';
+import { allocateMonth } from './allocation';
 import {
   billAmountOn,
   debtAmountOn,
-  monthlyEquivalentCents,
   occurrencesInMonth,
 } from './recurrence';
 
 export { resolveDueDay } from './paydays';
+export { steadyMonthlyOutflowCents } from './allocation';
 
-export const UNCATEGORIZED = 'Uncategorized';
+export const BILL_CATEGORY = 'Bills';
 export const DEBT_CATEGORY = 'Debt';
 export const ONE_OFF_CATEGORY = 'One-time';
 
@@ -39,6 +39,8 @@ export interface CategoryTotal {
 
 export interface MonthSummary {
   paydays: number[];
+  /** False when nobody has income data for this month; income totals are then 0. */
+  incomeKnown: boolean;
   /** Everyone's deposits into all accounts this month, including one-off income. */
   incomeCents: number;
   /** Deposits into the shared essentials account this month. */
@@ -51,9 +53,9 @@ export interface MonthSummary {
   /** One-time deposits dated inside this month. */
   oneOffIncomeCents: number;
   outflowTotalCents: number;
-  /** Deposits carved out of essentials into the auto-pay account this month. */
+  /** Deposits carved out of gross pay into the auto-pay account this month. */
   autopayFundingCents: number;
-  /** Essentials deposits minus auto-pay funding and shared bills/debt payments. */
+  /** Income left after every outflow — the household's personal spending money. */
   remainingCents: number;
   perPaydayCents: number;
   scheduled: ScheduledItem[];
@@ -72,7 +74,11 @@ export function computeMonthSummary(
   strategy: DebtPaymentStrategy = 'suggested',
 ): MonthSummary {
   const paydays = getPaydays(year, month);
-  const essentialsIncomeCents = paydays.length * perPaydayEssentialsCents(data.people);
+  const allocation = allocateMonth(data, { year, month }, strategy);
+  const essentialsIncomeCents = allocation.people.reduce(
+    (sum, p) => sum + p.essentialsPerPaycheckCents * p.paycheckCount,
+    0,
+  );
 
   const items: Occurrence[] = [];
 
@@ -91,7 +97,7 @@ export function computeMonthSummary(
         dateISO: toISODate(date),
         moved: day !== bill.dueDay,
         adjusted: amountCents !== bill.amountCents,
-        category: bill.category.trim() || UNCATEGORIZED,
+        category: BILL_CATEGORY,
         paidFrom: bill.paidFrom,
       });
     }
@@ -162,23 +168,15 @@ export function computeMonthSummary(
   const debtsTotalCents = totalFor('debt');
   const oneOffExpenseCents = totalFor('one-off');
   const outflowTotalCents = billsTotalCents + debtsTotalCents + oneOffExpenseCents;
-  const incomeCents = paydays.length * perPaydayDepositCents(data.people) + oneOffIncomeCents;
+  const incomeCents = allocation.grossMonthlyCents + oneOffIncomeCents;
 
-  const autopayPerPaydayCents = autopayPaydaySharesCents(data, strategy).reduce((a, b) => a + b, 0);
-  const autopayFundingCents = paydays.length * autopayPerPaydayCents;
-  const sharedOutflowCents = items.reduce(
-    (sum, item) => (item.paidFrom === 'shared' ? sum + item.amountCents : sum),
+  const autopayFundingCents = allocation.people.reduce(
+    (sum, p) => sum + p.autopayPerPaycheckCents * p.paycheckCount,
     0,
   );
-  const sharedOneOffIncomeCents = data.oneOffs.reduce(
-    (sum, e) =>
-      e.kind === 'income' && e.account === 'shared' && parseMonthDate(e.dateISO, year, month) !== null
-        ? sum + e.amountCents
-        : sum,
-    0,
-  );
-  const remainingCents =
-    essentialsIncomeCents + sharedOneOffIncomeCents - autopayFundingCents - sharedOutflowCents;
+  // Essentials and auto-pay deposits are sized to the bills, so what is left over
+  // is whatever gross pay and one-off income the outflows did not consume.
+  const remainingCents = incomeCents - outflowTotalCents;
   const perPaydayCents = paydays.length > 0 ? Math.round(remainingCents / paydays.length) : 0;
 
   const byCategory = new Map<string, number>();
@@ -195,6 +193,7 @@ export function computeMonthSummary(
 
   return {
     paydays,
+    incomeKnown: allocation.hasIncome,
     incomeCents,
     essentialsIncomeCents,
     billsTotalCents,
@@ -216,25 +215,4 @@ function parseMonthDate(iso: string, year: number, month: number): number | null
   if (!iso.startsWith(prefix)) return null;
   const day = Number(iso.slice(prefix.length));
   return Number.isInteger(day) && day >= 1 && day <= 31 ? day : null;
-}
-
-/** Steady-state monthly outflow, normalizing non-monthly frequencies and ignoring overrides. */
-export function steadyMonthlyOutflowCents(
-  data: BudgetData,
-  paidFrom: 'shared' | 'autopay',
-  strategy: DebtPaymentStrategy = 'suggested',
-): number {
-  const bills = data.bills.reduce(
-    (sum, bill) =>
-      bill.paidFrom === paidFrom ? sum + monthlyEquivalentCents(bill, bill.amountCents) : sum,
-    0,
-  );
-  const debts = data.debts.reduce(
-    (sum, debt) =>
-      debt.paidFrom === paidFrom
-        ? sum + monthlyEquivalentCents(debt, plannedDebtPaymentCents(debt, strategy))
-        : sum,
-    0,
-  );
-  return bills + debts;
 }

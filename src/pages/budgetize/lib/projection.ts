@@ -1,6 +1,6 @@
 import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
-import { autopayPaydaySharesCents } from './autopay';
+import { createAllocator } from './allocation';
 import { billAmountOn, debtAmountOn } from './recurrence';
 
 export { toISODate } from './paydays';
@@ -27,6 +27,8 @@ export interface ProjectionWeek {
   /** Inclusive last day of the week. */
   endISO: string;
   paydayCount: number;
+  /** False when a payday fell in a month with no income data, so deposits are unknown rather than zero. */
+  incomeKnown: boolean;
   /** Parallel to Projection.people. */
   personal: AccountWeek[];
   essentials: AccountWeek;
@@ -53,9 +55,10 @@ function addDays(d: Date, days: number): Date {
  * Weekly balance forecast anchored on Wednesday paydays. Week 1 runs from `start`
  * to the day before the next Wednesday, so money already reflected in current
  * balances is never double-counted; it only contains a payday when `start` is one.
- * Each payday, every person's auto-pay share is carved out of their essentials
- * deposit; bills and debts draft from the account named by `paidFrom`, at the
- * amount left after any schedule override for that date.
+ * Each payday is split into auto-pay, essentials, and personal deposits by the
+ * month's allocation; paydays in months with no income data deposit nothing and
+ * mark the week `incomeKnown: false`. Bills and debts draft from the account
+ * named by `paidFrom`, at the amount left after any schedule override for that date.
  */
 export function computeProjection(
   data: BudgetData,
@@ -69,7 +72,7 @@ export function computeProjection(
   const balances = data.people.map((p) => p.personalBalanceCents);
   let essentialsBalance = data.essentialsBalanceCents;
   let autopayBalance = data.autopayBalanceCents;
-  const autopayShares = autopayPaydaySharesCents(data, strategy);
+  const allocationFor = createAllocator(data, strategy);
   const personIndex = new Map(data.people.map((p, i) => [p.id, i]));
 
   const weeks: ProjectionWeek[] = [];
@@ -86,6 +89,7 @@ export function computeProjection(
     const outflows: ProjectionOutflow[] = [];
     const inflows: ProjectionOutflow[] = [];
     let paydayCount = 0;
+    let incomeKnown = true;
 
     const account = (source: OneOffAccount, personId: string | null): AccountWeek | null => {
       if (source === 'autopay') return autopay;
@@ -97,11 +101,12 @@ export function computeProjection(
     for (let d = weekStart; d <= weekEnd; d = addDays(d, 1)) {
       if (d.getDay() === PAYDAY_WEEKDAY) {
         paydayCount++;
-        data.people.forEach((person, i) => {
-          const share = autopayShares[i] ?? 0;
-          personal[i].depositCents += person.personalPerPaycheckCents;
-          autopay.depositCents += share;
-          essentials.depositCents += person.essentialsPerPaycheckCents - share;
+        const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
+        if (!allocation.hasIncome) incomeKnown = false;
+        allocation.people.forEach((share, i) => {
+          personal[i].depositCents += share.personalPerPaycheckCents;
+          autopay.depositCents += share.autopayPerPaycheckCents;
+          essentials.depositCents += share.essentialsPerPaycheckCents;
         });
       }
       const dateISO = toISODate(d);
@@ -154,6 +159,7 @@ export function computeProjection(
       startISO: toISODate(weekStart),
       endISO: toISODate(weekEnd),
       paydayCount,
+      incomeKnown,
       personal,
       essentials,
       autopay,

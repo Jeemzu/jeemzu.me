@@ -21,18 +21,25 @@ export interface Bill extends Recurrence {
   amountCents: number;
   /** Calendar day 1-31; days beyond a month's end land on its last day. Ignored for weekly and biweekly. */
   dueDay: number;
-  /** Empty string means uncategorized. */
-  category: string;
   paidFrom: AccountSource;
+}
+
+/** One month of gross pay for one person. Months with no entry have no known income. */
+export interface MonthlyIncome {
+  year: number;
+  /** 0-based month index. */
+  month: number;
+  /** Paydays in the month; imported from the sheet, otherwise the Wednesday count. */
+  paycheckCount: number;
+  /** Gross deposit landing on each of those paydays. */
+  perPaycheckCents: number;
 }
 
 export interface PersonIncome {
   id: string;
   name: string;
-  /** Deposit into their own checking account each Wednesday paycheck. */
-  personalPerPaycheckCents: number;
-  /** Deposit into the shared essentials account each Wednesday paycheck. */
-  essentialsPerPaycheckCents: number;
+  /** Gross pay per month; months absent from this list are left blank in the projection. */
+  schedule: MonthlyIncome[];
   /** Current personal checking balance — the projection starting point. */
   personalBalanceCents: number;
 }
@@ -45,6 +52,10 @@ export interface DebtAccount extends Recurrence {
   /** Promo payoff amount (balance ÷ months left); null when the sheet has none. */
   suggestedPaymentCents: number | null;
   hasPromotion: boolean;
+  /** Reference only — no interest math is done with these. */
+  interestRateBps: number | null;
+  promoEndISO: string | null;
+  postPromoRateBps: number | null;
   /** Calendar day 1-31; days beyond a month's end land on its last day. Ignored for weekly and biweekly. */
   dueDay: number;
   paidFrom: AccountSource;
@@ -106,8 +117,7 @@ export interface MonthRef {
 /** Person data as it comes from a workbook import (no id or balance yet). */
 export interface ImportedPerson {
   name: string;
-  personalPerPaycheckCents: number;
-  essentialsPerPaycheckCents: number;
+  schedule: MonthlyIncome[];
 }
 
 /** Which debt payment amount budgeting math should use. */
@@ -124,17 +134,19 @@ export function plannedDebtPaymentCents(
     : debt.minPaymentCents;
 }
 
-/** Sum of everyone's deposits (personal + essentials) landing on one payday. */
-export function perPaydayDepositCents(people: PersonIncome[]): number {
-  return people.reduce(
-    (sum, p) => sum + p.personalPerPaycheckCents + p.essentialsPerPaycheckCents,
-    0,
+/** The person's gross pay entry for a month, or null when that month has no income data. */
+export function findMonthlyIncome(person: PersonIncome, ref: MonthRef): MonthlyIncome | null {
+  return (
+    person.schedule.find((entry) => entry.year === ref.year && entry.month === ref.month) ?? null
   );
 }
 
-/** Sum of everyone's essentials-account deposits landing on one payday. */
-export function perPaydayEssentialsCents(people: PersonIncome[]): number {
-  return people.reduce((sum, p) => sum + p.essentialsPerPaycheckCents, 0);
+export function monthlyGrossCents(entry: MonthlyIncome): number {
+  return entry.perPaycheckCents * entry.paycheckCount;
+}
+
+export function compareMonthlyIncome(a: MonthlyIncome, b: MonthlyIncome): number {
+  return a.year - b.year || a.month - b.month;
 }
 
 export function emptyBudget(): BudgetData {

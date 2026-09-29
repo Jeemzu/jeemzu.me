@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { budgetReducer, initialState } from './budget';
-import { emptyBudget, monthlyRecurrence } from '../types';
-import type { Bill, BudgetData } from '../types';
-
-function bill(partial: Pick<Bill, 'id' | 'name' | 'amountCents' | 'dueDay'> & Partial<Bill>): Bill {
-  return { category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
-}
+import { emptyBudget } from '../types';
+import type { BudgetData } from '../types';
+import { bill } from '../testFixtures';
 
 function sampleData(): BudgetData {
   return {
     ...emptyBudget(),
-    bills: [bill({ id: 'b1', name: 'Rent', amountCents: 120000, dueDay: 1, category: 'Housing' })],
+    bills: [bill({ id: 'b1', name: 'Rent', amountCents: 120000, dueDay: 1 })],
   };
 }
 

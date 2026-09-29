@@ -721,8 +721,28 @@
     background: #ece3f2 !important;
   }
 
-  .map-category {
-    background: var(--warn-soft) !important;
+  .schedule-table td.negative {
+    color: var(--danger, #b3261e);
+  }
+
+  .schedule-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin: 0.75rem 0;
+  }
+
+  .schedule-add label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .projection-table tr.income-unknown td {
+    background: var(--warn-soft);
+    opacity: 0.75;
   }
 
   .report-table th {

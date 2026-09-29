@@ -12,6 +12,8 @@ import {
 } from '../lib/importer';
 import { downloadBlob } from '../lib/download';
 import { formatMoney } from '../lib/money';
+import { monthLabel } from '../lib/paydays';
+import { monthlyGrossCents } from '../types';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const PREVIEW_ROWS = 12;
@@ -81,10 +83,10 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     setMapping(
       detected ?? {
         headerRow: 0,
+        bodyEndRow: grids.grids[name].length,
         nameCol: 0,
         amountCol: Math.min(1, gridColumnCount(grids.grids[name]) - 1),
         dueDayCol: null,
-        categoryCol: null,
       },
     );
   }
@@ -238,42 +240,49 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
               <h3>
                 Income{' '}
                 <span className="muted">
-                  {autoPeopleCount > 0
-                    ? `${autoPeopleCount} people found`
-                    : 'no income sheets found (looked for “Personal” / “Essential” sheet names)'}
+                  {analysis.income
+                    ? `${autoPeopleCount} people · ${analysis.income.extraction.months.length} months on “${analysis.income.sheet}”`
+                    : 'no Gross Income table found (needs Year, Month, and “… Deposit Amount per Paycheck” columns)'}
                 </span>
               </h3>
-              {autoPeopleCount > 0 && (
-                <div className="table-wrap report-wrap">
-                  <table className="report-table">
-                    <thead>
-                      <tr>
-                        <th>Person</th>
-                        <th>Personal / paycheck</th>
-                        <th>Essentials / paycheck</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analysis.people.map((person) => (
-                        <tr key={person.name}>
-                          <td>{person.name}</td>
-                          <td>{formatMoney(person.personalPerPaycheckCents)}</td>
-                          <td>{formatMoney(person.essentialsPerPaycheckCents)}</td>
+              {analysis.income && (
+                <>
+                  <div className="table-wrap report-wrap">
+                    <table className="report-table">
+                      <thead>
+                        <tr>
+                          <th>Person</th>
+                          <th>Months</th>
+                          <th>Range</th>
+                          <th>First month gross</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {(analysis.personalIncome || analysis.essentialsIncome) && (
-                <p className="muted">
-                  Amounts are each person's first non-zero “Deposit Amount per Paycheck” from{' '}
-                  {[analysis.personalIncome?.sheet, analysis.essentialsIncome?.sheet]
-                    .filter(Boolean)
-                    .map((s) => `“${s}”`)
-                    .join(' and ')}
-                  .
-                </p>
+                      </thead>
+                      <tbody>
+                        {analysis.people.map((person) => {
+                          const first = person.schedule[0];
+                          const last = person.schedule[person.schedule.length - 1];
+                          return (
+                            <tr key={person.name}>
+                              <td>{person.name}</td>
+                              <td>{person.schedule.length}</td>
+                              <td>
+                                {first
+                                  ? `${monthLabel(first)} – ${monthLabel(last)}`
+                                  : '—'}
+                              </td>
+                              <td>{first ? formatMoney(monthlyGrossCents(first)) : '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ReportTable reports={analysis.income.extraction.reports} />
+                  <p className="muted">
+                    Months outside this range stay blank in the projection until you add them by
+                    hand.
+                  </p>
+                </>
               )}
             </>
           )}
@@ -330,16 +339,6 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
                   <select
                     value={mapping.dueDayCol ?? ''}
                     onChange={(e) => updateMapping({ dueDayCol: e.target.value === '' ? null : Number(e.target.value) })}
-                  >
-                    <option value="">— none —</option>
-                    {columnOptions}
-                  </select>
-                </label>
-                <label>
-                  Category (optional)
-                  <select
-                    value={mapping.categoryCol ?? ''}
-                    onChange={(e) => updateMapping({ categoryCol: e.target.value === '' ? null : Number(e.target.value) })}
                   >
                     <option value="">— none —</option>
                     {columnOptions}
@@ -425,6 +424,5 @@ function mappedClass(col: number, mapping: ColumnMapping): string {
   if (col === mapping.nameCol) return 'map-name';
   if (col === mapping.amountCol) return 'map-amount';
   if (col === mapping.dueDayCol) return 'map-due';
-  if (col === mapping.categoryCol) return 'map-category';
   return '';
 }

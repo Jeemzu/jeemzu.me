@@ -1,6 +1,7 @@
 import type { BudgetData } from '../types';
-import { monthlyRecurrence } from '../types';
+import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import type { BudgetOp } from '../../../utils/budgetAgentApi';
+import { getPaydays } from './paydays';
 
 /**
  * Applies assistant-proposed ops to a copy of the budget.
@@ -77,7 +78,6 @@ function applyOne(data: BudgetData, op: BudgetOp): BudgetData {
             name: op.name,
             amountCents: op.amountCents,
             dueDay: op.dueDay,
-            category: op.category ?? '',
             paidFrom: op.paidFrom ?? 'shared',
             frequency: op.frequency ?? 'monthly',
             anchorISO: op.anchorISO ?? null,
@@ -98,7 +98,6 @@ function applyOne(data: BudgetData, op: BudgetOp): BudgetData {
                   name: op.name,
                   amountCents: op.amountCents,
                   dueDay: op.dueDay,
-                  category: op.category,
                   paidFrom: op.paidFrom,
                   frequency: op.frequency,
                   anchorISO: op.anchorISO,
@@ -147,16 +146,42 @@ function applyOne(data: BudgetData, op: BudgetOp): BudgetData {
         ...data,
         people: data.people.map((person) =>
           person.id === op.targetId
+            ? { ...person, ...definedOnly({ name: op.name }) }
+            : person,
+        ),
+      };
+
+    case 'set_month_income': {
+      if (
+        op.year === undefined ||
+        op.month === undefined ||
+        op.perPaycheckCents === undefined
+      ) {
+        return data;
+      }
+      const entry = {
+        year: op.year,
+        month: op.month,
+        paycheckCount: op.paycheckCount ?? getPaydays(op.year, op.month).length,
+        perPaycheckCents: op.perPaycheckCents,
+      };
+      return {
+        ...data,
+        people: data.people.map((person) =>
+          person.id === op.targetId
             ? {
                 ...person,
-                ...definedOnly({
-                  personalPerPaycheckCents: op.personalPerPaycheckCents,
-                  essentialsPerPaycheckCents: op.essentialsPerPaycheckCents,
-                }),
+                schedule: [
+                  ...person.schedule.filter(
+                    (e) => !(e.year === entry.year && e.month === entry.month),
+                  ),
+                  entry,
+                ].sort(compareMonthlyIncome),
               }
             : person,
         ),
       };
+    }
 
     case 'set_balance': {
       if (op.amountCents === undefined) return data;

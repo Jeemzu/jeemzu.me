@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
-import { emptyBudget, monthlyRecurrence, perPaydayDepositCents } from "./types";
+import { emptyBudget, monthlyRecurrence } from "./types";
 import { budgetReducer, initialState } from "./state/budget";
 import { computeMonthSummary } from "./lib/schedule";
 import { addMonths, monthLabel } from "./lib/paydays";
@@ -100,16 +100,6 @@ function BudgetWorkspace() {
     () =>
       computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
     [state.data, monthRef, strategy],
-  );
-
-  const categories = useMemo(
-    () =>
-      [
-        ...new Set(
-          state.data.bills.map((bill) => bill.category.trim()).filter(Boolean),
-        ),
-      ].sort(),
-    [state.data.bills],
   );
 
   const fundingWarnings = useMemo(() => {
@@ -546,9 +536,11 @@ function BudgetWorkspace() {
                     <UpcomingList
                       monthRef={monthRef}
                       summary={summary}
-                      paydayDepositCents={perPaydayDepositCents(
-                        state.data.people,
-                      )}
+                      paydayDepositCents={
+                        summary.paydays.length > 0
+                          ? Math.round(summary.incomeCents / summary.paydays.length)
+                          : 0
+                      }
                     />
                   </section>
                   <section className="card">
@@ -602,15 +594,15 @@ function BudgetWorkspace() {
                 <section className="card">
                   <h3>Income &amp; people</h3>
                   <PeopleEditor
-                    people={state.data.people}
+                    data={state.data}
+                    strategy={strategy}
                     onAdd={() =>
                       dispatch({
                         type: "add-person",
                         person: {
                           id: crypto.randomUUID(),
                           name: "New person",
-                          personalPerPaycheckCents: 0,
-                          essentialsPerPaycheckCents: 0,
+                          schedule: [],
                           personalBalanceCents: 0,
                         },
                       })
@@ -625,7 +617,6 @@ function BudgetWorkspace() {
                   <h3>Monthly bills</h3>
                   <BillsEditor
                     bills={state.data.bills}
-                    categories={categories}
                     onAdd={() =>
                       dispatch({
                         type: "add-bill",
@@ -634,7 +625,6 @@ function BudgetWorkspace() {
                           name: "New bill",
                           amountCents: 0,
                           dueDay: 1,
-                          category: "",
                           paidFrom: "shared",
                           ...monthlyRecurrence(),
                         },
@@ -663,6 +653,9 @@ function BudgetWorkspace() {
                         minPaymentCents: 0,
                         suggestedPaymentCents: null,
                         hasPromotion: false,
+                        interestRateBps: null,
+                        promoEndISO: null,
+                        postPromoRateBps: null,
                         dueDay: 1,
                         paidFrom: "autopay",
                         ...monthlyRecurrence(),

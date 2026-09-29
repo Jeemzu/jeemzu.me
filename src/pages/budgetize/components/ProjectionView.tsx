@@ -88,11 +88,19 @@ export function ProjectionView({ data, strategy, onUpdatePerson, onSetEssentials
                 )
                 .join('\n');
               return (
-                <tr key={week.startISO}>
+                <tr key={week.startISO} className={week.incomeKnown ? '' : 'income-unknown'}>
                   <td>
                     {fmtISO(week.startISO)} – {fmtISO(week.endISO)}
                   </td>
-                  <td>{week.paydayCount > 0 ? '💰' : ''}</td>
+                  <td
+                    title={
+                      week.incomeKnown
+                        ? undefined
+                        : 'No pay schedule for this month, so no deposits are counted.'
+                    }
+                  >
+                    {week.paydayCount === 0 ? '' : week.incomeKnown ? '💰' : '❓'}
+                  </td>
                   {week.personal.map((account, i) => (
                     <td key={projection.people[i].id} className={balanceClass(account.endBalanceCents)}>
                       {formatMoney(account.endBalanceCents)}
@@ -117,9 +125,10 @@ export function ProjectionView({ data, strategy, onUpdatePerson, onSetEssentials
       </div>
       <p className="muted">
         Balances at the end of each week. Weeks start on payday Wednesdays; the first row covers
-        today through the day before the next payday. Each payday, auto-pay shares are carved out
-        of the essentials deposits; every bill and debt drafts from the account it's flagged
-        “Paid from”. Hover a “Payments due” cell for the item list.
+        today through the day before the next payday. Each paycheck is carved into auto-pay
+        funding, shared essentials, and a personal remainder; every bill and debt drafts from the
+        account it's flagged “Paid from”. A ❓ marks a payday in a month with no pay schedule, so
+        its deposits are unknown rather than zero. Hover a “Payments due” cell for the item list.
       </p>
     </div>
   );

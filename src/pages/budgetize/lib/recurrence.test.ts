@@ -2,22 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { computeProjection, toISODate } from './projection';
 import { computeMonthSummary } from './schedule';
 import { occurrencesInMonth, occursOn } from './recurrence';
-import type { Bill, BudgetData, OneOffEvent, PersonIncome, ScheduleOverride } from '../types';
-import { emptyBudget, monthlyRecurrence } from '../types';
-
-function bill(partial: Partial<Bill> & Pick<Bill, 'id' | 'name' | 'amountCents' | 'dueDay'>): Bill {
-  return { category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
-}
-
-function person(partial: Partial<PersonIncome> & Pick<PersonIncome, 'name'>): PersonIncome {
-  return {
-    id: partial.name,
-    personalPerPaycheckCents: 0,
-    essentialsPerPaycheckCents: 0,
-    personalBalanceCents: 0,
-    ...partial,
-  };
-}
+import type { BudgetData, OneOffEvent, ScheduleOverride } from '../types';
+import { emptyBudget } from '../types';
+import { bill, paidPerson, person } from '../testFixtures';
 
 function skip(targetId: string, fromISO: string, toISO: string): ScheduleOverride {
   return { id: `skip-${targetId}`, targetKind: 'bill', targetId, fromISO, toISO, mode: 'skip', amountCents: null, note: '' };
@@ -200,7 +187,7 @@ describe('one-off events', () => {
   it('deposits one-off income on a non-payday without touching the paycheck math', () => {
     const data = rentBudget({
       bills: [],
-      people: [person({ name: 'A', essentialsPerPaycheckCents: 100_00 })],
+      people: [paidPerson('A', 2026, 100_00)],
       // Friday, not a Wednesday payday.
       oneOffs: [oneOff({ id: 'bonus', kind: 'income', name: 'Bonus', amountCents: 1500_00, dateISO: '2026-10-02' })],
     });

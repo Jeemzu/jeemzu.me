@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BACKUP_VERSION, parseBackup, parseBudgetData, serializeBackup } from './backup';
 import type { BudgetData } from '../types';
 import { emptyBudget, monthlyRecurrence } from '../types';
+import { yearSchedule } from '../testFixtures';
 
 const sample: BudgetData = {
   ...emptyBudget(),
@@ -9,14 +10,13 @@ const sample: BudgetData = {
     {
       id: 'p1',
       name: 'Courtney',
-      personalPerPaycheckCents: 105_23,
-      essentialsPerPaycheckCents: 400_00,
+      schedule: yearSchedule(2027, 561_87),
       personalBalanceCents: 50_00,
     },
   ],
   bills: [
-    { id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: 'Housing', paidFrom: 'shared', ...monthlyRecurrence() },
-    { id: 'b', name: 'Spectrum', amountCents: 90_00, dueDay: 21, category: '', paidFrom: 'autopay', ...monthlyRecurrence() },
+    { id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, paidFrom: 'shared', ...monthlyRecurrence() },
+    { id: 'b', name: 'Spectrum', amountCents: 90_00, dueDay: 21, paidFrom: 'autopay', ...monthlyRecurrence() },
   ],
   debts: [
     {
@@ -26,6 +26,9 @@ const sample: BudgetData = {
       minPaymentCents: 77_00,
       suggestedPaymentCents: 589_47,
       hasPromotion: true,
+      interestRateBps: 0,
+      promoEndISO: '2027-06-01',
+      postPromoRateBps: 2800,
       dueDay: 1,
       paidFrom: 'autopay',
       ...monthlyRecurrence(),
@@ -37,6 +40,9 @@ const sample: BudgetData = {
       minPaymentCents: 0,
       suggestedPaymentCents: null,
       hasPromotion: false,
+      interestRateBps: 420,
+      promoEndISO: null,
+      postPromoRateBps: null,
       dueDay: 1,
       paidFrom: 'shared',
       ...monthlyRecurrence(),
@@ -80,7 +86,7 @@ describe('version 1 migration', () => {
       version: 1,
       data: {
         weeklyIncomeCents: 2300_00,
-        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: '' }],
+        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1 }],
       },
     };
     const result = parseBackup(JSON.stringify(v1));
@@ -92,10 +98,10 @@ describe('version 1 migration', () => {
     expect(result.data.people).toHaveLength(1);
     expect(result.data.people[0]).toMatchObject({
       name: 'Household',
-      personalPerPaycheckCents: 0,
-      essentialsPerPaycheckCents: 2300_00,
       personalBalanceCents: 0,
     });
+    expect(result.data.people[0].schedule).toHaveLength(12);
+    expect(result.data.people[0].schedule[0].perPaycheckCents).toBe(2300_00);
   });
 
   it('creates no people when v1 income was zero', () => {
@@ -131,13 +137,13 @@ describe('parseBackup validation', () => {
   });
 
   it('rejects bills with bad due days', () => {
-    const data = { ...sample, bills: [{ id: 'x', name: 'Bad', amountCents: 100, dueDay: 42, category: '' }] };
+    const data = { ...sample, bills: [{ id: 'x', name: 'Bad', amountCents: 100, dueDay: 42 }] };
     const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('due day') });
   });
 
   it('rejects bills missing names', () => {
-    const data = { ...sample, bills: [{ id: 'x', name: '', amountCents: 100, dueDay: 1, category: '' }] };
+    const data = { ...sample, bills: [{ id: 'x', name: '', amountCents: 100, dueDay: 1 }] };
     const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('name') });
   });
@@ -151,13 +157,42 @@ describe('parseBackup validation', () => {
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('balance') });
   });
 
-  it('rejects people with invalid deposits', () => {
+  it('rejects people with an invalid pay schedule entry', () => {
     const data = {
       ...sample,
-      people: [{ id: 'x', name: 'A', personalPerPaycheckCents: 1.5, essentialsPerPaycheckCents: 0, personalBalanceCents: 0 }],
+      people: [
+        {
+          id: 'x',
+          name: 'A',
+          personalBalanceCents: 0,
+          schedule: [{ year: 2027, month: 12, paycheckCount: 4, perPaycheckCents: 100 }],
+        },
+      ],
     };
     const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
-    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('personal deposit') });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('invalid month') });
+  });
+
+  it('migrates pre-schedule people onto the current calendar year', () => {
+    const data = {
+      ...sample,
+      people: [
+        {
+          id: 'x',
+          name: 'A',
+          personalPerPaycheckCents: 100_00,
+          essentialsPerPaycheckCents: 400_00,
+          personalBalanceCents: 0,
+        },
+      ],
+    };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 3, data }));
+    if (!result.ok) throw new Error(result.error);
+    const schedule = result.data.people[0].schedule;
+    expect(schedule).toHaveLength(12);
+    expect(schedule[0].year).toBe(new Date().getFullYear());
+    expect(schedule.every((e) => e.perPaycheckCents === 500_00)).toBe(true);
+    expect(schedule.every((e) => e.paycheckCount === 4 || e.paycheckCount === 5)).toBe(true);
   });
 
   it('rejects an invalid essentials balance', () => {
@@ -192,7 +227,7 @@ describe('parseBackup validation', () => {
       version: 2,
       data: {
         people: [],
-        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: '' }],
+        bills: [{ id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1 }],
         debts: [
           {
             id: 'd1',

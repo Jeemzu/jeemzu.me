@@ -31,6 +31,7 @@ export interface BudgetOp {
     | "remove_bill"
     | "update_debt"
     | "update_person"
+    | "set_month_income"
     | "set_balance";
   rationale: string;
   targetId?: string;
@@ -42,7 +43,6 @@ export interface BudgetOp {
   name?: string;
   amountCents?: number;
   dueDay?: number;
-  category?: string;
   paidFrom?: "shared" | "autopay";
   frequency?: "monthly" | "weekly" | "biweekly" | "quarterly" | "annual";
   anchorISO?: string;
@@ -53,8 +53,11 @@ export interface BudgetOp {
   personId?: string;
   note?: string;
   balanceTarget?: "essentials" | "autopay" | "personal";
-  personalPerPaycheckCents?: number;
-  essentialsPerPaycheckCents?: number;
+  year?: number;
+  /** 0-based month index. */
+  month?: number;
+  paycheckCount?: number;
+  perPaycheckCents?: number;
 }
 
 export interface BudgetProposal {

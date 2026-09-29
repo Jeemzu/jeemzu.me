@@ -34,6 +34,14 @@ export function addMonths(ref: MonthRef, delta: number): MonthRef {
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
+/** Month containing a yyyy-mm-dd date; null when malformed. */
+export function parseMonthRef(iso: string): MonthRef | null {
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(iso);
+  if (!match) return null;
+  const month = Number(match[2]) - 1;
+  return month >= 0 && month <= 11 ? { year: Number(match[1]), month } : null;
+}
+
 const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 
 export function monthLabel(ref: MonthRef): string {

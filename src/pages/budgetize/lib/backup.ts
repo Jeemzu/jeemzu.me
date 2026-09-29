@@ -3,15 +3,17 @@ import type {
   Bill,
   BudgetData,
   DebtAccount,
+  MonthlyIncome,
   OneOffEvent,
   PersonIncome,
   Recurrence,
   RecurrenceFrequency,
   ScheduleOverride,
 } from '../types';
-import { monthlyRecurrence } from '../types';
+import { compareMonthlyIncome, monthlyRecurrence } from '../types';
+import { getPaydays } from './paydays';
 
-export const BACKUP_VERSION = 3;
+export const BACKUP_VERSION = 4;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -40,6 +42,15 @@ function isCents(value: unknown): value is number {
 /** Cash balances may be negative (overdraft); amounts and payments may not. */
 function isSignedCents(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value);
+}
+
+function isInteger(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Interest rates are reference-only, so anything unparseable is simply dropped. */
+function readBps(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
 function readPaidFrom(value: unknown, fallback: AccountSource): AccountSource {
@@ -97,7 +108,6 @@ function sanitizeBill(raw: unknown, index: number): Bill | string {
     name,
     amountCents: obj.amountCents,
     dueDay,
-    category: typeof obj.category === 'string' ? obj.category.trim() : '',
     paidFrom: readPaidFrom(obj.paidFrom, 'shared'),
     ...recurrence,
   };
@@ -127,6 +137,9 @@ function sanitizeDebt(raw: unknown, index: number): DebtAccount | string {
     minPaymentCents: obj.minPaymentCents,
     suggestedPaymentCents: suggested,
     hasPromotion: obj.hasPromotion === true,
+    interestRateBps: readBps(obj.interestRateBps),
+    promoEndISO: readISODate(obj.promoEndISO),
+    postPromoRateBps: readBps(obj.postPromoRateBps),
     dueDay,
     paidFrom: readPaidFrom(obj.paidFrom, 'autopay'),
     ...recurrence,
@@ -196,16 +209,60 @@ function sanitizePerson(raw: unknown, index: number): PersonIncome | string {
   const obj = raw as Record<string, unknown>;
   const name = typeof obj.name === 'string' ? obj.name.trim() : '';
   if (!name) return `Person #${index + 1} is missing a name.`;
-  if (!isCents(obj.personalPerPaycheckCents)) return `"${name}" has an invalid personal deposit.`;
-  if (!isCents(obj.essentialsPerPaycheckCents)) return `"${name}" has an invalid essentials deposit.`;
   if (!isSignedCents(obj.personalBalanceCents)) return `"${name}" has an invalid personal balance.`;
+  const schedule = sanitizeSchedule(obj, name);
+  if (typeof schedule === 'string') return schedule;
   return {
     id: readId(obj),
     name,
-    personalPerPaycheckCents: obj.personalPerPaycheckCents,
-    essentialsPerPaycheckCents: obj.essentialsPerPaycheckCents,
+    schedule,
     personalBalanceCents: obj.personalBalanceCents,
   };
+}
+
+function sanitizeSchedule(obj: Record<string, unknown>, name: string): MonthlyIncome[] | string {
+  if (obj.schedule === undefined || obj.schedule === null) return legacySchedule(obj);
+  if (!Array.isArray(obj.schedule)) return `"${name}" has an invalid pay schedule.`;
+  const entries: MonthlyIncome[] = [];
+  for (const raw of obj.schedule) {
+    if (typeof raw !== 'object' || raw === null) return `"${name}" has an invalid pay schedule entry.`;
+    const entry = raw as Record<string, unknown>;
+    const { year, month, paycheckCount, perPaycheckCents } = entry;
+    if (!isInteger(year, 1900, 2999)) return `"${name}" has a pay schedule entry with an invalid year.`;
+    if (!isInteger(month, 0, 11)) return `"${name}" has a pay schedule entry with an invalid month.`;
+    if (!isInteger(paycheckCount, 1, 6)) {
+      return `"${name}" has a pay schedule entry with an invalid paycheck count.`;
+    }
+    if (!isCents(perPaycheckCents)) {
+      return `"${name}" has a pay schedule entry with an invalid paycheck amount.`;
+    }
+    entries.push({
+      year: year as number,
+      month: month as number,
+      paycheckCount: paycheckCount as number,
+      perPaycheckCents: perPaycheckCents as number,
+    });
+  }
+  return entries.sort(compareMonthlyIncome);
+}
+
+/**
+ * People saved before per-month schedules existed carried a single fixed
+ * paycheck split, which is spread over the current calendar year so their
+ * projection keeps working after the upgrade.
+ */
+function legacySchedule(obj: Record<string, unknown>): MonthlyIncome[] {
+  const personal = isCents(obj.personalPerPaycheckCents) ? obj.personalPerPaycheckCents : 0;
+  const essentials = isCents(obj.essentialsPerPaycheckCents) ? obj.essentialsPerPaycheckCents : 0;
+  const perPaycheckCents = personal + essentials;
+  if (perPaycheckCents <= 0) return [];
+  const year = new Date().getFullYear();
+  return Array.from({ length: 12 }, (_, month) => ({
+    year,
+    month,
+    paycheckCount: getPaydays(year, month).length,
+    perPaycheckCents,
+  }));
 }
 
 function sanitizeList<T>(
@@ -236,8 +293,7 @@ function migrateV1(dataObj: Record<string, unknown>, bills: Bill[]): ParseBackup
           {
             id: crypto.randomUUID(),
             name: 'Household',
-            personalPerPaycheckCents: 0,
-            essentialsPerPaycheckCents: weekly,
+            schedule: legacySchedule({ essentialsPerPaycheckCents: weekly }),
             personalBalanceCents: 0,
           },
         ]

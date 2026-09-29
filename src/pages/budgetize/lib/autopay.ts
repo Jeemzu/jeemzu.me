@@ -1,5 +1,6 @@
-import type { BudgetData, DebtPaymentStrategy } from '../types';
+import type { BudgetData, DebtPaymentStrategy, MonthRef } from '../types';
 import { plannedDebtPaymentCents } from '../types';
+import { allocateMonth, splitProportionally } from './allocation';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
 import { billAmountOn, debtAmountOn, monthlyEquivalentCents } from './recurrence';
 
@@ -24,24 +25,6 @@ export interface AutopayPlan {
   simStartISO: string;
 }
 
-/** Split a total into per-person amounts proportional to weights, summing exactly. */
-function splitProportionally(totalCents: number, weights: number[]): number[] {
-  const weightSum = weights.reduce((a, b) => a + b, 0);
-  const effective = weightSum > 0 ? weights : weights.map(() => 1);
-  const effectiveSum = weightSum > 0 ? weightSum : weights.length;
-  if (effectiveSum === 0) return [];
-  const shares: number[] = [];
-  let cumulative = 0;
-  let assigned = 0;
-  for (const weight of effective) {
-    cumulative += weight;
-    const target = Math.round((totalCents * cumulative) / effectiveSum);
-    shares.push(target - assigned);
-    assigned = target;
-  }
-  return shares;
-}
-
 function autopayBills(data: BudgetData) {
   return data.bills.filter((bill) => bill.paidFrom === 'autopay');
 }
@@ -50,9 +33,9 @@ function autopayDebts(data: BudgetData) {
   return data.debts.filter((debt) => debt.paidFrom === 'autopay');
 }
 
-/** Gross pay per paycheck — every deposit is carved out of it. */
-function grossWeights(data: BudgetData): number[] {
-  return data.people.map((p) => p.personalPerPaycheckCents + p.essentialsPerPaycheckCents);
+/** Gross pay per month, used to divide funding between people. */
+function grossWeights(data: BudgetData, ref: MonthRef, strategy: DebtPaymentStrategy): number[] {
+  return allocateMonth(data, ref, strategy).people.map((p) => p.grossMonthlyCents);
 }
 
 /** Steady-state monthly cost of everything drafting from the auto-pay account. */
@@ -68,21 +51,17 @@ function autopayMonthlyCents(data: BudgetData, strategy: DebtPaymentStrategy) {
   return { billsMonthlyCents, debtMonthlyCents };
 }
 
-function perPaydayTotalCents(data: BudgetData, strategy: DebtPaymentStrategy): number {
-  const { billsMonthlyCents, debtMonthlyCents } = autopayMonthlyCents(data, strategy);
-  return Math.ceil((billsMonthlyCents + debtMonthlyCents) / 4);
-}
-
 /**
- * Each person's Wednesday deposit into the auto-pay account, proportional to
- * gross pay and carved out of their essentials contribution. Parallel to
- * `data.people`; sums exactly to the per-payday total.
+ * Each person's Wednesday deposit into the auto-pay account for the given
+ * month, carved straight out of their gross pay. Parallel to `data.people`;
+ * every amount is 0 in months with no income data.
  */
 export function autopayPaydaySharesCents(
   data: BudgetData,
+  ref: MonthRef,
   strategy: DebtPaymentStrategy = 'suggested',
 ): number[] {
-  return splitProportionally(perPaydayTotalCents(data, strategy), grossWeights(data));
+  return allocateMonth(data, ref, strategy).people.map((p) => p.autopayPerPaycheckCents);
 }
 
 /**
@@ -105,7 +84,9 @@ export function computeAutopayPlan(
   const totalMonthlyCents = billsMonthlyCents + debtMonthlyCents;
   const perPaydayCents = Math.ceil(totalMonthlyCents / 4);
 
-  const weights = grossWeights(data);
+  const simStart = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  const simRef: MonthRef = { year: simStart.getFullYear(), month: simStart.getMonth() };
+  const weights = grossWeights(data, simRef, strategy);
   const monthlyShares = splitProportionally(totalMonthlyCents, weights);
   const paydayShares = splitProportionally(perPaydayCents, weights);
   const shares: AutopayShare[] = data.people.map((person, i) => ({
@@ -115,7 +96,6 @@ export function computeAutopayPlan(
     perPaydayCents: paydayShares[i] ?? 0,
   }));
 
-  const simStart = new Date(start.getFullYear(), start.getMonth() + 1, 1);
   const simEnd = new Date(simStart.getFullYear(), simStart.getMonth() + months, 1);
   let balance = data.autopayBalanceCents;
   let minBalance = Math.min(0, balance);

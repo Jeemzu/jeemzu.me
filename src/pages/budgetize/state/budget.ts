@@ -7,7 +7,7 @@ import type {
   PersonIncome,
   ScheduleOverride,
 } from '../types';
-import { emptyBudget } from '../types';
+import { compareMonthlyIncome, emptyBudget } from '../types';
 import type { BudgetOp } from '../../../utils/budgetAgentApi';
 import { applyProposal } from '../lib/proposal';
 
@@ -51,15 +51,22 @@ export type Action =
 
 export const initialState: AppState = { data: emptyBudget(), dirty: false };
 
-/** Imported people keep the id and balance of an existing person with the same name. */
+/**
+ * Imported people keep the id and balance of an existing person with the same
+ * name. Schedule months from the sheet overwrite what is stored; months the
+ * sheet does not mention are left alone so hand-entered ones survive a re-import.
+ */
 function mergePeople(current: PersonIncome[], imported: ImportedPerson[]): PersonIncome[] {
   return imported.map((person) => {
     const existing = current.find((p) => p.name.toLowerCase() === person.name.toLowerCase());
+    const schedule = new Map(
+      (existing?.schedule ?? []).map((entry) => [`${entry.year}-${entry.month}`, entry]),
+    );
+    for (const entry of person.schedule) schedule.set(`${entry.year}-${entry.month}`, entry);
     return {
       id: existing?.id ?? crypto.randomUUID(),
       name: person.name,
-      personalPerPaycheckCents: person.personalPerPaycheckCents,
-      essentialsPerPaycheckCents: person.essentialsPerPaycheckCents,
+      schedule: [...schedule.values()].sort(compareMonthlyIncome),
       personalBalanceCents: existing?.personalBalanceCents ?? 0,
     };
   });

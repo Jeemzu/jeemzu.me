@@ -1372,7 +1372,6 @@ export interface components {
             amountCents?: number;
             /** Format: int32 */
             dueDay?: number;
-            category?: string | null;
             paidFrom: string;
         };
         BudgetDataDto: {
@@ -1395,16 +1394,28 @@ export interface components {
             suggestedPaymentCents?: number | null;
             hasPromotion?: boolean;
             /** Format: int32 */
+            interestRateBps?: number | null;
+            promoEndISO?: string | null;
+            /** Format: int32 */
+            postPromoRateBps?: number | null;
+            /** Format: int32 */
             dueDay?: number;
             paidFrom: string;
+        };
+        BudgetMonthlyIncomeDto: {
+            /** Format: int32 */
+            year?: number;
+            /** Format: int32 */
+            month?: number;
+            /** Format: int32 */
+            paycheckCount?: number;
+            /** Format: int32 */
+            perPaycheckCents?: number;
         };
         BudgetPersonDto: {
             id: string;
             name: string;
-            /** Format: int32 */
-            personalPerPaycheckCents?: number;
-            /** Format: int32 */
-            essentialsPerPaycheckCents?: number;
+            schedule?: components["schemas"]["BudgetMonthlyIncomeDto"][];
             /** Format: int32 */
             personalBalanceCents?: number;
         };
