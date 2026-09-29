@@ -13,13 +13,14 @@ interface Props {
 type Item =
   | { kind: 'payday'; day: number; key: string }
   | {
-      kind: 'bill' | 'debt';
+      kind: 'bill' | 'debt' | 'one-off';
       day: number;
       key: string;
       name: string;
       amountCents: number;
       moved: boolean;
       fromDay: number;
+      adjusted: boolean;
     };
 
 export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
@@ -33,11 +34,12 @@ export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
       (s): Item => ({
         kind: s.kind,
         day: s.day,
-        key: s.id,
+        key: `${s.kind}-${s.id}-${s.dateISO}`,
         name: s.name,
         amountCents: s.amountCents,
         moved: s.moved,
         fromDay: s.dueDay,
+        adjusted: s.adjusted,
       }),
     ),
   ].sort((a, b) => a.day - b.day || (a.kind === 'payday' ? -1 : 1) - (b.kind === 'payday' ? -1 : 1));
@@ -66,10 +68,16 @@ export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
               <>
                 <span className="upcoming-name">
                   {item.kind === 'debt' ? '💳 ' : ''}
+                  {item.kind === 'one-off' ? '✦ ' : ''}
                   {item.name}
                   {item.moved && (
                     <span className="moved-note" title={`Moved from day ${item.fromDay} (short month)`}>
                       {' '}↳ from {item.fromDay}
+                    </span>
+                  )}
+                  {item.adjusted && (
+                    <span className="moved-note" title="A schedule override changed this amount">
+                      {' '}· adjusted
                     </span>
                   )}
                 </span>

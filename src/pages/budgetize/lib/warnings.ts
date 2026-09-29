@@ -1,9 +1,10 @@
 import type { BudgetData, DebtPaymentStrategy } from '../types';
-import { perPaydayEssentialsCents, plannedDebtPaymentCents } from '../types';
+import { perPaydayEssentialsCents } from '../types';
 import type { AutopayPlan } from './autopay';
 import { autopayPaydaySharesCents } from './autopay';
 import { formatMoney } from './money';
 import type { Projection, ProjectionWeek } from './projection';
+import { steadyMonthlyOutflowCents } from './schedule';
 
 export interface FundingWarning {
   severity: 'error' | 'warn';
@@ -38,12 +39,7 @@ export function computeFundingWarnings(
 
   const essentialsMonthlyCents = 4 * perPaydayEssentialsCents(data.people);
   const autopayMonthlyCents = 4 * shares.reduce((a, b) => a + b, 0);
-  const sharedMonthlyCents =
-    data.bills.reduce((sum, bill) => (bill.paidFrom === 'shared' ? sum + bill.amountCents : sum), 0) +
-    data.debts.reduce(
-      (sum, debt) => (debt.paidFrom === 'shared' ? sum + plannedDebtPaymentCents(debt, strategy) : sum),
-      0,
-    );
+  const sharedMonthlyCents = steadyMonthlyOutflowCents(data, 'shared', strategy);
   if (essentialsMonthlyCents < autopayMonthlyCents + sharedMonthlyCents) {
     warnings.push({
       severity: 'error',

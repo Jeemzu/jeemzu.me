@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeProjection, toISODate } from './projection';
-import type { BudgetData, DebtAccount, PersonIncome } from '../types';
+import type { Bill, BudgetData, DebtAccount, PersonIncome } from '../types';
+import { emptyBudget, monthlyRecurrence } from '../types';
 
 function person(
   partial: Partial<PersonIncome> & Pick<PersonIncome, 'name'>,
@@ -14,6 +15,10 @@ function person(
   };
 }
 
+function bill(partial: Partial<Bill> & Pick<Bill, 'id' | 'name' | 'amountCents' | 'dueDay'>): Bill {
+  return { category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
+}
+
 function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPaymentCents'>): DebtAccount {
   return {
     id: partial.name,
@@ -22,18 +27,20 @@ function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPay
     hasPromotion: false,
     dueDay: 1,
     paidFrom: 'shared',
+    ...monthlyRecurrence(),
     ...partial,
   };
 }
 
 const data: BudgetData = {
+  ...emptyBudget(),
   people: [
     person({ name: 'A', personalPerPaycheckCents: 100_00, essentialsPerPaycheckCents: 400_00, personalBalanceCents: 500_00 }),
     person({ name: 'B', personalPerPaycheckCents: 200_00, essentialsPerPaycheckCents: 600_00 }),
   ],
   bills: [
-    { id: 'rent', name: 'Rent', amountCents: 1000_00, dueDay: 1, category: '', paidFrom: 'shared' },
-    { id: 'eom', name: 'EndOfMonth', amountCents: 50_00, dueDay: 31, category: '', paidFrom: 'shared' },
+    bill({ id: 'rent', name: 'Rent', amountCents: 1000_00, dueDay: 1 }),
+    bill({ id: 'eom', name: 'EndOfMonth', amountCents: 50_00, dueDay: 31 }),
   ],
   debts: [
     debt({ name: 'Promo', minPaymentCents: 100_00, suggestedPaymentCents: 300_00, hasPromotion: true, dueDay: 13 }),
@@ -77,7 +84,7 @@ describe('computeProjection', () => {
     expect(week3.startISO).toBe('2026-10-07');
     // Promo debt pays its suggested amount on Oct 13.
     expect(week3.outflows).toEqual([
-      { kind: 'debt', name: 'Promo', amountCents: 300_00, dateISO: '2026-10-13', source: 'shared' },
+      { kind: 'debt', name: 'Promo', amountCents: 300_00, dateISO: '2026-10-13', source: 'shared', personId: null },
     ]);
     expect(week3.essentials.endBalanceCents).toBe(1880_00 + 1000_00 - 300_00);
     expect(week3.personal.map((a) => a.endBalanceCents)).toEqual([700_00, 400_00]);
@@ -93,7 +100,7 @@ describe('computeProjection', () => {
   it('charges minimum debt payments under the minimum strategy', () => {
     const { weeks } = computeProjection(data, start, 3, 'minimum');
     expect(weeks[2].outflows).toEqual([
-      { kind: 'debt', name: 'Promo', amountCents: 100_00, dateISO: '2026-10-13', source: 'shared' },
+      { kind: 'debt', name: 'Promo', amountCents: 100_00, dateISO: '2026-10-13', source: 'shared', personId: null },
     ]);
     expect(weeks[2].essentials.endBalanceCents).toBe(1880_00 + 1000_00 - 100_00);
   });
@@ -109,14 +116,12 @@ describe('computeProjection auto-pay lane', () => {
   const start = new Date(2026, 8, 25);
   // Gross: A 500, B 1500 → 25% / 75% of the $100 per-payday funding.
   const autopayData: BudgetData = {
+    ...emptyBudget(),
     people: [
       person({ name: 'A', personalPerPaycheckCents: 100_00, essentialsPerPaycheckCents: 400_00 }),
       person({ name: 'B', personalPerPaycheckCents: 500_00, essentialsPerPaycheckCents: 1000_00 }),
     ],
-    bills: [{ id: 'el', name: 'Electric', amountCents: 400_00, dueDay: 15, category: '', paidFrom: 'autopay' }],
-    debts: [],
-    essentialsBalanceCents: 0,
-    autopayBalanceCents: 0,
+    bills: [bill({ id: 'el', name: 'Electric', amountCents: 400_00, dueDay: 15, paidFrom: 'autopay' })],
   };
 
   it('carves each payday auto-pay share out of the essentials deposits', () => {
@@ -133,7 +138,7 @@ describe('computeProjection auto-pay lane', () => {
     const { weeks } = computeProjection(autopayData, start, 4);
     const week4 = weeks[3];
     expect(week4.outflows).toEqual([
-      { kind: 'bill', name: 'Electric', amountCents: 400_00, dateISO: '2026-10-15', source: 'autopay' },
+      { kind: 'bill', name: 'Electric', amountCents: 400_00, dateISO: '2026-10-15', source: 'autopay', personId: null },
     ]);
     expect(week4.essentials.outflowCents).toBe(0);
     // 3 paydays × $100 − $400

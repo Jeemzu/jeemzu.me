@@ -1,5 +1,15 @@
-import type { Bill, BudgetData, DebtAccount, ImportedPerson, PersonIncome } from '../types';
+import type {
+  Bill,
+  BudgetData,
+  DebtAccount,
+  ImportedPerson,
+  OneOffEvent,
+  PersonIncome,
+  ScheduleOverride,
+} from '../types';
 import { emptyBudget } from '../types';
+import type { BudgetOp } from '../../../utils/budgetAgentApi';
+import { applyProposal } from '../lib/proposal';
 
 export interface AppState {
   data: BudgetData;
@@ -23,6 +33,14 @@ export type Action =
   | { type: 'add-person'; person: PersonIncome }
   | { type: 'update-person'; id: string; patch: Partial<Omit<PersonIncome, 'id'>> }
   | { type: 'remove-person'; id: string }
+  | { type: 'add-override'; override: ScheduleOverride }
+  | { type: 'update-override'; id: string; patch: Partial<Omit<ScheduleOverride, 'id'>> }
+  | { type: 'remove-override'; id: string }
+  | { type: 'add-one-off'; event: OneOffEvent }
+  | { type: 'update-one-off'; id: string; patch: Partial<Omit<OneOffEvent, 'id'>> }
+  | { type: 'remove-one-off'; id: string }
+  /** Assistant-proposed changes the user reviewed and accepted. */
+  | { type: 'apply-proposal'; ops: BudgetOp[] }
   | { type: 'set-essentials-balance'; cents: number }
   | { type: 'set-autopay-balance'; cents: number }
   | { type: 'import-data'; payload: ImportPayload }
@@ -47,6 +65,15 @@ function mergePeople(current: PersonIncome[], imported: ImportedPerson[]): Perso
   });
 }
 
+/** Overrides are meaningless once their target is gone, so they are dropped with it. */
+function withoutOverridesFor(
+  overrides: ScheduleOverride[],
+  targetKind: 'bill' | 'debt',
+  targetId: string,
+): ScheduleOverride[] {
+  return overrides.filter((o) => !(o.targetKind === targetKind && o.targetId === targetId));
+}
+
 export function budgetReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'add-bill':
@@ -63,7 +90,11 @@ export function budgetReducer(state: AppState, action: Action): AppState {
       };
     case 'remove-bill':
       return {
-        data: { ...state.data, bills: state.data.bills.filter((bill) => bill.id !== action.id) },
+        data: {
+          ...state.data,
+          bills: state.data.bills.filter((bill) => bill.id !== action.id),
+          overrides: withoutOverridesFor(state.data.overrides, 'bill', action.id),
+        },
         dirty: true,
       };
     case 'add-debt':
@@ -80,7 +111,11 @@ export function budgetReducer(state: AppState, action: Action): AppState {
       };
     case 'remove-debt':
       return {
-        data: { ...state.data, debts: state.data.debts.filter((debt) => debt.id !== action.id) },
+        data: {
+          ...state.data,
+          debts: state.data.debts.filter((debt) => debt.id !== action.id),
+          overrides: withoutOverridesFor(state.data.overrides, 'debt', action.id),
+        },
         dirty: true,
       };
     case 'add-person':
@@ -97,25 +132,82 @@ export function budgetReducer(state: AppState, action: Action): AppState {
       };
     case 'remove-person':
       return {
-        data: { ...state.data, people: state.data.people.filter((p) => p.id !== action.id) },
+        data: {
+          ...state.data,
+          people: state.data.people.filter((p) => p.id !== action.id),
+          oneOffs: state.data.oneOffs.filter((e) => e.personId !== action.id),
+        },
         dirty: true,
       };
+    case 'add-override':
+      return {
+        data: { ...state.data, overrides: [...state.data.overrides, action.override] },
+        dirty: true,
+      };
+    case 'update-override':
+      return {
+        data: {
+          ...state.data,
+          overrides: state.data.overrides.map((o) =>
+            o.id === action.id ? { ...o, ...action.patch } : o,
+          ),
+        },
+        dirty: true,
+      };
+    case 'remove-override':
+      return {
+        data: { ...state.data, overrides: state.data.overrides.filter((o) => o.id !== action.id) },
+        dirty: true,
+      };
+    case 'add-one-off':
+      return {
+        data: { ...state.data, oneOffs: [...state.data.oneOffs, action.event] },
+        dirty: true,
+      };
+    case 'update-one-off':
+      return {
+        data: {
+          ...state.data,
+          oneOffs: state.data.oneOffs.map((e) =>
+            e.id === action.id ? { ...e, ...action.patch } : e,
+          ),
+        },
+        dirty: true,
+      };
+    case 'remove-one-off':
+      return {
+        data: { ...state.data, oneOffs: state.data.oneOffs.filter((e) => e.id !== action.id) },
+        dirty: true,
+      };
+    case 'apply-proposal':
+      return { data: applyProposal(state.data, action.ops), dirty: true };
     case 'set-essentials-balance':
       return { data: { ...state.data, essentialsBalanceCents: action.cents }, dirty: true };
     case 'set-autopay-balance':
       return { data: { ...state.data, autopayBalanceCents: action.cents }, dirty: true };
-    case 'import-data':
+    case 'import-data': {
+      const bills = action.payload.bills ?? state.data.bills;
+      const debts = action.payload.debts ?? state.data.debts;
+      const people = action.payload.people
+        ? mergePeople(state.data.people, action.payload.people)
+        : state.data.people;
+      const billIds = new Set(bills.map((b) => b.id));
+      const debtIds = new Set(debts.map((d) => d.id));
+      const personIds = new Set(people.map((p) => p.id));
       return {
         data: {
           ...state.data,
-          bills: action.payload.bills ?? state.data.bills,
-          debts: action.payload.debts ?? state.data.debts,
-          people: action.payload.people
-            ? mergePeople(state.data.people, action.payload.people)
-            : state.data.people,
+          bills,
+          debts,
+          people,
+          overrides: state.data.overrides.filter((o) =>
+            o.targetKind === 'bill' ? billIds.has(o.targetId) : debtIds.has(o.targetId),
+          ),
+          oneOffs: state.data.oneOffs.filter((e) => e.personId === null || personIds.has(e.personId)),
         },
         dirty: true,
       };
+    }
     case 'restore':
       return { data: action.data, dirty: true };
     case 'hydrate':

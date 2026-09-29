@@ -101,6 +101,7 @@ export default function AdminPage() {
         <HealthPanel />
         <IngestPanel />
         <KnowledgePanel />
+        <BudgetGapsPanel />
         <UsersPanel currentUser={currentUser} />
       </Stack>
     </Container>
@@ -502,6 +503,127 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
+
+// ── Budgetize capability gaps ─────────────────────────────────────────────────
+
+interface BudgetGap {
+  suggestedFeature: string;
+  requestCount: number;
+  userCount: number;
+  lastRequestedAt: string;
+  examples: string[];
+}
+
+/** What users asked the Budgetize assistant for that the tool can't model yet. */
+function BudgetGapsPanel() {
+  const [gaps, setGaps] = useState<BudgetGap[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const resp = await fetch(`${API_BASE_URL}/admin/budget/gaps`, {
+        headers: { ...authHeader() },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setGaps((await resp.json()) as BudgetGap[]);
+    } catch {
+      setError("Couldn't load Budgetize feature requests.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminCard
+      title="Budgetize Feature Requests"
+      subtitle="Asks the assistant couldn't fulfil, grouped by the capability that's missing."
+    >
+      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+        <Tooltip title="Refresh">
+          <IconButton size="small" onClick={() => void load()} disabled={loading}>
+            <FaSync size={14} color="#c8a24a" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {loading && gaps.length === 0 ? (
+        <CircularProgress size={20} sx={{ color: "medievalGold.main" }} />
+      ) : gaps.length === 0 ? (
+        <Typography
+          variant="body2"
+          sx={{ color: "parchment.dark", fontFamily: FONTS.MEDIEVAL_SERIF }}
+        >
+          Nothing logged yet — every ask so far has been something Budgetize can do.
+        </Typography>
+      ) : (
+        gaps.map((gap) => (
+          <Accordion key={gap.suggestedFeature} sx={{ bgcolor: "transparent" }}>
+            <AccordionSummary expandIcon={<FaChevronDown color="#c8a24a" />}>
+              <Stack
+                direction="row"
+                spacing={1.5}
+                alignItems="center"
+                sx={{ width: "100%", pr: 1 }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: FONTS.MEDIEVAL_SERIF,
+                    color: "parchment.main",
+                    flex: 1,
+                  }}
+                >
+                  {gap.suggestedFeature}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={`${gap.requestCount} ask${gap.requestCount === 1 ? "" : "s"}`}
+                />
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`${gap.userCount} user${gap.userCount === 1 ? "" : "s"}`}
+                />
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography
+                variant="caption"
+                sx={{ color: "parchment.dark", fontFamily: FONTS.MEDIEVAL_SERIF }}
+              >
+                Last asked {new Date(gap.lastRequestedAt).toLocaleString()}
+              </Typography>
+              <Stack component="ul" spacing={0.5} sx={{ mt: 1, pl: 2 }}>
+                {gap.examples.map((example, i) => (
+                  <Typography
+                    key={i}
+                    component="li"
+                    variant="body2"
+                    sx={{ color: "parchment.main", fontFamily: FONTS.MEDIEVAL_SERIF }}
+                  >
+                    {example}
+                  </Typography>
+                ))}
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+        ))
+      )}
+    </AdminCard>
+  );
+}
 
 function AdminCard({
   title,

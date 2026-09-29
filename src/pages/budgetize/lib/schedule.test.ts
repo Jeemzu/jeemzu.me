@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { computeMonthSummary, DEBT_CATEGORY, resolveDueDay, UNCATEGORIZED } from './schedule';
 import type { Bill, BudgetData, DebtAccount, PersonIncome } from '../types';
+import { emptyBudget, monthlyRecurrence } from '../types';
 
 function bill(partial: Partial<Bill> & Pick<Bill, 'name' | 'amountCents' | 'dueDay'>): Bill {
-  return { id: partial.name, category: '', paidFrom: 'shared', ...partial };
+  return { id: partial.name, category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
 }
 
 function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPaymentCents'>): DebtAccount {
@@ -14,6 +15,7 @@ function debt(partial: Partial<DebtAccount> & Pick<DebtAccount, 'name' | 'minPay
     hasPromotion: false,
     dueDay: 1,
     paidFrom: 'shared',
+    ...monthlyRecurrence(),
     ...partial,
   };
 }
@@ -25,7 +27,7 @@ function person(
 }
 
 function budget(partial: Partial<BudgetData>): BudgetData {
-  return { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0, ...partial };
+  return { ...emptyBudget(), ...partial };
 }
 
 describe('resolveDueDay', () => {

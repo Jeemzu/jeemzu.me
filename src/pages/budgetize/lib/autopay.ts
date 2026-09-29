@@ -1,6 +1,7 @@
 import type { BudgetData, DebtPaymentStrategy } from '../types';
 import { plannedDebtPaymentCents } from '../types';
-import { PAYDAY_WEEKDAY, resolveDueDay, toISODate } from './paydays';
+import { PAYDAY_WEEKDAY, toISODate } from './paydays';
+import { billAmountOn, debtAmountOn, monthlyEquivalentCents } from './recurrence';
 
 export interface AutopayShare {
   personId: string;
@@ -54,13 +55,22 @@ function grossWeights(data: BudgetData): number[] {
   return data.people.map((p) => p.personalPerPaycheckCents + p.essentialsPerPaycheckCents);
 }
 
-function perPaydayTotalCents(data: BudgetData, strategy: DebtPaymentStrategy): number {
-  const billsMonthly = autopayBills(data).reduce((sum, bill) => sum + bill.amountCents, 0);
-  const debtMonthly = autopayDebts(data).reduce(
-    (sum, debt) => sum + plannedDebtPaymentCents(debt, strategy),
+/** Steady-state monthly cost of everything drafting from the auto-pay account. */
+function autopayMonthlyCents(data: BudgetData, strategy: DebtPaymentStrategy) {
+  const billsMonthlyCents = autopayBills(data).reduce(
+    (sum, bill) => sum + monthlyEquivalentCents(bill, bill.amountCents),
     0,
   );
-  return Math.ceil((billsMonthly + debtMonthly) / 4);
+  const debtMonthlyCents = autopayDebts(data).reduce(
+    (sum, debt) => sum + monthlyEquivalentCents(debt, plannedDebtPaymentCents(debt, strategy)),
+    0,
+  );
+  return { billsMonthlyCents, debtMonthlyCents };
+}
+
+function perPaydayTotalCents(data: BudgetData, strategy: DebtPaymentStrategy): number {
+  const { billsMonthlyCents, debtMonthlyCents } = autopayMonthlyCents(data, strategy);
+  return Math.ceil((billsMonthlyCents + debtMonthlyCents) / 4);
 }
 
 /**
@@ -78,9 +88,10 @@ export function autopayPaydaySharesCents(
 /**
  * Sizes the auto-pay account from the bills and debts flagged `paidFrom:
  * 'autopay'`, using the active debt strategy so funding matches what the
- * projection debits. The buffer is found by simulating deposits vs. due dates
- * starting from the current balance; outflows apply before same-day deposits
- * to stay conservative.
+ * projection debits. Recurring deposits are sized from frequency-normalized
+ * monthly equivalents and ignore temporary overrides, but the buffer simulation
+ * walks real occurrence dates and applies overrides and one-offs; outflows apply
+ * before same-day deposits to stay conservative.
  */
 export function computeAutopayPlan(
   data: BudgetData,
@@ -90,11 +101,7 @@ export function computeAutopayPlan(
 ): AutopayPlan {
   const bills = autopayBills(data);
   const debts = autopayDebts(data);
-  const billsMonthlyCents = bills.reduce((sum, bill) => sum + bill.amountCents, 0);
-  const debtMonthlyCents = debts.reduce(
-    (sum, debt) => sum + plannedDebtPaymentCents(debt, strategy),
-    0,
-  );
+  const { billsMonthlyCents, debtMonthlyCents } = autopayMonthlyCents(data, strategy);
   const totalMonthlyCents = billsMonthlyCents + debtMonthlyCents;
   const perPaydayCents = Math.ceil(totalMonthlyCents / 4);
 
@@ -113,14 +120,16 @@ export function computeAutopayPlan(
   let balance = data.autopayBalanceCents;
   let minBalance = Math.min(0, balance);
   for (let d = simStart; d < simEnd; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-    const year = d.getFullYear();
-    const month = d.getMonth();
-    const day = d.getDate();
+    const dateISO = toISODate(d);
     for (const bill of bills) {
-      if (resolveDueDay(year, month, bill.dueDay) === day) balance -= bill.amountCents;
+      balance -= billAmountOn(bill, d, data.overrides) ?? 0;
     }
     for (const debt of debts) {
-      if (resolveDueDay(year, month, debt.dueDay) === day) balance -= plannedDebtPaymentCents(debt, strategy);
+      balance -= debtAmountOn(debt, d, data.overrides, strategy) ?? 0;
+    }
+    for (const event of data.oneOffs) {
+      if (event.account !== 'autopay' || event.dateISO !== dateISO) continue;
+      balance += event.kind === 'income' ? event.amountCents : -event.amountCents;
     }
     if (balance < minBalance) minBalance = balance;
     if (d.getDay() === PAYDAY_WEEKDAY) balance += perPaydayCents;

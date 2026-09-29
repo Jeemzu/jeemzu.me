@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
-import { emptyBudget, perPaydayDepositCents } from "./types";
+import { emptyBudget, monthlyRecurrence, perPaydayDepositCents } from "./types";
 import { budgetReducer, initialState } from "./state/budget";
 import { computeMonthSummary } from "./lib/schedule";
 import { addMonths, monthLabel } from "./lib/paydays";
@@ -25,9 +25,12 @@ import { CategoryBreakdown } from "./components/CategoryBreakdown";
 import { PeopleEditor } from "./components/PeopleEditor";
 import { BillsEditor } from "./components/BillsEditor";
 import { DebtsEditor } from "./components/DebtsEditor";
+import { OverridesEditor } from "./components/OverridesEditor";
+import { OneOffsEditor } from "./components/OneOffsEditor";
 import { ProjectionView } from "./components/ProjectionView";
 import { AutopayCard } from "./components/AutopayCard";
 import { FundingWarnings } from "./components/FundingWarnings";
+import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useAuthStore } from "../../stores/authStore";
 import { loadBudget, saveBudget } from "../../utils/budgetApi";
 import UserAuthModal from "../../components/shared/UserAuthModal";
@@ -54,6 +57,7 @@ const VIEW_TABS = [
   { id: "month", label: "This month" },
   { id: "projections", label: "Projections" },
   { id: "data", label: "Edit data" },
+  { id: "assistant", label: "Assistant" },
 ] as const;
 
 type ViewTab = (typeof VIEW_TABS)[number]["id"];
@@ -463,6 +467,8 @@ function BudgetWorkspace() {
                   type="button"
                   role="tab"
                   aria-selected={tab === entry.id}
+                  // The assistant needs a signed-in session to reach the API.
+                  disabled={entry.id === "assistant" && !isAuthenticated}
                   className={`view-tab${tab === entry.id ? " active" : ""}`}
                   onClick={() => setTab(entry.id)}
                 >
@@ -579,6 +585,17 @@ function BudgetWorkspace() {
             </div>
           )}
 
+          {tab === "assistant" && (
+            <section className="card">
+              <h3>Budget assistant</h3>
+              <BudgetAssistant
+                data={state.data}
+                strategy={strategy}
+                onApplyProposal={(ops) => dispatch({ type: "apply-proposal", ops })}
+              />
+            </section>
+          )}
+
           {tab === "data" && (
             <>
               <div className="columns editors">
@@ -619,6 +636,7 @@ function BudgetWorkspace() {
                           dueDay: 1,
                           category: "",
                           paidFrom: "shared",
+                          ...monthlyRecurrence(),
                         },
                       })
                     }
@@ -647,6 +665,7 @@ function BudgetWorkspace() {
                         hasPromotion: false,
                         dueDay: 1,
                         paidFrom: "autopay",
+                        ...monthlyRecurrence(),
                       },
                     })
                   }
@@ -654,6 +673,37 @@ function BudgetWorkspace() {
                     dispatch({ type: "update-debt", id, patch })
                   }
                   onRemove={(id) => dispatch({ type: "remove-debt", id })}
+                />
+              </section>
+
+              <section className="card">
+                <h3>Temporary changes</h3>
+                <p className="muted">
+                  Pause or re-price a bill or debt for a stretch of time. The item itself
+                  stays as it is and resumes on its own once the range ends.
+                </p>
+                <OverridesEditor
+                  overrides={state.data.overrides}
+                  bills={state.data.bills}
+                  debts={state.data.debts}
+                  onAdd={(override) => dispatch({ type: "add-override", override })}
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-override", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-override", id })}
+                />
+              </section>
+
+              <section className="card">
+                <h3>One-time entries</h3>
+                <OneOffsEditor
+                  oneOffs={state.data.oneOffs}
+                  people={state.data.people}
+                  onAdd={(event) => dispatch({ type: "add-one-off", event })}
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-one-off", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-one-off", id })}
                 />
               </section>
             </>

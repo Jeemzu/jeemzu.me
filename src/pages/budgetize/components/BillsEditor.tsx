@@ -1,6 +1,8 @@
 import type { AccountSource, Bill } from '../types';
 import { DayInput, MoneyInput } from './inputs';
+import { RecurrenceFields } from './RecurrenceFields';
 import { formatMoney } from '../lib/money';
+import { isDayStrided, monthlyEquivalentCents } from '../lib/recurrence';
 
 interface Props {
   bills: Bill[];
@@ -11,7 +13,11 @@ interface Props {
 }
 
 export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Props) {
-  const totalCents = bills.reduce((sum, bill) => sum + bill.amountCents, 0);
+  // Non-monthly bills are normalized so the total stays comparable month to month.
+  const totalCents = bills.reduce(
+    (sum, bill) => sum + monthlyEquivalentCents(bill, bill.amountCents),
+    0,
+  );
   return (
     <div className="bills-editor">
       {bills.length === 0 ? (
@@ -24,6 +30,9 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
                 <th>Bill</th>
                 <th>Monthly amount</th>
                 <th>Due day</th>
+                <th>Repeats</th>
+                <th title="Leave blank for no start date">Starts</th>
+                <th title="Leave blank for no end date">Ends</th>
                 <th>Category</th>
                 <th title="Which account the payment drafts from">Paid from</th>
                 <th aria-label="Actions" />
@@ -48,12 +57,23 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
                     />
                   </td>
                   <td>
-                    <DayInput
-                      value={bill.dueDay}
-                      ariaLabel={`Due day for ${bill.name}`}
-                      onCommit={(dueDay) => onUpdate(bill.id, { dueDay })}
-                    />
+                    {isDayStrided(bill.frequency) ? (
+                      <span className="muted" title="Weekly bills count from their start date instead">
+                        —
+                      </span>
+                    ) : (
+                      <DayInput
+                        value={bill.dueDay}
+                        ariaLabel={`Due day for ${bill.name}`}
+                        onCommit={(dueDay) => onUpdate(bill.id, { dueDay })}
+                      />
+                    )}
                   </td>
+                  <RecurrenceFields
+                    item={bill}
+                    label={bill.name || 'this bill'}
+                    onChange={(patch) => onUpdate(bill.id, patch)}
+                  />
                   <td>
                     <input
                       className="text-input"
@@ -90,9 +110,9 @@ export function BillsEditor({ bills, categories, onAdd, onUpdate, onRemove }: Pr
             </tbody>
             <tfoot>
               <tr>
-                <td>Total</td>
+                <td>Total per month</td>
                 <td className="total-cell">{formatMoney(totalCents)}</td>
-                <td colSpan={4} />
+                <td colSpan={7} />
               </tr>
             </tfoot>
           </table>

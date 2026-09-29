@@ -1,15 +1,22 @@
 import type { BudgetData, DebtPaymentStrategy } from '../types';
 import { perPaydayDepositCents, perPaydayEssentialsCents, plannedDebtPaymentCents } from '../types';
-import { getPaydays, resolveDueDay } from './paydays';
+import { getPaydays, toISODate } from './paydays';
 import { autopayPaydaySharesCents } from './autopay';
+import {
+  billAmountOn,
+  debtAmountOn,
+  monthlyEquivalentCents,
+  occurrencesInMonth,
+} from './recurrence';
 
 export { resolveDueDay } from './paydays';
 
 export const UNCATEGORIZED = 'Uncategorized';
 export const DEBT_CATEGORY = 'Debt';
+export const ONE_OFF_CATEGORY = 'One-time';
 
 export interface ScheduledItem {
-  kind: 'bill' | 'debt';
+  kind: 'bill' | 'debt' | 'one-off';
   id: string;
   name: string;
   amountCents: number;
@@ -17,7 +24,10 @@ export interface ScheduledItem {
   dueDay: number;
   /** Actual day this month after clamping short months. */
   day: number;
+  dateISO: string;
   moved: boolean;
+  /** True when a schedule override changed this occurrence's amount. */
+  adjusted: boolean;
 }
 
 export interface CategoryTotal {
@@ -29,13 +39,17 @@ export interface CategoryTotal {
 
 export interface MonthSummary {
   paydays: number[];
-  /** Everyone's deposits into all accounts this month. */
+  /** Everyone's deposits into all accounts this month, including one-off income. */
   incomeCents: number;
   /** Deposits into the shared essentials account this month. */
   essentialsIncomeCents: number;
   billsTotalCents: number;
   /** Planned debt payments (promo payoff or minimum). */
   debtsTotalCents: number;
+  /** One-time expenses dated inside this month. */
+  oneOffExpenseCents: number;
+  /** One-time deposits dated inside this month. */
+  oneOffIncomeCents: number;
   outflowTotalCents: number;
   /** Deposits carved out of essentials into the auto-pay account this month. */
   autopayFundingCents: number;
@@ -46,6 +60,11 @@ export interface MonthSummary {
   categories: CategoryTotal[];
 }
 
+interface Occurrence extends ScheduledItem {
+  category: string;
+  paidFrom: 'shared' | 'autopay' | 'personal';
+}
+
 export function computeMonthSummary(
   data: BudgetData,
   year: number,
@@ -53,58 +72,113 @@ export function computeMonthSummary(
   strategy: DebtPaymentStrategy = 'suggested',
 ): MonthSummary {
   const paydays = getPaydays(year, month);
-  const incomeCents = paydays.length * perPaydayDepositCents(data.people);
   const essentialsIncomeCents = paydays.length * perPaydayEssentialsCents(data.people);
 
-  const items: { kind: 'bill' | 'debt'; id: string; name: string; amountCents: number; dueDay: number; category: string }[] = [
-    ...data.bills.map((bill) => ({
-      kind: 'bill' as const,
-      id: bill.id,
-      name: bill.name,
-      amountCents: bill.amountCents,
-      dueDay: bill.dueDay,
-      category: bill.category.trim() || UNCATEGORIZED,
-    })),
-    ...data.debts.map((debt) => ({
-      kind: 'debt' as const,
-      id: debt.id,
-      name: debt.name,
-      amountCents: plannedDebtPaymentCents(debt, strategy),
-      dueDay: debt.dueDay,
-      category: DEBT_CATEGORY,
-    })),
-  ];
+  const items: Occurrence[] = [];
+
+  for (const bill of data.bills) {
+    for (const date of occurrencesInMonth(bill, year, month)) {
+      const amountCents = billAmountOn(bill, date, data.overrides);
+      if (amountCents === null) continue;
+      const day = date.getDate();
+      items.push({
+        kind: 'bill',
+        id: bill.id,
+        name: bill.name,
+        amountCents,
+        dueDay: bill.dueDay,
+        day,
+        dateISO: toISODate(date),
+        moved: day !== bill.dueDay,
+        adjusted: amountCents !== bill.amountCents,
+        category: bill.category.trim() || UNCATEGORIZED,
+        paidFrom: bill.paidFrom,
+      });
+    }
+  }
+
+  for (const debt of data.debts) {
+    const planned = plannedDebtPaymentCents(debt, strategy);
+    for (const date of occurrencesInMonth(debt, year, month)) {
+      const amountCents = debtAmountOn(debt, date, data.overrides, strategy);
+      if (amountCents === null) continue;
+      const day = date.getDate();
+      items.push({
+        kind: 'debt',
+        id: debt.id,
+        name: debt.name,
+        amountCents,
+        dueDay: debt.dueDay,
+        day,
+        dateISO: toISODate(date),
+        moved: day !== debt.dueDay,
+        adjusted: amountCents !== planned,
+        category: DEBT_CATEGORY,
+        paidFrom: debt.paidFrom,
+      });
+    }
+  }
+
+  let oneOffIncomeCents = 0;
+  for (const event of data.oneOffs) {
+    const date = parseMonthDate(event.dateISO, year, month);
+    if (date === null) continue;
+    if (event.kind === 'income') {
+      oneOffIncomeCents += event.amountCents;
+      continue;
+    }
+    items.push({
+      kind: 'one-off',
+      id: event.id,
+      name: event.name,
+      amountCents: event.amountCents,
+      dueDay: date,
+      day: date,
+      dateISO: event.dateISO,
+      moved: false,
+      adjusted: false,
+      category: ONE_OFF_CATEGORY,
+      paidFrom: event.account,
+    });
+  }
 
   const scheduled: ScheduledItem[] = items
-    .map((item) => {
-      const day = resolveDueDay(year, month, item.dueDay);
-      return {
-        kind: item.kind,
-        id: item.id,
-        name: item.name,
-        amountCents: item.amountCents,
-        dueDay: item.dueDay,
-        day,
-        moved: day !== item.dueDay,
-      };
-    })
+    .map(({ kind, id, name, amountCents, dueDay, day, dateISO, moved, adjusted }) => ({
+      kind,
+      id,
+      name,
+      amountCents,
+      dueDay,
+      day,
+      dateISO,
+      moved,
+      adjusted,
+    }))
     .sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
 
-  const billsTotalCents = data.bills.reduce((sum, bill) => sum + bill.amountCents, 0);
-  const debtsTotalCents = data.debts.reduce(
-    (sum, debt) => sum + plannedDebtPaymentCents(debt, strategy),
-    0,
-  );
-  const outflowTotalCents = billsTotalCents + debtsTotalCents;
+  const totalFor = (kind: ScheduledItem['kind']) =>
+    items.reduce((sum, item) => (item.kind === kind ? sum + item.amountCents : sum), 0);
+  const billsTotalCents = totalFor('bill');
+  const debtsTotalCents = totalFor('debt');
+  const oneOffExpenseCents = totalFor('one-off');
+  const outflowTotalCents = billsTotalCents + debtsTotalCents + oneOffExpenseCents;
+  const incomeCents = paydays.length * perPaydayDepositCents(data.people) + oneOffIncomeCents;
+
   const autopayPerPaydayCents = autopayPaydaySharesCents(data, strategy).reduce((a, b) => a + b, 0);
   const autopayFundingCents = paydays.length * autopayPerPaydayCents;
-  const sharedOutflowCents =
-    data.bills.reduce((sum, bill) => (bill.paidFrom === 'shared' ? sum + bill.amountCents : sum), 0) +
-    data.debts.reduce(
-      (sum, debt) => (debt.paidFrom === 'shared' ? sum + plannedDebtPaymentCents(debt, strategy) : sum),
-      0,
-    );
-  const remainingCents = essentialsIncomeCents - autopayFundingCents - sharedOutflowCents;
+  const sharedOutflowCents = items.reduce(
+    (sum, item) => (item.paidFrom === 'shared' ? sum + item.amountCents : sum),
+    0,
+  );
+  const sharedOneOffIncomeCents = data.oneOffs.reduce(
+    (sum, e) =>
+      e.kind === 'income' && e.account === 'shared' && parseMonthDate(e.dateISO, year, month) !== null
+        ? sum + e.amountCents
+        : sum,
+    0,
+  );
+  const remainingCents =
+    essentialsIncomeCents + sharedOneOffIncomeCents - autopayFundingCents - sharedOutflowCents;
   const perPaydayCents = paydays.length > 0 ? Math.round(remainingCents / paydays.length) : 0;
 
   const byCategory = new Map<string, number>();
@@ -125,6 +199,8 @@ export function computeMonthSummary(
     essentialsIncomeCents,
     billsTotalCents,
     debtsTotalCents,
+    oneOffExpenseCents,
+    oneOffIncomeCents,
     outflowTotalCents,
     autopayFundingCents,
     remainingCents,
@@ -132,4 +208,33 @@ export function computeMonthSummary(
     scheduled,
     categories,
   };
+}
+
+/** Day-of-month for an ISO date inside the given month, or null when it falls elsewhere. */
+function parseMonthDate(iso: string, year: number, month: number): number | null {
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+  if (!iso.startsWith(prefix)) return null;
+  const day = Number(iso.slice(prefix.length));
+  return Number.isInteger(day) && day >= 1 && day <= 31 ? day : null;
+}
+
+/** Steady-state monthly outflow, normalizing non-monthly frequencies and ignoring overrides. */
+export function steadyMonthlyOutflowCents(
+  data: BudgetData,
+  paidFrom: 'shared' | 'autopay',
+  strategy: DebtPaymentStrategy = 'suggested',
+): number {
+  const bills = data.bills.reduce(
+    (sum, bill) =>
+      bill.paidFrom === paidFrom ? sum + monthlyEquivalentCents(bill, bill.amountCents) : sum,
+    0,
+  );
+  const debts = data.debts.reduce(
+    (sum, debt) =>
+      debt.paidFrom === paidFrom
+        ? sum + monthlyEquivalentCents(debt, plannedDebtPaymentCents(debt, strategy))
+        : sum,
+    0,
+  );
+  return bills + debts;
 }

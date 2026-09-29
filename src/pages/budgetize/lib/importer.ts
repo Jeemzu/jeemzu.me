@@ -1,5 +1,6 @@
 import { read, utils, write } from 'xlsx';
 import type { Bill, DebtAccount, ImportedPerson } from '../types';
+import { monthlyRecurrence } from '../types';
 import { parseMoney } from './money';
 
 export type CellValue = string | number | boolean | Date | null;
@@ -217,7 +218,15 @@ export function extractBills(grid: CellGrid, mapping: ColumnMapping): ImportExtr
     }
 
     const category = mapping.categoryCol === null ? '' : cellText(row[mapping.categoryCol]);
-    const bill: Bill = { id: crypto.randomUUID(), name, amountCents, dueDay, category, paidFrom: 'shared' };
+    const bill: Bill = {
+      id: crypto.randomUUID(),
+      name,
+      amountCents,
+      dueDay,
+      category,
+      paidFrom: 'shared',
+      ...monthlyRecurrence(),
+    };
     bills.push(bill);
     reports.push({ rowNumber, name, status, message });
   }
@@ -322,6 +331,7 @@ export function extractDebts(grid: CellGrid, mapping: DebtColumnMapping): DebtEx
       hasPromotion: mapping.promoCol === null ? false : parsePromotion(row[mapping.promoCol]),
       dueDay,
       paidFrom: 'autopay',
+      ...monthlyRecurrence(),
     };
     debts.push(debt);
     reports.push({

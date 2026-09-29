@@ -926,6 +926,180 @@
     text-align: center;
   }
 
+  /* ---- Overrides & one-time entries ---- */
+  .recurrence-anchor {
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  .override-hint {
+    margin: 0.4rem 0;
+    font-size: 0.8rem;
+  }
+
+  /* ---- Assistant ---- */
+  .assistant {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .assistant-intro p {
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+  }
+
+  .assistant-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .assistant-suggestions .chip {
+    border: 1px solid var(--line);
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .assistant-suggestions .chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .assistant-thread {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 30rem;
+    overflow-y: auto;
+  }
+
+  .assistant-turn {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    background: var(--card);
+  }
+
+  .assistant-turn.user {
+    background: var(--accent-soft);
+    /* Reads as the user's own words rather than the assistant's */
+    border-color: var(--accent);
+  }
+
+  .assistant-text {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+
+  .assistant-gap {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: var(--warn);
+    background: var(--warn-soft);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.55rem;
+  }
+
+  .assistant-input {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .assistant-input input {
+    flex: 1;
+  }
+
+  /* ---- Proposal preview ---- */
+  .proposal-preview {
+    margin-top: 0.75rem;
+    border: 1px solid var(--accent);
+  }
+
+  .proposal-preview h4,
+  .proposal-preview h5 {
+    margin: 0 0 0.4rem;
+  }
+
+  .proposal-preview h5 {
+    margin-top: 0.9rem;
+  }
+
+  .proposal-summary {
+    margin: 0 0 0.6rem;
+  }
+
+  .proposal-ops {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .proposal-ops li {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.6rem;
+  }
+
+  .proposal-op-label {
+    display: block;
+    font-weight: 700;
+  }
+
+  .proposal-op-why {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .proposal-delta {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .proposal-delta th,
+  .proposal-delta td {
+    border-bottom: 1px solid var(--line);
+    padding: 0.3rem 0.4rem;
+    text-align: right;
+  }
+
+  .proposal-delta th[scope="row"],
+  .proposal-delta th[scope="col"]:first-child {
+    text-align: left;
+  }
+
+  .proposal-delta .neg {
+    color: var(--danger);
+  }
+
+  .proposal-abs {
+    color: var(--ink-soft);
+  }
+
+  .proposal-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .proposal-note {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+  }
+
   /* ---- Responsive ---- */
   @media (max-width: 900px) {
     .columns,

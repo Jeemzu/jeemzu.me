@@ -3,6 +3,7 @@ import { computeFundingWarnings } from './warnings';
 import { computeProjection } from './projection';
 import { computeAutopayPlan } from './autopay';
 import type { Bill, BudgetData, DebtPaymentStrategy, PersonIncome } from '../types';
+import { emptyBudget, monthlyRecurrence } from '../types';
 
 function person(
   partial: Partial<PersonIncome> & Pick<PersonIncome, 'name'>,
@@ -17,11 +18,11 @@ function person(
 }
 
 function bill(partial: Partial<Bill> & Pick<Bill, 'name' | 'amountCents' | 'dueDay'>): Bill {
-  return { id: partial.name, category: '', paidFrom: 'shared', ...partial };
+  return { id: partial.name, category: '', paidFrom: 'shared', ...monthlyRecurrence(), ...partial };
 }
 
 function budget(partial: Partial<BudgetData>): BudgetData {
-  return { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0, ...partial };
+  return { ...emptyBudget(), ...partial };
 }
 
 // Friday Sep 25 2026; paydays Sep 30, Oct 7, Oct 14.

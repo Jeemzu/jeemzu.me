@@ -1,11 +1,25 @@
 /** Which checking account a bill or debt payment is drafted from. */
 export type AccountSource = 'shared' | 'autopay';
 
-export interface Bill {
+export type RecurrenceFrequency = 'monthly' | 'weekly' | 'biweekly' | 'quarterly' | 'annual';
+
+/**
+ * Recurrence shared by bills and debts. `anchorISO` is the first occurrence and
+ * is required for every frequency except monthly; `startISO`/`endISO` bound the
+ * span the item is active at all (inclusive, null means unbounded).
+ */
+export interface Recurrence {
+  frequency: RecurrenceFrequency;
+  anchorISO: string | null;
+  startISO: string | null;
+  endISO: string | null;
+}
+
+export interface Bill extends Recurrence {
   id: string;
   name: string;
   amountCents: number;
-  /** Calendar day 1-31; days beyond a month's end land on its last day. */
+  /** Calendar day 1-31; days beyond a month's end land on its last day. Ignored for weekly and biweekly. */
   dueDay: number;
   /** Empty string means uncategorized. */
   category: string;
@@ -23,7 +37,7 @@ export interface PersonIncome {
   personalBalanceCents: number;
 }
 
-export interface DebtAccount {
+export interface DebtAccount extends Recurrence {
   id: string;
   name: string;
   balanceCents: number;
@@ -31,15 +45,52 @@ export interface DebtAccount {
   /** Promo payoff amount (balance ÷ months left); null when the sheet has none. */
   suggestedPaymentCents: number | null;
   hasPromotion: boolean;
-  /** Calendar day 1-31; days beyond a month's end land on its last day. */
+  /** Calendar day 1-31; days beyond a month's end land on its last day. Ignored for weekly and biweekly. */
   dueDay: number;
   paidFrom: AccountSource;
+}
+
+/**
+ * A temporary change to one bill or debt over an inclusive date range — either
+ * skipping it entirely or charging a different amount. Leaves the underlying
+ * item untouched so it resumes on its own once the range ends.
+ */
+export interface ScheduleOverride {
+  id: string;
+  targetKind: 'bill' | 'debt';
+  targetId: string;
+  /** Inclusive ISO date range (yyyy-mm-dd) the override covers. */
+  fromISO: string;
+  toISO: string;
+  mode: 'skip' | 'amount';
+  /** Replacement amount; null when mode is 'skip'. */
+  amountCents: number | null;
+  /** Free-text reason, shown in the UI and used by the assistant. */
+  note: string;
+}
+
+/** Which account a one-off lands in. 'personal' requires a `personId`. */
+export type OneOffAccount = AccountSource | 'personal';
+
+/** A single dated expense or deposit that does not repeat. */
+export interface OneOffEvent {
+  id: string;
+  kind: 'expense' | 'income';
+  name: string;
+  amountCents: number;
+  dateISO: string;
+  account: OneOffAccount;
+  /** Required when account is 'personal'; null otherwise. */
+  personId: string | null;
+  note: string;
 }
 
 export interface BudgetData {
   people: PersonIncome[];
   bills: Bill[];
   debts: DebtAccount[];
+  overrides: ScheduleOverride[];
+  oneOffs: OneOffEvent[];
   /** Current shared essentials account balance — the projection starting point. */
   essentialsBalanceCents: number;
   /** Current auto-pay account balance — the projection starting point. */
@@ -87,5 +138,18 @@ export function perPaydayEssentialsCents(people: PersonIncome[]): number {
 }
 
 export function emptyBudget(): BudgetData {
-  return { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0 };
+  return {
+    people: [],
+    bills: [],
+    debts: [],
+    overrides: [],
+    oneOffs: [],
+    essentialsBalanceCents: 0,
+    autopayBalanceCents: 0,
+  };
+}
+
+/** Recurrence defaults for items created before frequencies existed. */
+export function monthlyRecurrence(): Recurrence {
+  return { frequency: 'monthly', anchorISO: null, startISO: null, endISO: null };
 }

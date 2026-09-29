@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BACKUP_VERSION, parseBackup, parseBudgetData, serializeBackup } from './backup';
 import type { BudgetData } from '../types';
+import { emptyBudget, monthlyRecurrence } from '../types';
 
 const sample: BudgetData = {
+  ...emptyBudget(),
   people: [
     {
       id: 'p1',
@@ -13,8 +15,8 @@ const sample: BudgetData = {
     },
   ],
   bills: [
-    { id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: 'Housing', paidFrom: 'shared' },
-    { id: 'b', name: 'Spectrum', amountCents: 90_00, dueDay: 21, category: '', paidFrom: 'autopay' },
+    { id: 'a', name: 'Rent', amountCents: 3250_00, dueDay: 1, category: 'Housing', paidFrom: 'shared', ...monthlyRecurrence() },
+    { id: 'b', name: 'Spectrum', amountCents: 90_00, dueDay: 21, category: '', paidFrom: 'autopay', ...monthlyRecurrence() },
   ],
   debts: [
     {
@@ -26,6 +28,7 @@ const sample: BudgetData = {
       hasPromotion: true,
       dueDay: 1,
       paidFrom: 'autopay',
+      ...monthlyRecurrence(),
     },
     {
       id: 'd2',
@@ -36,6 +39,7 @@ const sample: BudgetData = {
       hasPromotion: false,
       dueDay: 1,
       paidFrom: 'shared',
+      ...monthlyRecurrence(),
     },
   ],
   essentialsBalanceCents: 1200_00,
@@ -214,10 +218,7 @@ describe('parseBackup validation', () => {
     const result = parseBackup(
       JSON.stringify({ app: 'budgetize-me', version: 2, data: { bills: [] } }),
     );
-    expect(result).toEqual({
-      ok: true,
-      data: { people: [], bills: [], debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0 },
-    });
+    expect(result).toEqual({ ok: true, data: emptyBudget() });
   });
 });
 

@@ -1,6 +1,8 @@
 import type { AccountSource, DebtAccount, DebtPaymentStrategy } from '../types';
 import { plannedDebtPaymentCents } from '../types';
 import { DayInput, MoneyInput } from './inputs';
+import { RecurrenceFields } from './RecurrenceFields';
+import { isDayStrided } from '../lib/recurrence';
 import { formatMoney } from '../lib/money';
 
 interface Props {
@@ -35,6 +37,9 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
                 <th>Suggested / mo</th>
                 <th title={plannedHint}>Planned / mo</th>
                 <th>Due day</th>
+                <th>Repeats</th>
+                <th title="Leave blank for no start date">Starts</th>
+                <th title="Leave blank for no end date">Ends</th>
                 <th title="Which account the payment drafts from">Paid from</th>
                 <th aria-label="Actions" />
               </tr>
@@ -81,12 +86,23 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
                   </td>
                   <td className="total-cell">{formatMoney(plannedDebtPaymentCents(debt, strategy))}</td>
                   <td>
-                    <DayInput
-                      value={debt.dueDay}
-                      ariaLabel={`Due day for ${debt.name}`}
-                      onCommit={(dueDay) => onUpdate(debt.id, { dueDay })}
-                    />
+                    {isDayStrided(debt.frequency) ? (
+                      <span className="muted" title="Weekly payments count from their start date instead">
+                        —
+                      </span>
+                    ) : (
+                      <DayInput
+                        value={debt.dueDay}
+                        ariaLabel={`Due day for ${debt.name}`}
+                        onCommit={(dueDay) => onUpdate(debt.id, { dueDay })}
+                      />
+                    )}
                   </td>
+                  <RecurrenceFields
+                    item={debt}
+                    label={debt.name || 'this debt'}
+                    onChange={(patch) => onUpdate(debt.id, patch)}
+                  />
                   <td>
                     <select
                       className="select-input"
@@ -118,7 +134,7 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
                 <td className="total-cell">{formatMoney(minTotal)}</td>
                 <td colSpan={2} />
                 <td className="total-cell">{formatMoney(plannedTotal)}</td>
-                <td colSpan={3} />
+                <td colSpan={6} />
               </tr>
             </tfoot>
           </table>

@@ -1,6 +1,17 @@
-import type { AccountSource, Bill, BudgetData, DebtAccount, PersonIncome } from '../types';
+import type {
+  AccountSource,
+  Bill,
+  BudgetData,
+  DebtAccount,
+  OneOffEvent,
+  PersonIncome,
+  Recurrence,
+  RecurrenceFrequency,
+  ScheduleOverride,
+} from '../types';
+import { monthlyRecurrence } from '../types';
 
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -39,6 +50,36 @@ function readId(obj: Record<string, unknown>): string {
   return typeof obj.id === 'string' && obj.id ? obj.id : crypto.randomUUID();
 }
 
+const FREQUENCIES: RecurrenceFrequency[] = ['monthly', 'weekly', 'biweekly', 'quarterly', 'annual'];
+
+function isISODate(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function readISODate(value: unknown): string | null {
+  return isISODate(value) ? value : null;
+}
+
+/** Backups written before frequencies existed have no recurrence fields; those items are monthly. */
+function sanitizeRecurrence(obj: Record<string, unknown>, label: string): Recurrence | string {
+  const raw = obj.frequency;
+  if (raw === undefined || raw === null) return monthlyRecurrence();
+  if (typeof raw !== 'string' || !FREQUENCIES.includes(raw as RecurrenceFrequency)) {
+    return `${label} has an unknown frequency.`;
+  }
+  const frequency = raw as RecurrenceFrequency;
+  const anchorISO = readISODate(obj.anchorISO);
+  if (frequency !== 'monthly' && anchorISO === null) {
+    return `${label} is ${frequency} but has no valid first-occurrence date.`;
+  }
+  const startISO = readISODate(obj.startISO);
+  const endISO = readISODate(obj.endISO);
+  if (startISO && endISO && endISO < startISO) {
+    return `${label} ends before it starts.`;
+  }
+  return { frequency, anchorISO, startISO, endISO };
+}
+
 function sanitizeBill(raw: unknown, index: number): Bill | string {
   if (typeof raw !== 'object' || raw === null) return `Bill #${index + 1} is not an object.`;
   const obj = raw as Record<string, unknown>;
@@ -49,6 +90,8 @@ function sanitizeBill(raw: unknown, index: number): Bill | string {
   if (typeof dueDay !== 'number' || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
     return `Bill "${name}" has an invalid due day (must be 1-31).`;
   }
+  const recurrence = sanitizeRecurrence(obj, `Bill "${name}"`);
+  if (typeof recurrence === 'string') return recurrence;
   return {
     id: readId(obj),
     name,
@@ -56,6 +99,7 @@ function sanitizeBill(raw: unknown, index: number): Bill | string {
     dueDay,
     category: typeof obj.category === 'string' ? obj.category.trim() : '',
     paidFrom: readPaidFrom(obj.paidFrom, 'shared'),
+    ...recurrence,
   };
 }
 
@@ -74,6 +118,8 @@ function sanitizeDebt(raw: unknown, index: number): DebtAccount | string {
   if (typeof dueDay !== 'number' || !Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
     return `Debt "${name}" has an invalid due day (must be 1-31).`;
   }
+  const recurrence = sanitizeRecurrence(obj, `Debt "${name}"`);
+  if (typeof recurrence === 'string') return recurrence;
   return {
     id: readId(obj),
     name,
@@ -83,6 +129,65 @@ function sanitizeDebt(raw: unknown, index: number): DebtAccount | string {
     hasPromotion: obj.hasPromotion === true,
     dueDay,
     paidFrom: readPaidFrom(obj.paidFrom, 'autopay'),
+    ...recurrence,
+  };
+}
+
+function sanitizeOverride(raw: unknown, index: number): ScheduleOverride | string {
+  if (typeof raw !== 'object' || raw === null) return `Override #${index + 1} is not an object.`;
+  const obj = raw as Record<string, unknown>;
+  const label = `Override #${index + 1}`;
+  if (obj.targetKind !== 'bill' && obj.targetKind !== 'debt') {
+    return `${label} does not target a bill or debt.`;
+  }
+  if (typeof obj.targetId !== 'string' || !obj.targetId) return `${label} is missing its target.`;
+  const fromISO = readISODate(obj.fromISO);
+  const toISO = readISODate(obj.toISO);
+  if (!fromISO || !toISO) return `${label} has an invalid date range.`;
+  if (toISO < fromISO) return `${label} ends before it starts.`;
+  if (obj.mode !== 'skip' && obj.mode !== 'amount') return `${label} has an unknown mode.`;
+  const amountCents = obj.mode === 'amount' ? obj.amountCents : null;
+  if (obj.mode === 'amount' && !isCents(amountCents)) {
+    return `${label} has an invalid replacement amount.`;
+  }
+  return {
+    id: readId(obj),
+    targetKind: obj.targetKind,
+    targetId: obj.targetId,
+    fromISO,
+    toISO,
+    mode: obj.mode,
+    amountCents: (amountCents as number | null) ?? null,
+    note: typeof obj.note === 'string' ? obj.note.trim() : '',
+  };
+}
+
+function sanitizeOneOff(raw: unknown, index: number): OneOffEvent | string {
+  if (typeof raw !== 'object' || raw === null) return `One-time entry #${index + 1} is not an object.`;
+  const obj = raw as Record<string, unknown>;
+  const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+  if (!name) return `One-time entry #${index + 1} is missing a name.`;
+  if (obj.kind !== 'expense' && obj.kind !== 'income') return `"${name}" must be an expense or income.`;
+  if (!isCents(obj.amountCents)) return `"${name}" has an invalid amount.`;
+  const dateISO = readISODate(obj.dateISO);
+  if (!dateISO) return `"${name}" has an invalid date.`;
+  const account = obj.account;
+  if (account !== 'shared' && account !== 'autopay' && account !== 'personal') {
+    return `"${name}" has an unknown account.`;
+  }
+  const personId = typeof obj.personId === 'string' && obj.personId ? obj.personId : null;
+  if (account === 'personal' && personId === null) {
+    return `"${name}" is a personal entry but names no person.`;
+  }
+  return {
+    id: readId(obj),
+    kind: obj.kind,
+    name,
+    amountCents: obj.amountCents,
+    dateISO,
+    account,
+    personId: account === 'personal' ? personId : null,
+    note: typeof obj.note === 'string' ? obj.note.trim() : '',
   };
 }
 
@@ -137,7 +242,18 @@ function migrateV1(dataObj: Record<string, unknown>, bills: Bill[]): ParseBackup
           },
         ]
       : [];
-  return { ok: true, data: { people, bills, debts: [], essentialsBalanceCents: 0, autopayBalanceCents: 0 } };
+  return {
+    ok: true,
+    data: {
+      people,
+      bills,
+      debts: [],
+      overrides: [],
+      oneOffs: [],
+      essentialsBalanceCents: 0,
+      autopayBalanceCents: 0,
+    },
+  };
 }
 
 export function parseBackup(json: string): ParseBackupResult {
@@ -185,6 +301,25 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (typeof debts === 'string') return { ok: false, error: debts };
   const people = sanitizeList(dataObj.people, 'people', sanitizePerson);
   if (typeof people === 'string') return { ok: false, error: people };
+  const overrides = sanitizeList(dataObj.overrides, 'overrides', sanitizeOverride);
+  if (typeof overrides === 'string') return { ok: false, error: overrides };
+  const oneOffs = sanitizeList(dataObj.oneOffs, 'one-time entries', sanitizeOneOff);
+  if (typeof oneOffs === 'string') return { ok: false, error: oneOffs };
+
+  const billIds = new Set(bills.map((b) => b.id));
+  const debtIds = new Set(debts.map((d) => d.id));
+  const orphan = overrides.find((o) =>
+    o.targetKind === 'bill' ? !billIds.has(o.targetId) : !debtIds.has(o.targetId),
+  );
+  if (orphan) {
+    return { ok: false, error: `An override points at a ${orphan.targetKind} that no longer exists.` };
+  }
+  const personIds = new Set(people.map((p) => p.id));
+  const strayEvent = oneOffs.find((e) => e.personId !== null && !personIds.has(e.personId));
+  if (strayEvent) {
+    return { ok: false, error: `"${strayEvent.name}" points at a person who no longer exists.` };
+  }
+
   const essentialsBalanceCents = dataObj.essentialsBalanceCents ?? 0;
   if (!isSignedCents(essentialsBalanceCents)) {
     return { ok: false, error: 'Backup has an invalid essentials balance.' };
@@ -193,5 +328,16 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (!isSignedCents(autopayBalanceCents)) {
     return { ok: false, error: 'Backup has an invalid auto-pay balance.' };
   }
-  return { ok: true, data: { people, bills, debts, essentialsBalanceCents, autopayBalanceCents } };
+  return {
+    ok: true,
+    data: {
+      people,
+      bills,
+      debts,
+      overrides,
+      oneOffs,
+      essentialsBalanceCents,
+      autopayBalanceCents,
+    },
+  };
 }
