@@ -11,7 +11,6 @@ import {
 import {
   FaGamepad,
   FaChartSimple,
-  FaDiceD20,
   FaSackDollar,
   FaPenRuler,
   FaCode,
@@ -58,15 +57,6 @@ const APPS: AppCardDef[] = [
     accent: "glassSapphire",
     iconAnimation: "jz-sort 0.85s ease-in-out both",
     iconOrigin: "50% 85%",
-  },
-  {
-    title: "AI RPG",
-    description:
-      "A text adventure narrated by an AI game master. Fight, explore, and talk your way through.",
-    icon: <FaDiceD20 size={34} />,
-    path: "/rpg",
-    accent: "glassAmethyst",
-    iconAnimation: "jz-dice-roll 0.95s ease-in-out both",
   },
   {
     title: "Budgetize Me",

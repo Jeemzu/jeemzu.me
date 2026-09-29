@@ -12,13 +12,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "generate-api-types": "openapi-typescript http://localhost:5050/swagger/v1/swagger.json -o src/types/api.generated.ts",
-    "generate-api-types:prod": "openapi-typescript https://jeemzu-prod-eza9c8edcdhhbqhw.canadaeast-01.azurewebsites.net/swagger/v1/swagger.json -o src/types/api.generated.ts"
+    "generate-api-types:prod": "openapi-typescript https://api.jeemzu.me/swagger/v1/swagger.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@marsidev/react-turnstile": "^1.5.3",
-    "@microsoft/signalr": "^8.0.7",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.1.0",
     "@netlify/identity": "^1.2.0",

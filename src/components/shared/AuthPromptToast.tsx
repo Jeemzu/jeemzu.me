@@ -103,8 +103,8 @@ const AuthPromptToast = () => {
               lineHeight: 1.6,
             }}
           >
-            Create a free account to keep your game bests, RPG campaigns, and
-            Budgetize plan in one place.
+            Create a free account to keep your game bests and Budgetize plan in
+            one place.
           </Typography>
 
           <Stack direction="row" spacing={1}>
