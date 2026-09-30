@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { computeFundingWarnings } from './warnings';
 import { computeProjection } from './projection';
-import { computeAutopayPlan } from './autopay';
+import { computeFundingPlan, createFundedAllocator } from './funding';
 import type { BudgetData, DebtPaymentStrategy } from '../types';
 import { emptyBudget } from '../types';
 import { bill, paidPerson } from '../testFixtures';
@@ -15,8 +15,8 @@ const start = new Date(2026, 8, 25);
 
 function warningsFor(data: BudgetData, strategy: DebtPaymentStrategy = 'suggested') {
   const projection = computeProjection(data, start, 4, strategy);
-  const plan = computeAutopayPlan(data, start, 12, strategy);
-  return computeFundingWarnings(data, projection, plan, strategy);
+  const plan = computeFundingPlan(data, start, strategy);
+  return computeFundingWarnings(data, projection, plan, createFundedAllocator(data, plan, 'minimum', strategy));
 }
 
 describe('computeFundingWarnings', () => {
@@ -51,12 +51,11 @@ describe('computeFundingWarnings', () => {
       people: [paidPerson('A', 2026, 50_00)],
       bills: [bill({ name: 'Electric', amountCents: 400_00, dueDay: 15, paidFrom: 'autopay' })],
       essentialsBalanceCents: 5000_00,
-      autopayBalanceCents: 500_00,
     });
     const warnings = warningsFor(tight);
     expect(
       warnings.some(
-        (w) => w.severity === 'error' && w.message.includes("A's September 2026 paycheck can't cover"),
+        (w) => w.severity === 'error' && w.message.includes("A's October 2026 paycheck can't cover"),
       ),
     ).toBe(true);
   });
@@ -68,11 +67,12 @@ describe('computeFundingWarnings', () => {
       essentialsBalanceCents: 0,
     });
     const warnings = warningsFor(broke);
+    // Deposits keep essentials whole, so the shortfall lands in A's personal account.
     expect(
       warnings.some(
         (w) =>
           w.severity === 'warn' &&
-          w.message.includes('shared essentials account') &&
+          w.message.includes("A's personal account") &&
           w.message.includes('2026-09-30'),
       ),
     ).toBe(true);
@@ -82,7 +82,7 @@ describe('computeFundingWarnings', () => {
   it('warns when the auto-pay account still needs opening funds', () => {
     const unopened = budget({
       people: [paidPerson('A', 2026, 500_00)],
-      bills: [bill({ name: 'Rent', amountCents: 700_00, dueDay: 1, paidFrom: 'autopay' })],
+      bills: [bill({ name: 'Rent', amountCents: 700_00, dueDay: 27, paidFrom: 'autopay' })],
       essentialsBalanceCents: 5000_00,
     });
     const warnings = warningsFor(unopened);
@@ -90,8 +90,7 @@ describe('computeFundingWarnings', () => {
       warnings.some(
         (w) =>
           w.severity === 'warn' &&
-          w.message.includes('opening funds') &&
-          w.message.includes('$700.00'),
+          w.message.includes('auto-pay account needs $700.00 in opening funds'),
       ),
     ).toBe(true);
     expect(

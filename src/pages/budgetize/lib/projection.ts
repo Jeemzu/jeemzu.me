@@ -1,20 +1,11 @@
 import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
-import { createAllocator } from './allocation';
-import { billAmountOn, debtAmountOn } from './recurrence';
+import { fundedAllocator, type DepositMode } from './funding';
+import { entriesOn, type LedgerEntry } from './ledger';
 
 export { toISODate } from './paydays';
 
-export interface ProjectionOutflow {
-  kind: 'bill' | 'debt' | 'one-off';
-  name: string;
-  amountCents: number;
-  dateISO: string;
-  /** Account the money moves through. */
-  source: OneOffAccount;
-  /** Set only when `source` is 'personal'. */
-  personId: string | null;
-}
+export type ProjectionOutflow = LedgerEntry;
 
 export interface AccountWeek {
   depositCents: number;
@@ -94,7 +85,7 @@ export function weeksForRange(range: ProjectionRange, start: Date): number {
  * to the day before the next Wednesday, so money already reflected in current
  * balances is never double-counted; it only contains a payday when `start` is one.
  * Each payday is split into auto-pay, essentials, and personal deposits by the
- * month's allocation; paydays in months with no income data deposit nothing and
+ * funding plan in the chosen mode; paydays in months with no income data deposit nothing and
  * mark the week `incomeKnown: false`. Bills and debts draft from the account
  * named by `paidFrom`, at the amount left after any schedule override for that date.
  */
@@ -103,6 +94,7 @@ export function computeProjection(
   start: Date,
   weekCount = 8,
   strategy: DebtPaymentStrategy = 'suggested',
+  mode: DepositMode = 'minimum',
 ): Projection {
   const startDate = dateOnly(start);
   const daysUntilNextWednesday = daysUntilNextPayday(startDate);
@@ -110,7 +102,7 @@ export function computeProjection(
   const balances = data.people.map((p) => p.personalBalanceCents);
   let essentialsBalance = data.essentialsBalanceCents;
   let autopayBalance = data.autopayBalanceCents;
-  const allocationFor = createAllocator(data, strategy);
+  const allocationFor = fundedAllocator(data, startDate, mode, strategy);
   const personIndex = new Map(data.people.map((p, i) => [p.id, i]));
 
   const weeks: ProjectionWeek[] = [];
@@ -147,40 +139,18 @@ export function computeProjection(
           essentials.depositCents += share.essentialsPerPaycheckCents;
         });
       }
-      const dateISO = toISODate(d);
-      for (const bill of data.bills) {
-        const amountCents = billAmountOn(bill, d, data.overrides);
-        if (amountCents === null) continue;
-        const target = bill.paidFrom === 'autopay' ? autopay : essentials;
-        target.outflowCents += amountCents;
-        outflows.push({ kind: 'bill', name: bill.name, amountCents, dateISO, source: bill.paidFrom, personId: null });
-      }
-      for (const debt of data.debts) {
-        const amountCents = debtAmountOn(debt, d, data.overrides, strategy);
-        if (amountCents === null) continue;
-        const target = debt.paidFrom === 'autopay' ? autopay : essentials;
-        target.outflowCents += amountCents;
-        outflows.push({ kind: 'debt', name: debt.name, amountCents, dateISO, source: debt.paidFrom, personId: null });
-      }
-      for (const event of data.oneOffs) {
-        if (event.dateISO !== dateISO) continue;
-        const target = account(event.account, event.personId);
+      const day = entriesOn(data, d, strategy);
+      for (const entry of day.outflows) {
+        const target = account(entry.source, entry.personId);
         if (!target) continue;
-        const entry: ProjectionOutflow = {
-          kind: 'one-off',
-          name: event.name,
-          amountCents: event.amountCents,
-          dateISO,
-          source: event.account,
-          personId: event.personId,
-        };
-        if (event.kind === 'income') {
-          target.depositCents += event.amountCents;
-          inflows.push(entry);
-        } else {
-          target.outflowCents += event.amountCents;
-          outflows.push(entry);
-        }
+        target.outflowCents += entry.amountCents;
+        outflows.push(entry);
+      }
+      for (const entry of day.inflows) {
+        const target = account(entry.source, entry.personId);
+        if (!target) continue;
+        target.depositCents += entry.amountCents;
+        inflows.push(entry);
       }
     }
 

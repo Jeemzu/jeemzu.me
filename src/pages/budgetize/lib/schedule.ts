@@ -1,7 +1,7 @@
 import type { BudgetData, DebtPaymentStrategy } from '../types';
 import { plannedDebtPaymentCents } from '../types';
 import { getPaydays, toISODate } from './paydays';
-import { allocateMonth } from './allocation';
+import { createAllocator, type AllocationResolver } from './allocation';
 import {
   billAmountOn,
   debtAmountOn,
@@ -9,7 +9,6 @@ import {
 } from './recurrence';
 
 export { resolveDueDay } from './paydays';
-export { steadyMonthlyOutflowCents } from './allocation';
 
 export const BILL_CATEGORY = 'Bills';
 export const DEBT_CATEGORY = 'Debt';
@@ -72,9 +71,10 @@ export function computeMonthSummary(
   year: number,
   month: number,
   strategy: DebtPaymentStrategy = 'suggested',
+  allocationFor: AllocationResolver = createAllocator(data, strategy),
 ): MonthSummary {
   const paydays = getPaydays(year, month);
-  const allocation = allocateMonth(data, { year, month }, strategy);
+  const allocation = allocationFor({ year, month });
   const essentialsIncomeCents = allocation.people.reduce(
     (sum, p) => sum + p.essentialsPerPaycheckCents * p.paycheckCount,
     0,

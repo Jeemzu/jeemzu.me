@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type {
   BudgetData,
-  DebtPaymentStrategy,
   MonthlyIncome,
   MonthRef,
   PersonIncome,
@@ -9,7 +8,7 @@ import type {
 import { compareMonthlyIncome, monthlyGrossCents } from '../types';
 import { MoneyInput } from './inputs';
 import { formatMoney } from '../lib/money';
-import { allocateMonth, scheduledMonths } from '../lib/allocation';
+import { scheduledMonths, type AllocationResolver, type PersonMonthAllocation } from '../lib/allocation';
 import { getPaydays, monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import type { BudgetColumn } from './tableFeatures';
@@ -19,12 +18,13 @@ interface ScheduleRow {
   person: PersonIncome;
   personIndex: number;
   entry: MonthlyIncome | undefined;
-  share: ReturnType<typeof allocateMonth>['people'][number] | undefined;
+  share: PersonMonthAllocation | undefined;
 }
 
 interface Props {
   data: BudgetData;
-  strategy: DebtPaymentStrategy;
+  /** Funded allocations, so the split matches the projection's deposit mode. */
+  allocationFor: AllocationResolver;
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Omit<PersonIncome, 'id'>>) => void;
   onRemove: (id: string) => void;
@@ -62,7 +62,7 @@ function setMonth(
   ].sort(compareMonthlyIncome);
 }
 
-export function PeopleEditor({ data, strategy, onAdd, onUpdate, onRemove }: Props) {
+export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }: Props) {
   const { people } = data;
   const months = scheduledMonths(people);
   const now = new Date();
@@ -136,7 +136,7 @@ export function PeopleEditor({ data, strategy, onAdd, onUpdate, onRemove }: Prop
   ];
 
   const scheduleRows: ScheduleRow[] = months.flatMap((ref) => {
-    const allocation = allocateMonth(data, ref, strategy);
+    const allocation = allocationFor(ref);
     return people.map((person, personIndex) => ({
       ref,
       person,

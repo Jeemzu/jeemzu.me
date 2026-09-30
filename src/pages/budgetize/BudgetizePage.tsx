@@ -21,7 +21,7 @@ import {
   weeksForRange,
   type ProjectionRange,
 } from "./lib/projection";
-import { computeAutopayPlan } from "./lib/autopay";
+import { computeFundingPlan, createFundedAllocator } from "./lib/funding";
 import { computeFundingWarnings } from "./lib/warnings";
 import { parseBackup, parseBudgetData, serializeBackup } from "./lib/backup";
 import { downloadBlob } from "./lib/download";
@@ -35,10 +35,12 @@ import { DebtsEditor } from "./components/DebtsEditor";
 import { OverridesEditor } from "./components/OverridesEditor";
 import { OneOffsEditor } from "./components/OneOffsEditor";
 import { ProjectionView } from "./components/ProjectionView";
-import { AutopayCard } from "./components/AutopayCard";
+import { AccountPlanCard } from "./components/AccountPlanCard";
+import { PersonalSplitCard } from "./components/PersonalSplitCard";
 import { FundingWarnings } from "./components/FundingWarnings";
 import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useProjectionRange } from "./components/useProjectionRange";
+import { useDepositMode } from "./components/useDepositMode";
 import { useAuthStore } from "../../stores/authStore";
 import { deleteBudget, loadBudget, saveBudget } from "../../utils/budgetApi";
 import UserAuthModal from "../../components/shared/UserAuthModal";
@@ -119,6 +121,7 @@ function BudgetWorkspace() {
     [start],
   );
   const [projectionRange, setProjectionRange] = useProjectionRange();
+  const [depositMode, setDepositMode] = useDepositMode();
   const weekCount = useMemo(
     () => weeksForRange(projectionRange, start),
     [projectionRange, start],
@@ -131,17 +134,42 @@ function BudgetWorkspace() {
     setMonthRef(startMonth);
   }, [startMonth]);
 
+  const fundingPlan = useMemo(
+    () => computeFundingPlan(state.data, start, strategy),
+    [state.data, start, strategy],
+  );
+  const allocationFor = useMemo(
+    () => createFundedAllocator(state.data, fundingPlan, depositMode, strategy),
+    [state.data, fundingPlan, depositMode, strategy],
+  );
+
   const summary = useMemo(
     () =>
-      computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
-    [state.data, monthRef, strategy],
+      computeMonthSummary(
+        state.data,
+        monthRef.year,
+        monthRef.month,
+        strategy,
+        allocationFor,
+      ),
+    [state.data, monthRef, strategy, allocationFor],
   );
 
   const fundingWarnings = useMemo(() => {
-    const projection = computeProjection(state.data, start, weekCount, strategy);
-    const plan = computeAutopayPlan(state.data, start, 12, strategy);
-    return computeFundingWarnings(state.data, projection, plan, strategy);
-  }, [state.data, start, weekCount, strategy]);
+    const projection = computeProjection(
+      state.data,
+      start,
+      weekCount,
+      strategy,
+      depositMode,
+    );
+    return computeFundingWarnings(
+      state.data,
+      projection,
+      fundingPlan,
+      allocationFor,
+    );
+  }, [state.data, start, weekCount, strategy, depositMode, fundingPlan, allocationFor]);
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -664,6 +692,31 @@ function BudgetWorkspace() {
                 ))}
               </select>
             </div>
+            <div className="strategy-toggle">
+              <span id="deposit-mode-label">Deposits</span>
+              <div
+                className="seg"
+                role="group"
+                aria-labelledby="deposit-mode-label"
+              >
+                <button
+                  type="button"
+                  className={depositMode === "minimum" ? "active" : ""}
+                  title="Each month's smallest deposit that keeps auto-pay and essentials from going negative"
+                  onClick={() => setDepositMode("minimum")}
+                >
+                  Monthly minimum
+                </button>
+                <button
+                  type="button"
+                  className={depositMode === "flat" ? "active" : ""}
+                  title="One amount every Wednesday, sized so auto-pay and essentials never go negative"
+                  onClick={() => setDepositMode("flat")}
+                >
+                  Flat weekly
+                </button>
+              </div>
+            </div>
           </div>
 
           {tab === "month" && (
@@ -728,7 +781,7 @@ function BudgetWorkspace() {
           )}
 
           {tab === "projections" && (
-            <div className="columns">
+            <>
               <section className="card">
                 <h3>{rangeLabel} balance projection</h3>
                 <ProjectionView
@@ -736,6 +789,7 @@ function BudgetWorkspace() {
                   start={start}
                   weekCount={weekCount}
                   strategy={strategy}
+                  mode={depositMode}
                   onUpdatePerson={(id, patch) =>
                     dispatch({ type: "update-person", id, patch })
                   }
@@ -749,13 +803,29 @@ function BudgetWorkspace() {
               </section>
               <section className="card">
                 <h3>Auto-pay account plan</h3>
-                <AutopayCard
+                <AccountPlanCard
                   data={state.data}
-                  start={start}
+                  plan={fundingPlan}
+                  account="autopay"
+                />
+              </section>
+              <section className="card">
+                <h3>Essentials account plan</h3>
+                <AccountPlanCard
+                  data={state.data}
+                  plan={fundingPlan}
+                  account="shared"
+                />
+              </section>
+              <section className="card">
+                <h3>Personal paycheck split</h3>
+                <PersonalSplitCard
+                  data={state.data}
+                  plan={fundingPlan}
                   strategy={strategy}
                 />
               </section>
-            </div>
+            </>
           )}
 
           {tab === "assistant" && (
@@ -766,6 +836,7 @@ function BudgetWorkspace() {
                 start={start}
                 weekCount={weekCount}
                 strategy={strategy}
+                mode={depositMode}
                 onApplyProposal={(ops) =>
                   dispatch({ type: "apply-proposal", ops })
                 }
@@ -780,7 +851,7 @@ function BudgetWorkspace() {
                   <h3>Income &amp; people</h3>
                   <PeopleEditor
                     data={state.data}
-                    strategy={strategy}
+                    allocationFor={allocationFor}
                     onAdd={() =>
                       dispatch({
                         type: "add-person",

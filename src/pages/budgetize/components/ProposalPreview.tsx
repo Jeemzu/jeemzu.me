@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { BudgetData, DebtPaymentStrategy } from '../types';
+import type { DepositMode } from '../lib/funding';
 import type { BudgetOp, BudgetProposal } from '../../../utils/budgetAgentApi';
 import { computeProjection } from '../lib/projection';
 import { applyProposal } from '../lib/proposal';
@@ -10,6 +11,7 @@ interface Props {
   start: Date;
   weekCount: number;
   strategy: DebtPaymentStrategy;
+  mode: DepositMode;
   proposal: BudgetProposal;
   onApply: (ops: BudgetOp[]) => void;
   onDiscard: () => void;
@@ -63,11 +65,11 @@ function describeOp(op: BudgetOp, data: BudgetData): string {
   }
 }
 
-export function ProposalPreview({ data, start, weekCount, strategy, proposal, onApply, onDiscard }: Props) {
+export function ProposalPreview({ data, start, weekCount, strategy, mode, proposal, onApply, onDiscard }: Props) {
   // Runs the exact code the Apply button will, so the forecast shown is the one you get.
   const { rows, anyChange } = useMemo(() => {
-    const before = computeProjection(data, start, weekCount, strategy);
-    const after = computeProjection(applyProposal(data, proposal.ops), start, weekCount, strategy);
+    const before = computeProjection(data, start, weekCount, strategy, mode);
+    const after = computeProjection(applyProposal(data, proposal.ops), start, weekCount, strategy, mode);
 
     const built = before.weeks.map((week, i) => {
       const nextWeek = after.weeks[i];
@@ -93,7 +95,7 @@ export function ProposalPreview({ data, start, weekCount, strategy, proposal, on
         (r) => r.essentials !== 0 || r.autopay !== 0 || r.personal.some((v) => v !== 0),
       ),
     };
-  }, [data, start, weekCount, strategy, proposal.ops]);
+  }, [data, start, weekCount, strategy, mode, proposal.ops]);
 
   const people = data.people;
 

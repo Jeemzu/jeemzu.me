@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { BudgetData, DebtPaymentStrategy } from '../types';
+import type { DepositMode } from '../lib/funding';
 import type {
   AssistantMessage,
   BudgetOp,
@@ -16,6 +17,7 @@ interface Props {
   start: Date;
   weekCount: number;
   strategy: DebtPaymentStrategy;
+  mode: DepositMode;
   onApplyProposal: (ops: BudgetOp[]) => void;
 }
 
@@ -33,7 +35,7 @@ interface Turn {
   gap?: CapabilityGap | null;
 }
 
-export function BudgetAssistant({ data, start, weekCount, strategy, onApplyProposal }: Props) {
+export function BudgetAssistant({ data, start, weekCount, strategy, mode, onApplyProposal }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,8 +43,8 @@ export function BudgetAssistant({ data, start, weekCount, strategy, onApplyPropo
 
   // Recomputed from the live working copy, so unsaved edits go to the assistant too.
   const projection = useMemo(
-    () => computeProjection(data, start, weekCount, strategy),
-    [data, start, weekCount, strategy],
+    () => computeProjection(data, start, weekCount, strategy, mode),
+    [data, start, weekCount, strategy, mode],
   );
 
   useEffect(() => {
@@ -133,6 +135,7 @@ export function BudgetAssistant({ data, start, weekCount, strategy, onApplyPropo
                 start={start}
                 weekCount={weekCount}
                 strategy={strategy}
+                mode={mode}
                 proposal={turn.proposal}
                 onApply={(ops) => applyAndClear(i, ops)}
                 onDiscard={() => clearProposal(i, 'Discarded.')}
