@@ -43,15 +43,15 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 
 ### 3rd Party Services
 
-| Service | Use |
-| --- | --- |
-| Netlify | Hosts the public frontend and serves the static SPA. |
-| Render | Hosts the public .NET API, private Python agents service, and managed PostgreSQL database. The resources are defined together in `jeemzu.api/render.yaml`. |
-| OpenAI | Provides language models and text embeddings for AI features. |
-| Tavily | Optional web-search integration for AI agent workflows; requires a `TAVILY_API_KEY`. |
-| Resend | Delivers contact and account verification/recovery emails when configured. |
-| Google Fonts | Serves the Cinzel and Caudex fonts used by the site. |
-| GitHub Actions | Notifies the frontend repository when the backend changes so generated OpenAPI types can be updated. Render performs the backend build and deployment. |
+| Service        | Use                                                                                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Netlify        | Hosts the public frontend and serves the static SPA.                                                                                                       |
+| Render         | Hosts the public .NET API, private Python agents service, and managed PostgreSQL database. The resources are defined together in `jeemzu.api/render.yaml`. |
+| OpenAI         | Provides language models and text embeddings for AI features.                                                                                              |
+| Tavily         | Optional web-search integration for AI agent workflows; requires a `TAVILY_API_KEY`.                                                                       |
+| Resend         | Delivers contact and account verification/recovery emails when configured.                                                                                 |
+| Google Fonts   | Serves the Cinzel and Caudex fonts used by the site.                                                                                                       |
+| GitHub Actions | Notifies the frontend repository when the backend changes so generated OpenAPI types can be updated. Render performs the backend build and deployment.     |
 
 ## Local Development
 
