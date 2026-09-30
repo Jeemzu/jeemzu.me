@@ -5,6 +5,7 @@ import { formatMoney } from '../lib/money';
 
 interface Props {
   data: BudgetData;
+  start: Date;
   strategy: DebtPaymentStrategy;
 }
 
@@ -15,8 +16,8 @@ function fmtISO(iso: string): string {
   );
 }
 
-export function AutopayCard({ data, strategy }: Props) {
-  const plan = useMemo(() => computeAutopayPlan(data, new Date(), 12, strategy), [data, strategy]);
+export function AutopayCard({ data, start, strategy }: Props) {
+  const plan = useMemo(() => computeAutopayPlan(data, start, 12, strategy), [data, start, strategy]);
 
   if (plan.totalMonthlyCents === 0) {
     return <p className="muted">Flag bills or debts as paid from auto-pay to size the account.</p>;

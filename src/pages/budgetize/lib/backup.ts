@@ -12,8 +12,9 @@ import type {
 } from '../types';
 import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { getPaydays } from './paydays';
+import { parseISODate } from './recurrence';
 
-export const BACKUP_VERSION = 4;
+export const BACKUP_VERSION = 5;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -308,6 +309,8 @@ function migrateV1(dataObj: Record<string, unknown>, bills: Bill[]): ParseBackup
       oneOffs: [],
       essentialsBalanceCents: 0,
       autopayBalanceCents: 0,
+      projectionStartISO: null,
+      debtStrategy: 'suggested',
     },
   };
 }
@@ -384,6 +387,14 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (!isSignedCents(autopayBalanceCents)) {
     return { ok: false, error: 'Backup has an invalid auto-pay balance.' };
   }
+  const projectionStartISO = dataObj.projectionStartISO ?? null;
+  if (projectionStartISO !== null && parseISODate(projectionStartISO as string) === null) {
+    return { ok: false, error: 'Backup has an invalid projection start date.' };
+  }
+  const debtStrategy = dataObj.debtStrategy ?? 'suggested';
+  if (debtStrategy !== 'suggested' && debtStrategy !== 'minimum') {
+    return { ok: false, error: 'Backup has an invalid debt payment strategy.' };
+  }
   return {
     ok: true,
     data: {
@@ -394,6 +405,8 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
       oneOffs,
       essentialsBalanceCents,
       autopayBalanceCents,
+      projectionStartISO: projectionStartISO as string | null,
+      debtStrategy,
     },
   };
 }

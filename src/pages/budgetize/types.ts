@@ -106,6 +106,9 @@ export interface BudgetData {
   essentialsBalanceCents: number;
   /** Current auto-pay account balance — the projection starting point. */
   autopayBalanceCents: number;
+  /** yyyy-mm-dd the balances are as of and projections start from; null means today. */
+  projectionStartISO: string | null;
+  debtStrategy: DebtPaymentStrategy;
 }
 
 export interface MonthRef {
@@ -158,6 +161,8 @@ export function emptyBudget(): BudgetData {
     oneOffs: [],
     essentialsBalanceCents: 0,
     autopayBalanceCents: 0,
+    projectionStartISO: null,
+    debtStrategy: 'suggested',
   };
 }
 

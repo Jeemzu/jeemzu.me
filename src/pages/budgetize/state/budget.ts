@@ -2,6 +2,7 @@ import type {
   Bill,
   BudgetData,
   DebtAccount,
+  DebtPaymentStrategy,
   ImportedPerson,
   OneOffEvent,
   PersonIncome,
@@ -43,6 +44,8 @@ export type Action =
   | { type: 'apply-proposal'; ops: BudgetOp[] }
   | { type: 'set-essentials-balance'; cents: number }
   | { type: 'set-autopay-balance'; cents: number }
+  | { type: 'set-projection-start'; iso: string | null }
+  | { type: 'set-debt-strategy'; strategy: DebtPaymentStrategy }
   | { type: 'import-data'; payload: ImportPayload }
   | { type: 'restore'; data: BudgetData }
   /** Data loaded from the server — already saved, so it starts clean. */
@@ -192,6 +195,10 @@ export function budgetReducer(state: AppState, action: Action): AppState {
       return { data: { ...state.data, essentialsBalanceCents: action.cents }, dirty: true };
     case 'set-autopay-balance':
       return { data: { ...state.data, autopayBalanceCents: action.cents }, dirty: true };
+    case 'set-projection-start':
+      return { data: { ...state.data, projectionStartISO: action.iso }, dirty: true };
+    case 'set-debt-strategy':
+      return { data: { ...state.data, debtStrategy: action.strategy }, dirty: true };
     case 'import-data': {
       const bills = action.payload.bills ?? state.data.bills;
       const debts = action.payload.debts ?? state.data.debts;

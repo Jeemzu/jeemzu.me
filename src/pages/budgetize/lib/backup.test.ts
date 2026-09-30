@@ -50,6 +50,8 @@ const sample: BudgetData = {
   ],
   essentialsBalanceCents: 1200_00,
   autopayBalanceCents: 350_00,
+  projectionStartISO: '2027-01-15',
+  debtStrategy: 'minimum',
 };
 
 describe('backup roundtrip', () => {
@@ -205,6 +207,18 @@ describe('parseBackup validation', () => {
     const data = { ...sample, autopayBalanceCents: 1.5 };
     const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 2, data }));
     expect(result).toMatchObject({ ok: false, error: expect.stringContaining('auto-pay balance') });
+  });
+
+  it('rejects an invalid projection start date', () => {
+    const data = { ...sample, projectionStartISO: '01/15/2027' };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 5, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('start date') });
+  });
+
+  it('rejects an unknown debt strategy', () => {
+    const data = { ...sample, debtStrategy: 'aggressive' };
+    const result = parseBackup(JSON.stringify({ app: 'budgetize-me', version: 5, data }));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('strategy') });
   });
 
   it('accepts negative (overdrafted) cash balances', () => {

@@ -6,6 +6,7 @@ import { MoneyInput } from './inputs';
 
 interface Props {
   data: BudgetData;
+  start: Date;
   strategy: DebtPaymentStrategy;
   onUpdatePerson: (id: string, patch: Partial<Omit<PersonIncome, 'id'>>) => void;
   onSetEssentialsBalance: (cents: number) => void;
@@ -21,8 +22,9 @@ function balanceClass(cents: number): string {
   return cents < 0 ? 'total-cell neg' : 'total-cell';
 }
 
-export function ProjectionView({ data, strategy, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
-  const projection = useMemo(() => computeProjection(data, new Date(), 8, strategy), [data, strategy]);
+export function ProjectionView({ data, start, strategy, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
+  const projection = useMemo(() => computeProjection(data, start, 8, strategy), [data, start, strategy]);
+  const startLabel = data.projectionStartISO ? `as of ${fmtISO(data.projectionStartISO)}` : 'today';
 
   const hasAnything = data.people.length > 0 || data.bills.length > 0 || data.debts.length > 0;
   if (!hasAnything) {
@@ -32,7 +34,7 @@ export function ProjectionView({ data, strategy, onUpdatePerson, onSetEssentials
   return (
     <div className="projection">
       <div className="balances-row">
-        <span className="field-label">Starting balances (today):</span>
+        <span className="field-label">Starting balances ({startLabel}):</span>
         {data.people.map((person) => (
           <label key={person.id} className="balance-field">
             {person.name}
@@ -125,7 +127,7 @@ export function ProjectionView({ data, strategy, onUpdatePerson, onSetEssentials
       </div>
       <p className="muted">
         Balances at the end of each week. Weeks start on payday Wednesdays; the first row covers
-        today through the day before the next payday. Each paycheck is carved into auto-pay
+        the start date (today unless “Plan from” is set) through the day before the next payday. Each paycheck is carved into auto-pay
         funding, shared essentials, and a personal remainder; every bill and debt drafts from the
         account it's flagged “Paid from”. A ❓ marks a payday in a month with no pay schedule, so
         its deposits are unknown rather than zero. Hover a “Payments due” cell for the item list.

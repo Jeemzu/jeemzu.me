@@ -15,14 +15,24 @@
     "version": "2.0.0",
     "tasks": [
       {
+        "label": "Dev: All",
+        "dependsOn": [
+          "Docker: Dev Services",
+          "API: Dev Server",
+          "Frontend: Dev Server",
+        ],
+        "dependsOrder": "parallel",
+        "runOptions": {
+          "runOn": "folderOpen",
+        },
+        "problemMatcher": [],
+      },
+      {
         "label": "Frontend: Dev Server",
         "type": "shell",
         "command": "npm run dev",
         "options": {
           "cwd": "${workspaceFolder:jeemzu.me}",
-        },
-        "runOptions": {
-          "runOn": "folderOpen",
         },
         "isBackground": true,
         "problemMatcher": [],
@@ -38,9 +48,6 @@
         "options": {
           "cwd": "${workspaceFolder:jeemzu.api}/src/JeemzuApi",
         },
-        "runOptions": {
-          "runOn": "folderOpen",
-        },
         "isBackground": true,
         "problemMatcher": [],
         "presentation": {
@@ -54,9 +61,6 @@
         "command": "docker compose up agents",
         "options": {
           "cwd": "${workspaceFolder:jeemzu.api}",
-        },
-        "runOptions": {
-          "runOn": "folderOpen",
         },
         "isBackground": true,
         "problemMatcher": [],
