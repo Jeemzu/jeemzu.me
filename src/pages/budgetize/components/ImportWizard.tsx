@@ -14,6 +14,7 @@ import {
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { monthlyGrossCents } from '../types';
+import { InfoTip } from './InfoTip';
 
 const PREVIEW_ROWS = 12;
 const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.xlsm', '.ods', '.csv'];
@@ -312,6 +313,12 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
                     ? `${autoPeopleCount} people · ${analysis.income.extraction.months.length} months on “${analysis.income.sheet}”`
                     : 'no Gross Income table found (needs Year, Month, and “… Deposit Amount per Paycheck” columns)'}
                 </span>
+                {analysis.income && (
+                  <InfoTip>
+                    Months outside this range stay blank in the projection until you add them by
+                    hand.
+                  </InfoTip>
+                )}
               </h3>
               {analysis.income && (
                 <>
@@ -346,10 +353,6 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
                     </table>
                   </div>
                   <ReportTable reports={analysis.income.extraction.reports} />
-                  <p className="muted">
-                    Months outside this range stay blank in the projection until you add them by
-                    hand.
-                  </p>
                 </>
               )}
             </>

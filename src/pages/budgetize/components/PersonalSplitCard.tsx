@@ -1,7 +1,5 @@
-import { useMemo } from 'react';
-import type { BudgetData, DebtPaymentStrategy, MonthRef } from '../types';
-import type { MonthAllocation } from '../lib/allocation';
-import { createFundedAllocator, type FundingPlan } from '../lib/funding';
+import type { BudgetData, MonthRef } from '../types';
+import type { AllocationResolver, PersonMonthAllocation } from '../lib/allocation';
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
@@ -9,88 +7,78 @@ import type { BudgetColumn } from './tableFeatures';
 
 interface Props {
   data: BudgetData;
-  plan: FundingPlan;
-  strategy: DebtPaymentStrategy;
+  months: MonthRef[];
+  allocationFor: AllocationResolver;
 }
 
 interface Row {
   month: MonthRef;
-  minimum: MonthAllocation;
-  flat: MonthAllocation;
+  share: PersonMonthAllocation | undefined;
 }
 
-function personal(allocation: MonthAllocation, i: number) {
-  const share = allocation.people[i];
+function amount(share: PersonMonthAllocation | undefined, pick: (s: PersonMonthAllocation) => number) {
   if (!share?.hasIncome) return '—';
-  const cents = share.personalPerPaycheckCents;
+  const cents = pick(share);
   return <span className={cents < 0 ? 'neg' : undefined}>{formatMoney(cents)}</span>;
 }
 
-export function PersonalSplitCard({ data, plan, strategy }: Props) {
-  const rows = useMemo<Row[]>(() => {
-    const minimum = createFundedAllocator(data, plan, 'minimum', strategy);
-    const flat = createFundedAllocator(data, plan, 'flat', strategy);
-    return plan.months.map((month) => ({ month, minimum: minimum(month), flat: flat(month) }));
-  }, [data, plan, strategy]);
+const COLUMNS: BudgetColumn<Row>[] = [
+  {
+    id: 'month',
+    header: 'Month',
+    size: 140,
+    cell: ({ row: { original: r } }) => monthLabel(r.month),
+    enableHiding: false,
+  },
+  {
+    id: 'gross',
+    header: 'Gross',
+    size: 120,
+    meta: { headerTitle: 'Gross pay per paycheck', cellClassName: 'total-cell' },
+    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.grossPerPaycheckCents),
+  },
+  {
+    id: 'autopay',
+    header: '− Auto-pay',
+    size: 120,
+    meta: { headerTitle: 'Deposited to auto-pay each paycheck', cellClassName: 'total-cell' },
+    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.autopayPerPaycheckCents),
+  },
+  {
+    id: 'essentials',
+    header: '− Essentials',
+    size: 120,
+    meta: { headerTitle: 'Deposited to essentials each paycheck', cellClassName: 'total-cell' },
+    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.essentialsPerPaycheckCents),
+  },
+  {
+    id: 'personal',
+    header: '= Personal',
+    size: 120,
+    meta: { headerTitle: 'Deposited to the personal account each paycheck', cellClassName: 'total-cell' },
+    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.personalPerPaycheckCents),
+  },
+];
 
-  if (data.people.length === 0 || rows.length === 0) {
+export function PersonalSplitCard({ data, months, allocationFor }: Props) {
+  if (data.people.length === 0 || months.length === 0) {
     return <p className="muted">Add people and their pay months to see what is left for personal spending.</p>;
   }
 
-  const columns: BudgetColumn<Row>[] = [
-    {
-      id: 'month',
-      header: 'Month',
-      size: 140,
-      cell: ({ row: { original: r } }) => monthLabel(r.month),
-      enableHiding: false,
-    },
-    ...data.people.flatMap((person, i): BudgetColumn<Row>[] => [
-      {
-        id: `gross:${person.id}`,
-        header: `${person.name} gross`,
-        size: 130,
-        meta: { headerTitle: `${person.name}'s gross per paycheck`, cellClassName: 'total-cell' },
-        cell: ({ row: { original: r } }) => {
-          const share = r.minimum.people[i];
-          return share?.hasIncome ? formatMoney(share.grossPerPaycheckCents) : '—';
-        },
-      },
-      {
-        id: `min:${person.id}`,
-        header: `${person.name} personal (min)`,
-        size: 170,
-        meta: {
-          headerTitle: 'Left per paycheck after monthly minimum auto-pay and essentials deposits',
-          cellClassName: 'total-cell',
-        },
-        cell: ({ row: { original: r } }) => personal(r.minimum, i),
-      },
-      {
-        id: `flat:${person.id}`,
-        header: `${person.name} personal (flat)`,
-        size: 170,
-        meta: {
-          headerTitle: 'Left per paycheck after flat weekly auto-pay and essentials deposits',
-          cellClassName: 'total-cell',
-        },
-        cell: ({ row: { original: r } }) => personal(r.flat, i),
-      },
-    ]),
-  ];
-
   return (
     <div className="autopay">
-      <DataTable
-        tableId="personal-split"
-        data={rows}
-        columns={columns}
-        getRowId={(r) => `${r.month.year}-${r.month.month}`}
-        enableSorting={false}
-      />
-      <p className="muted">
-        Personal is whatever each paycheck has left after its auto-pay and essentials deposits.
-      </p>
+      {data.people.map((person, i) => (
+        <div key={person.id}>
+          <h4 className="personal-split-name">{person.name}</h4>
+          <DataTable
+            tableId={`personal-split:${person.id}`}
+            data={months.map((month) => ({ month, share: allocationFor(month).people[i] }))}
+            columns={COLUMNS}
+            getRowId={(r) => `${r.month.year}-${r.month.month}`}
+            enableSorting={false}
+          />
+        </div>
+      ))}
     </div>
   );
 }

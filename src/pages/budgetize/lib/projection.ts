@@ -13,6 +13,18 @@ export interface AccountWeek {
   endBalanceCents: number;
 }
 
+export interface ProjectionDay {
+  dateISO: string;
+  isPayday: boolean;
+  incomeKnown: boolean;
+  /** Parallel to Projection.people. */
+  personal: AccountWeek[];
+  essentials: AccountWeek;
+  autopay: AccountWeek;
+  outflows: ProjectionOutflow[];
+  inflows: ProjectionOutflow[];
+}
+
 export interface ProjectionWeek {
   startISO: string;
   /** Inclusive last day of the week. */
@@ -27,6 +39,7 @@ export interface ProjectionWeek {
   outflows: ProjectionOutflow[];
   /** One-off deposits landing this week, on top of the regular paychecks. */
   inflows: ProjectionOutflow[];
+  days: ProjectionDay[];
 }
 
 export interface Projection {
@@ -40,6 +53,10 @@ function dateOnly(d: Date): Date {
 
 function addDays(d: Date, days: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+}
+
+function emptyAccount(): AccountWeek {
+  return { depositCents: 0, outflowCents: 0, endBalanceCents: 0 };
 }
 
 function daysUntilNextPayday(d: Date): number {
@@ -109,30 +126,30 @@ export function computeProjection(
   let weekStart = startDate;
   for (let w = 0; w < weekCount; w++) {
     const weekEnd = w === 0 ? addDays(startDate, daysUntilNextWednesday - 1) : addDays(weekStart, 6);
-    const personal: AccountWeek[] = data.people.map(() => ({
-      depositCents: 0,
-      outflowCents: 0,
-      endBalanceCents: 0,
-    }));
-    const essentials: AccountWeek = { depositCents: 0, outflowCents: 0, endBalanceCents: 0 };
-    const autopay: AccountWeek = { depositCents: 0, outflowCents: 0, endBalanceCents: 0 };
-    const outflows: ProjectionOutflow[] = [];
-    const inflows: ProjectionOutflow[] = [];
+    const days: ProjectionDay[] = [];
     let paydayCount = 0;
     let incomeKnown = true;
 
-    const account = (source: OneOffAccount, personId: string | null): AccountWeek | null => {
-      if (source === 'autopay') return autopay;
-      if (source === 'shared') return essentials;
-      const i = personId === null ? -1 : personIndex.get(personId) ?? -1;
-      return i >= 0 ? personal[i] : null;
-    };
-
     for (let d = weekStart; d <= weekEnd; d = addDays(d, 1)) {
-      if (d.getDay() === PAYDAY_WEEKDAY) {
+      const personal = data.people.map(emptyAccount);
+      const essentials = emptyAccount();
+      const autopay = emptyAccount();
+      const outflows: ProjectionOutflow[] = [];
+      const inflows: ProjectionOutflow[] = [];
+      const isPayday = d.getDay() === PAYDAY_WEEKDAY;
+      let dayIncomeKnown = true;
+
+      const account = (source: OneOffAccount, personId: string | null): AccountWeek | null => {
+        if (source === 'autopay') return autopay;
+        if (source === 'shared') return essentials;
+        const i = personId === null ? -1 : personIndex.get(personId) ?? -1;
+        return i >= 0 ? personal[i] : null;
+      };
+
+      if (isPayday) {
         paydayCount++;
         const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
-        if (!allocation.hasIncome) incomeKnown = false;
+        if (!allocation.hasIncome) dayIncomeKnown = false;
         allocation.people.forEach((share, i) => {
           personal[i].depositCents += share.personalPerPaycheckCents;
           autopay.depositCents += share.autopayPerPaycheckCents;
@@ -152,27 +169,46 @@ export function computeProjection(
         target.depositCents += entry.amountCents;
         inflows.push(entry);
       }
+
+      data.people.forEach((_, i) => {
+        balances[i] += personal[i].depositCents - personal[i].outflowCents;
+        personal[i].endBalanceCents = balances[i];
+      });
+      essentialsBalance += essentials.depositCents - essentials.outflowCents;
+      essentials.endBalanceCents = essentialsBalance;
+      autopayBalance += autopay.depositCents - autopay.outflowCents;
+      autopay.endBalanceCents = autopayBalance;
+      if (!dayIncomeKnown) incomeKnown = false;
+
+      days.push({
+        dateISO: toISODate(d),
+        isPayday,
+        incomeKnown: dayIncomeKnown,
+        personal,
+        essentials,
+        autopay,
+        outflows,
+        inflows,
+      });
     }
 
-    data.people.forEach((_, i) => {
-      balances[i] += personal[i].depositCents - personal[i].outflowCents;
-      personal[i].endBalanceCents = balances[i];
+    const sumAccounts = (pick: (day: ProjectionDay) => AccountWeek): AccountWeek => ({
+      depositCents: days.reduce((sum, day) => sum + pick(day).depositCents, 0),
+      outflowCents: days.reduce((sum, day) => sum + pick(day).outflowCents, 0),
+      endBalanceCents: pick(days[days.length - 1]).endBalanceCents,
     });
-    essentialsBalance += essentials.depositCents - essentials.outflowCents;
-    essentials.endBalanceCents = essentialsBalance;
-    autopayBalance += autopay.depositCents - autopay.outflowCents;
-    autopay.endBalanceCents = autopayBalance;
 
     weeks.push({
       startISO: toISODate(weekStart),
       endISO: toISODate(weekEnd),
       paydayCount,
       incomeKnown,
-      personal,
-      essentials,
-      autopay,
-      outflows,
-      inflows,
+      personal: data.people.map((_, i) => sumAccounts((day) => day.personal[i])),
+      essentials: sumAccounts((day) => day.essentials),
+      autopay: sumAccounts((day) => day.autopay),
+      outflows: days.flatMap((day) => day.outflows),
+      inflows: days.flatMap((day) => day.inflows),
+      days,
     });
     weekStart = addDays(weekEnd, 1);
   }

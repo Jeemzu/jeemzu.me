@@ -3,6 +3,7 @@ import type { AccountFunding, AccountMonthPlan, FundingPlan } from '../lib/fundi
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
+import { InfoTip } from './InfoTip';
 import type { BudgetColumn } from './tableFeatures';
 
 interface Props {
@@ -124,7 +125,15 @@ export function AccountPlanCard({ data, plan, account }: Props) {
   return (
     <div className="autopay">
       <div className="autopay-hero">
-        <span className="stat-label">Flat deposit every Wednesday</span>
+        <span className="stat-label">
+          Flat deposit every Wednesday
+          <InfoTip>
+            The flat amount is split by each person's share of gross pay and keeps the {copy.name}{' '}
+            account from going negative through {monthLabel(plan.months[plan.months.length - 1])}.
+            Monthly minimums also leave enough to cover the next month's charges before its first
+            payday.
+          </InfoTip>
+        </span>
         <span className="stat-value">{formatMoney(funding.flatPerPaydayCents)}</span>
       </div>
       {data.people.length > 0 && (
@@ -145,18 +154,15 @@ export function AccountPlanCard({ data, plan, account }: Props) {
         enableSorting={false}
       />
       <div className="autopay-buffer">
-        <span className="field-label">Opening funds still needed</span>
+        <span className="field-label">
+          Opening funds still needed
+          <InfoTip>
+            On top of the current {formatMoney(balanceCents)} balance, for charges due before the
+            first deposit lands (planned from {fmtISO(plan.startISO)}).
+          </InfoTip>
+        </span>
         <span className="autopay-buffer-amount">{formatMoney(funding.openingFundsCents)}</span>
-        <p className="muted">
-          On top of the current {formatMoney(balanceCents)} balance, for charges due before the first
-          deposit lands (planned from {fmtISO(plan.startISO)}).
-        </p>
       </div>
-      <p className="muted">
-        The flat amount is split by each person's share of gross pay and keeps the {copy.name} account
-        from going negative through {monthLabel(plan.months[plan.months.length - 1])}. Monthly
-        minimums also leave enough to cover the next month's charges before its first payday.
-      </p>
     </div>
   );
 }
