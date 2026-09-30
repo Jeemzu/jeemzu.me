@@ -11,6 +11,16 @@ import { MoneyInput } from './inputs';
 import { formatMoney } from '../lib/money';
 import { allocateMonth, scheduledMonths } from '../lib/allocation';
 import { getPaydays, monthLabel } from '../lib/paydays';
+import { DataTable } from './DataTable';
+import type { BudgetColumn } from './tableFeatures';
+
+interface ScheduleRow {
+  ref: MonthRef;
+  person: PersonIncome;
+  personIndex: number;
+  entry: MonthlyIncome | undefined;
+  share: ReturnType<typeof allocateMonth>['people'][number] | undefined;
+}
 
 interface Props {
   data: BudgetData;
@@ -65,6 +75,172 @@ export function PeopleEditor({ data, strategy, onAdd, onUpdate, onRemove }: Prop
     }
   };
 
+  const removeMonth = (ref: MonthRef) => {
+    if (!window.confirm(`Remove ${monthLabel(ref)} pay for everyone?`)) return;
+    for (const person of people) {
+      onUpdate(person.id, {
+        schedule: person.schedule.filter((e) => !(e.year === ref.year && e.month === ref.month)),
+      });
+    }
+  };
+
+  const personColumns: BudgetColumn<PersonIncome>[] = [
+    {
+      id: 'name',
+      header: 'Person',
+      size: 200,
+      accessorFn: (person) => person.name,
+      cell: ({ row: { original: person } }) => (
+        <input
+          className="text-input"
+          value={person.name}
+          aria-label={`Name for ${person.name || 'person'}`}
+          onChange={(e) => onUpdate(person.id, { name: e.target.value })}
+        />
+      ),
+      enableHiding: false,
+    },
+    {
+      id: 'balance',
+      header: 'Current personal balance',
+      size: 200,
+      accessorFn: (person) => person.personalBalanceCents,
+      cell: ({ row: { original: person } }) => (
+        <MoneyInput
+          cents={person.personalBalanceCents}
+          allowNegative
+          ariaLabel={`Personal balance for ${person.name}`}
+          onCommit={(personalBalanceCents) => onUpdate(person.id, { personalBalanceCents })}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      size: 48,
+      meta: { headerAriaLabel: 'Actions' },
+      enableSorting: false,
+      enableResizing: false,
+      enableHiding: false,
+      cell: ({ row: { original: person } }) => (
+        <button
+          type="button"
+          className="btn danger ghost"
+          title={`Remove ${person.name}`}
+          onClick={() => onRemove(person.id)}
+        >
+          ✕
+        </button>
+      ),
+    },
+  ];
+
+  const scheduleRows: ScheduleRow[] = months.flatMap((ref) => {
+    const allocation = allocateMonth(data, ref, strategy);
+    return people.map((person, personIndex) => ({
+      ref,
+      person,
+      personIndex,
+      entry: person.schedule.find((e) => e.year === ref.year && e.month === ref.month),
+      share: allocation.people[personIndex],
+    }));
+  });
+
+  const scheduleColumns: BudgetColumn<ScheduleRow>[] = [
+    {
+      id: 'month',
+      header: 'Month',
+      size: 140,
+      cell: ({ row: { original: r } }) => monthLabel(r.ref),
+      enableHiding: false,
+    },
+    {
+      id: 'paychecks',
+      header: 'Paychecks',
+      size: 100,
+      meta: { headerTitle: 'Wednesdays in the month', cellClassName: 'total-cell' },
+      cell: ({ row: { original: r } }) => getPaydays(r.ref.year, r.ref.month).length,
+    },
+    {
+      id: 'person',
+      header: 'Person',
+      size: 140,
+      cell: ({ row: { original: r } }) => r.person.name,
+    },
+    {
+      id: 'gross',
+      header: 'Gross / paycheck',
+      size: 160,
+      cell: ({ row: { original: r } }) => (
+        <MoneyInput
+          cents={r.entry?.perPaycheckCents ?? 0}
+          ariaLabel={`${r.person.name} gross per paycheck in ${monthLabel(r.ref)}`}
+          onCommit={(cents) =>
+            onUpdate(r.person.id, { schedule: setMonth(r.person.schedule, r.ref, cents) })
+          }
+        />
+      ),
+    },
+    {
+      id: 'grossMonth',
+      header: 'Gross / month',
+      size: 130,
+      meta: { cellClassName: 'total-cell' },
+      cell: ({ row: { original: r } }) =>
+        r.entry ? formatMoney(monthlyGrossCents(r.entry)) : '—',
+    },
+    {
+      id: 'autopay',
+      header: 'Auto-pay',
+      size: 120,
+      meta: {
+        headerTitle: 'Carved out of each paycheck to fund the auto-pay account',
+        cellClassName: 'total-cell',
+      },
+      cell: ({ row: { original: r } }) => formatMoney(r.share?.autopayPerPaycheckCents ?? 0),
+    },
+    {
+      id: 'essentials',
+      header: 'Essentials',
+      size: 120,
+      meta: {
+        headerTitle: 'Carved out of each paycheck to fund shared bills',
+        cellClassName: 'total-cell',
+      },
+      cell: ({ row: { original: r } }) => formatMoney(r.share?.essentialsPerPaycheckCents ?? 0),
+    },
+    {
+      id: 'personal',
+      header: 'Personal',
+      size: 120,
+      meta: { headerTitle: 'What is left of each paycheck', cellClassName: 'total-cell' },
+      cell: ({ row: { original: r } }) => {
+        const personal = r.share?.personalPerPaycheckCents ?? 0;
+        return <span className={personal < 0 ? 'negative' : undefined}>{formatMoney(personal)}</span>;
+      },
+    },
+    {
+      id: 'actions',
+      header: '',
+      size: 48,
+      meta: { headerAriaLabel: 'Actions' },
+      enableResizing: false,
+      enableHiding: false,
+      cell: ({ row: { original: r } }) => (
+        <button
+          type="button"
+          className="btn danger ghost"
+          title={`Remove ${monthLabel(r.ref)} pay for everyone`}
+          onClick={() => removeMonth(r.ref)}
+        >
+          ✕
+        </button>
+      ),
+    },
+  ];
+
+  const monthGroupColumns = new Set(['month', 'paychecks', 'actions']);
+
   return (
     <div className="people-editor">
       {people.length === 0 ? (
@@ -73,121 +249,27 @@ export function PeopleEditor({ data, strategy, onAdd, onUpdate, onRemove }: Prop
         </p>
       ) : (
         <>
-          <div className="table-wrap">
-            <table className="bills-table">
-              <thead>
-                <tr>
-                  <th>Person</th>
-                  <th>Current personal balance</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {people.map((person) => (
-                  <tr key={person.id}>
-                    <td>
-                      <input
-                        className="text-input"
-                        value={person.name}
-                        aria-label={`Name for ${person.name || 'person'}`}
-                        onChange={(e) => onUpdate(person.id, { name: e.target.value })}
-                      />
-                    </td>
-                    <td>
-                      <MoneyInput
-                        cents={person.personalBalanceCents}
-                        allowNegative
-                        ariaLabel={`Personal balance for ${person.name}`}
-                        onCommit={(personalBalanceCents) =>
-                          onUpdate(person.id, { personalBalanceCents })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn danger ghost"
-                        title={`Remove ${person.name}`}
-                        onClick={() => onRemove(person.id)}
-                      >
-                        ✕
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            tableId="people"
+            data={people}
+            columns={personColumns}
+            getRowId={(person) => person.id}
+          />
 
           {months.length === 0 ? (
             <p className="muted">No pay months yet — add one below or import the workbook.</p>
           ) : (
-            <div className="table-wrap">
-              <table className="bills-table schedule-table">
-                <thead>
-                  <tr>
-                    <th>Month</th>
-                    <th title="Wednesdays in the month">Paychecks</th>
-                    <th>Person</th>
-                    <th>Gross / paycheck</th>
-                    <th>Gross / month</th>
-                    <th title="Carved out of each paycheck to fund the auto-pay account">
-                      Auto-pay
-                    </th>
-                    <th title="Carved out of each paycheck to fund shared bills">Essentials</th>
-                    <th title="What is left of each paycheck">Personal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {months.flatMap((ref) => {
-                    const allocation = allocateMonth(data, ref, strategy);
-                    return people.map((person, i) => {
-                      const entry = person.schedule.find(
-                        (e) => e.year === ref.year && e.month === ref.month,
-                      );
-                      const share = allocation.people[i];
-                      const personal = share?.personalPerPaycheckCents ?? 0;
-                      return (
-                        <tr key={`${ref.year}-${ref.month}-${person.id}`}>
-                          {i === 0 && (
-                            <>
-                              <td rowSpan={people.length}>{monthLabel(ref)}</td>
-                              <td rowSpan={people.length} className="total-cell">
-                                {getPaydays(ref.year, ref.month).length}
-                              </td>
-                            </>
-                          )}
-                          <td>{person.name}</td>
-                          <td>
-                            <MoneyInput
-                              cents={entry?.perPaycheckCents ?? 0}
-                              ariaLabel={`${person.name} gross per paycheck in ${monthLabel(ref)}`}
-                              onCommit={(cents) =>
-                                onUpdate(person.id, {
-                                  schedule: setMonth(person.schedule, ref, cents),
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="total-cell">
-                            {entry ? formatMoney(monthlyGrossCents(entry)) : '—'}
-                          </td>
-                          <td className="total-cell">
-                            {formatMoney(share?.autopayPerPaycheckCents ?? 0)}
-                          </td>
-                          <td className="total-cell">
-                            {formatMoney(share?.essentialsPerPaycheckCents ?? 0)}
-                          </td>
-                          <td className={`total-cell${personal < 0 ? ' negative' : ''}`}>
-                            {formatMoney(personal)}
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              tableId="pay-schedule"
+              className="schedule-table"
+              data={scheduleRows}
+              columns={scheduleColumns}
+              getRowId={(r) => `${r.ref.year}-${r.ref.month}-${r.person.id}`}
+              enableSorting={false}
+              getCellRowSpan={(columnId, r) =>
+                monthGroupColumns.has(columnId) ? (r.personIndex === 0 ? people.length : 0) : 1
+              }
+            />
           )}
 
           <div className="schedule-add">

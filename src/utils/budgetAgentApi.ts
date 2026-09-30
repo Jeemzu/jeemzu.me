@@ -88,20 +88,13 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Local calendar date, not UTC — the assistant reasons about the user's own "today". */
-function localToday(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
 export async function budgetChat(
   question: string,
   history: AssistantMessage[],
   budget: BudgetData,
   projection: Projection,
   strategy: "suggested" | "minimum",
+  today: string,
 ): Promise<BudgetChatResult> {
   try {
     const response = await fetch(`${API_BASE_URL}/budget/chat`, {
@@ -112,7 +105,7 @@ export async function budgetChat(
         history,
         budget,
         projection,
-        today: localToday(),
+        today,
         strategy,
       }),
     });

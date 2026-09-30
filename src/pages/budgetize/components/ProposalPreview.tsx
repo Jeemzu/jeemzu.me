@@ -7,6 +7,7 @@ import { formatMoney } from '../lib/money';
 
 interface Props {
   data: BudgetData;
+  start: Date;
   strategy: DebtPaymentStrategy;
   proposal: BudgetProposal;
   onApply: (ops: BudgetOp[]) => void;
@@ -63,10 +64,9 @@ function describeOp(op: BudgetOp, data: BudgetData): string {
   }
 }
 
-export function ProposalPreview({ data, strategy, proposal, onApply, onDiscard }: Props) {
+export function ProposalPreview({ data, start, strategy, proposal, onApply, onDiscard }: Props) {
   // Runs the exact code the Apply button will, so the forecast shown is the one you get.
   const { rows, anyChange } = useMemo(() => {
-    const start = new Date();
     const before = computeProjection(data, start, WEEKS, strategy);
     const after = computeProjection(applyProposal(data, proposal.ops), start, WEEKS, strategy);
 
@@ -94,7 +94,7 @@ export function ProposalPreview({ data, strategy, proposal, onApply, onDiscard }
         (r) => r.essentials !== 0 || r.autopay !== 0 || r.personal.some((v) => v !== 0),
       ),
     };
-  }, [data, strategy, proposal.ops]);
+  }, [data, start, strategy, proposal.ops]);
 
   const people = data.people;
 

@@ -90,6 +90,7 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
         nameCol: 0,
         amountCol: Math.min(1, gridColumnCount(grids.grids[name]) - 1),
         dueDayCol: null,
+        autopayCol: null,
       },
     );
   }
@@ -411,6 +412,16 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
                     {columnOptions}
                   </select>
                 </label>
+                <label>
+                  Autopay (optional)
+                  <select
+                    value={mapping.autopayCol ?? ''}
+                    onChange={(e) => updateMapping({ autopayCol: e.target.value === '' ? null : Number(e.target.value) })}
+                  >
+                    <option value="">— none —</option>
+                    {columnOptions}
+                  </select>
+                </label>
               </div>
 
               <h3>Sheet preview</h3>
@@ -491,5 +502,6 @@ function mappedClass(col: number, mapping: ColumnMapping): string {
   if (col === mapping.nameCol) return 'map-name';
   if (col === mapping.amountCol) return 'map-amount';
   if (col === mapping.dueDayCol) return 'map-due';
+  if (col === mapping.autopayCol) return 'map-autopay';
   return '';
 }

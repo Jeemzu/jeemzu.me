@@ -53,3 +53,20 @@ describe('budgetReducer persistence actions', () => {
     expect(afterSave.data.bills).toHaveLength(2);
   });
 });
+
+describe('budgetReducer settings actions', () => {
+  it('sets and clears the projection start date', () => {
+    const set = budgetReducer(initialState, { type: 'set-projection-start', iso: '2027-01-15' });
+    expect(set.data.projectionStartISO).toBe('2027-01-15');
+    expect(set.dirty).toBe(true);
+
+    const cleared = budgetReducer(set, { type: 'set-projection-start', iso: null });
+    expect(cleared.data.projectionStartISO).toBeNull();
+  });
+
+  it('saves the debt strategy with the budget', () => {
+    const state = budgetReducer(initialState, { type: 'set-debt-strategy', strategy: 'minimum' });
+    expect(state.data.debtStrategy).toBe('minimum');
+    expect(state.dirty).toBe(true);
+  });
+});

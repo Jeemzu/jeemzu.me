@@ -53,6 +53,14 @@ export function parseISODate(iso: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/** The date projections start from: the saved custom date, else today at local midnight. */
+export function resolveProjectionStart(projectionStartISO: string | null): Date {
+  const custom = parseISODate(projectionStartISO);
+  if (custom) return custom;
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 /** Whole days from `from` to `to`, immune to DST shifts. */
 function daysBetween(from: Date, to: Date): number {
   const a = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());

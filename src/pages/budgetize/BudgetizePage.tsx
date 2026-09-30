@@ -13,7 +13,8 @@ import type { DebtPaymentStrategy, MonthRef } from "./types";
 import { emptyBudget, monthlyRecurrence } from "./types";
 import { budgetReducer, initialState } from "./state/budget";
 import { computeMonthSummary } from "./lib/schedule";
-import { addMonths, monthLabel } from "./lib/paydays";
+import { addMonths, monthLabel, toISODate } from "./lib/paydays";
+import { resolveProjectionStart } from "./lib/recurrence";
 import { computeProjection } from "./lib/projection";
 import { computeAutopayPlan } from "./lib/autopay";
 import { computeFundingWarnings } from "./lib/warnings";
@@ -88,7 +89,6 @@ function BudgetWorkspace() {
   const [importOpen, setImportOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [tab, setTab] = useState<ViewTab>("month");
-  const [strategy, setStrategy] = useState<DebtPaymentStrategy>("suggested");
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   // Raw server payload that failed validation; enables backup + reset on the error screen.
@@ -100,6 +100,23 @@ function BudgetWorkspace() {
   const [loginOpen, setLoginOpen] = useState(false);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
+  const strategy = state.data.debtStrategy;
+  const setStrategy = (next: DebtPaymentStrategy) =>
+    dispatch({ type: "set-debt-strategy", strategy: next });
+  const customStartISO = state.data.projectionStartISO;
+  const start = useMemo(
+    () => resolveProjectionStart(customStartISO),
+    [customStartISO],
+  );
+  const startMonth = useMemo<MonthRef>(
+    () => ({ year: start.getFullYear(), month: start.getMonth() }),
+    [start],
+  );
+
+  useEffect(() => {
+    setMonthRef(startMonth);
+  }, [startMonth]);
+
   const summary = useMemo(
     () =>
       computeMonthSummary(state.data, monthRef.year, monthRef.month, strategy),
@@ -107,11 +124,10 @@ function BudgetWorkspace() {
   );
 
   const fundingWarnings = useMemo(() => {
-    const now = new Date();
-    const projection = computeProjection(state.data, now, 8, strategy);
-    const plan = computeAutopayPlan(state.data, now, 12, strategy);
+    const projection = computeProjection(state.data, start, 8, strategy);
+    const plan = computeAutopayPlan(state.data, start, 12, strategy);
     return computeFundingWarnings(state.data, projection, plan, strategy);
-  }, [state.data, strategy]);
+  }, [state.data, start, strategy]);
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -589,6 +605,33 @@ function BudgetWorkspace() {
                 </button>
               </div>
             </div>
+            <div className="strategy-toggle">
+              <label htmlFor="projection-start">Plan from</label>
+              <input
+                id="projection-start"
+                type="date"
+                className="text-input"
+                value={toISODate(start)}
+                title="Starting balances are as of this date; paychecks, bills, and projections run from here"
+                onChange={(e) =>
+                  dispatch({
+                    type: "set-projection-start",
+                    iso: e.target.value || null,
+                  })
+                }
+              />
+              {customStartISO !== null && (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() =>
+                    dispatch({ type: "set-projection-start", iso: null })
+                  }
+                >
+                  Use today
+                </button>
+              )}
+            </div>
           </div>
 
           {tab === "month" && (
@@ -615,9 +658,9 @@ function BudgetWorkspace() {
                   <button
                     type="button"
                     className="btn ghost"
-                    onClick={() => setMonthRef(currentMonth())}
+                    onClick={() => setMonthRef(startMonth)}
                   >
-                    Today
+                    {customStartISO !== null ? "Start" : "Today"}
                   </button>
                 </div>
                 <SummaryCards monthRef={monthRef} summary={summary} />
@@ -658,6 +701,7 @@ function BudgetWorkspace() {
                 <h3>8-week balance projection</h3>
                 <ProjectionView
                   data={state.data}
+                  start={start}
                   strategy={strategy}
                   onUpdatePerson={(id, patch) =>
                     dispatch({ type: "update-person", id, patch })
@@ -672,7 +716,11 @@ function BudgetWorkspace() {
               </section>
               <section className="card">
                 <h3>Auto-pay account plan</h3>
-                <AutopayCard data={state.data} strategy={strategy} />
+                <AutopayCard
+                  data={state.data}
+                  start={start}
+                  strategy={strategy}
+                />
               </section>
             </div>
           )}
@@ -682,6 +730,7 @@ function BudgetWorkspace() {
               <h3>Budget assistant</h3>
               <BudgetAssistant
                 data={state.data}
+                start={start}
                 strategy={strategy}
                 onApplyProposal={(ops) =>
                   dispatch({ type: "apply-proposal", ops })

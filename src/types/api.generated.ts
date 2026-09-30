@@ -1466,6 +1466,8 @@ export interface components {
             essentialsBalanceCents?: number;
             /** Format: int32 */
             autopayBalanceCents?: number;
+            projectionStartISO?: string | null;
+            debtStrategy?: string | null;
         };
         BudgetDebtDto: {
             id: string;

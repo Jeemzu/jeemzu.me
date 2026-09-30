@@ -8,10 +8,12 @@ import type {
 } from '../../../utils/budgetAgentApi';
 import { budgetChat, reportCapabilityGap } from '../../../utils/budgetAgentApi';
 import { computeProjection } from '../lib/projection';
+import { toISODate } from '../lib/paydays';
 import { ProposalPreview } from './ProposalPreview';
 
 interface Props {
   data: BudgetData;
+  start: Date;
   strategy: DebtPaymentStrategy;
   onApplyProposal: (ops: BudgetOp[]) => void;
 }
@@ -30,7 +32,7 @@ interface Turn {
   gap?: CapabilityGap | null;
 }
 
-export function BudgetAssistant({ data, strategy, onApplyProposal }: Props) {
+export function BudgetAssistant({ data, start, strategy, onApplyProposal }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,8 +40,8 @@ export function BudgetAssistant({ data, strategy, onApplyProposal }: Props) {
 
   // Recomputed from the live working copy, so unsaved edits go to the assistant too.
   const projection = useMemo(
-    () => computeProjection(data, new Date(), 8, strategy),
-    [data, strategy],
+    () => computeProjection(data, start, 8, strategy),
+    [data, start, strategy],
   );
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function BudgetAssistant({ data, strategy, onApplyProposal }: Props) {
     setTurns([...turns, { role: 'user', content: question }]);
     setLoading(true);
 
-    const result = await budgetChat(question, history, data, projection, strategy);
+    const result = await budgetChat(question, history, data, projection, strategy, toISODate(start));
     setLoading(false);
 
     if (result.status !== 'ok') {
@@ -127,6 +129,7 @@ export function BudgetAssistant({ data, strategy, onApplyProposal }: Props) {
             {turn.proposal && turn.proposal.ops.length > 0 && (
               <ProposalPreview
                 data={data}
+                start={start}
                 strategy={strategy}
                 proposal={turn.proposal}
                 onApply={(ops) => applyAndClear(i, ops)}

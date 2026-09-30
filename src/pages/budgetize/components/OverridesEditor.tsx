@@ -4,6 +4,8 @@ import type {
   ScheduleOverride,
 } from '../types';
 import { MoneyInput } from './inputs';
+import { DataTable } from './DataTable';
+import type { BudgetColumn } from './tableFeatures';
 import { formatMoney } from '../lib/money';
 
 interface Props {
@@ -53,6 +55,137 @@ export function OverridesEditor({ overrides, bills, debts, onAdd, onUpdate, onRe
   const nameFor = (o: ScheduleOverride) =>
     targets.find((t) => t.kind === o.targetKind && t.id === o.targetId)?.name ?? 'unknown';
 
+  const columns: BudgetColumn<ScheduleOverride>[] = [
+    {
+      id: 'target',
+      header: 'Applies to',
+      size: 220,
+      accessorFn: (o) => nameFor(o),
+      cell: ({ row: { original: o } }) => (
+        <select
+          className="select-input"
+          value={`${o.targetKind}:${o.targetId}`}
+          aria-label="Bill or debt this override applies to"
+          onChange={(e) => {
+            const [targetKind, targetId] = e.target.value.split(':');
+            onUpdate(o.id, {
+              targetKind: targetKind as 'bill' | 'debt',
+              targetId,
+            });
+          }}
+        >
+          {targets.map((t) => (
+            <option key={`${t.kind}:${t.id}`} value={`${t.kind}:${t.id}`}>
+              {t.name} ({formatMoney(t.amountCents)})
+            </option>
+          ))}
+        </select>
+      ),
+      enableHiding: false,
+    },
+    {
+      id: 'from',
+      header: 'From',
+      size: 150,
+      accessorFn: (o) => o.fromISO,
+      cell: ({ row: { original: o } }) => (
+        <input
+          type="date"
+          className="text-input"
+          value={o.fromISO}
+          aria-label={`First date the ${nameFor(o)} override applies`}
+          onChange={(e) => onUpdate(o.id, { fromISO: e.target.value })}
+        />
+      ),
+    },
+    {
+      id: 'to',
+      header: 'Through',
+      size: 150,
+      accessorFn: (o) => o.toISO,
+      cell: ({ row: { original: o } }) => (
+        <input
+          type="date"
+          className="text-input"
+          value={o.toISO}
+          min={o.fromISO}
+          aria-label={`Last date the ${nameFor(o)} override applies`}
+          onChange={(e) => onUpdate(o.id, { toISO: e.target.value })}
+        />
+      ),
+    },
+    {
+      id: 'mode',
+      header: 'Change',
+      size: 200,
+      accessorFn: (o) => o.mode,
+      cell: ({ row: { original: o } }) => (
+        <select
+          className="select-input"
+          value={o.mode}
+          aria-label={`How the ${nameFor(o)} override changes the charge`}
+          onChange={(e) => {
+            const mode = e.target.value as 'skip' | 'amount';
+            onUpdate(o.id, { mode, amountCents: mode === 'amount' ? o.amountCents ?? 0 : null });
+          }}
+        >
+          <option value="skip">Skip it</option>
+          <option value="amount">Charge a different amount</option>
+        </select>
+      ),
+    },
+    {
+      id: 'amount',
+      header: 'Amount',
+      size: 150,
+      accessorFn: (o) => o.amountCents ?? -1,
+      cell: ({ row: { original: o } }) =>
+        o.mode === 'amount' ? (
+          <MoneyInput
+            cents={o.amountCents ?? 0}
+            ariaLabel={`Replacement amount for ${nameFor(o)}`}
+            onCommit={(amountCents) => onUpdate(o.id, { amountCents })}
+          />
+        ) : (
+          <span className="muted">—</span>
+        ),
+    },
+    {
+      id: 'note',
+      header: 'Why',
+      size: 200,
+      accessorFn: (o) => o.note,
+      cell: ({ row: { original: o } }) => (
+        <input
+          className="text-input"
+          value={o.note}
+          placeholder="Optional note"
+          aria-label={`Note for the ${nameFor(o)} override`}
+          onChange={(e) => onUpdate(o.id, { note: e.target.value })}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      size: 48,
+      meta: { headerAriaLabel: 'Actions' },
+      enableSorting: false,
+      enableResizing: false,
+      enableHiding: false,
+      cell: ({ row: { original: o } }) => (
+        <button
+          type="button"
+          className="btn danger ghost"
+          title={`Remove the ${nameFor(o)} override`}
+          onClick={() => onRemove(o.id)}
+        >
+          ✕
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="overrides-editor">
       {targets.length === 0 ? (
@@ -63,110 +196,12 @@ export function OverridesEditor({ overrides, bills, debts, onAdd, onUpdate, onRe
           a while — the bill itself stays untouched and picks back up on its own.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="bills-table">
-            <thead>
-              <tr>
-                <th>Applies to</th>
-                <th>From</th>
-                <th>Through</th>
-                <th>Change</th>
-                <th>Amount</th>
-                <th>Why</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {overrides.map((o) => (
-                <tr key={o.id}>
-                  <td>
-                    <select
-                      className="select-input"
-                      value={`${o.targetKind}:${o.targetId}`}
-                      aria-label="Bill or debt this override applies to"
-                      onChange={(e) => {
-                        const [targetKind, targetId] = e.target.value.split(':');
-                        onUpdate(o.id, {
-                          targetKind: targetKind as 'bill' | 'debt',
-                          targetId,
-                        });
-                      }}
-                    >
-                      {targets.map((t) => (
-                        <option key={`${t.kind}:${t.id}`} value={`${t.kind}:${t.id}`}>
-                          {t.name} ({formatMoney(t.amountCents)})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      className="text-input"
-                      value={o.fromISO}
-                      aria-label={`First date the ${nameFor(o)} override applies`}
-                      onChange={(e) => onUpdate(o.id, { fromISO: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      className="text-input"
-                      value={o.toISO}
-                      min={o.fromISO}
-                      aria-label={`Last date the ${nameFor(o)} override applies`}
-                      onChange={(e) => onUpdate(o.id, { toISO: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="select-input"
-                      value={o.mode}
-                      aria-label={`How the ${nameFor(o)} override changes the charge`}
-                      onChange={(e) => {
-                        const mode = e.target.value as 'skip' | 'amount';
-                        onUpdate(o.id, { mode, amountCents: mode === 'amount' ? o.amountCents ?? 0 : null });
-                      }}
-                    >
-                      <option value="skip">Skip it</option>
-                      <option value="amount">Charge a different amount</option>
-                    </select>
-                  </td>
-                  <td>
-                    {o.mode === 'amount' ? (
-                      <MoneyInput
-                        cents={o.amountCents ?? 0}
-                        ariaLabel={`Replacement amount for ${nameFor(o)}`}
-                        onCommit={(amountCents) => onUpdate(o.id, { amountCents })}
-                      />
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td>
-                    <input
-                      className="text-input"
-                      value={o.note}
-                      placeholder="Optional note"
-                      aria-label={`Note for the ${nameFor(o)} override`}
-                      onChange={(e) => onUpdate(o.id, { note: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn danger ghost"
-                      title={`Remove the ${nameFor(o)} override`}
-                      onClick={() => onRemove(o.id)}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          tableId="overrides"
+          data={overrides}
+          columns={columns}
+          getRowId={(o) => o.id}
+        />
       )}
 
       {overrides.length > 1 && (
