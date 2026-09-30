@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { functionalUpdate, useTable, type RowData } from '@tanstack/react-table';
+import { useState, type ReactNode } from 'react';
+import { functionalUpdate, useTable, type ExpandedState, type RowData } from '@tanstack/react-table';
 import { useTablePrefs } from './useTablePrefs';
 import { budgetTableFeatures, type BudgetColumn } from './tableFeatures';
 
@@ -14,6 +14,8 @@ interface Props<T extends RowData> {
   enableSorting?: boolean;
   /** Return 0 to skip a cell covered by a rowSpan above it. */
   getCellRowSpan?: (columnId: string, row: T, rowIndex: number) => number;
+  /** Nested rows shown when their parent is expanded; adds Expand/Collapse all to the toolbar. */
+  getSubRows?: (row: T) => T[] | undefined;
 }
 
 // Called as a plain function, not via flexRender, so inputs in cells aren't remounted (and blurred) on each render.
@@ -30,23 +32,30 @@ export function DataTable<T extends RowData>({
   rowClassName,
   enableSorting = true,
   getCellRowSpan,
+  getSubRows,
 }: Props<T>) {
   const { prefs, setPrefs, reset } = useTablePrefs(tableId);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useTable({
     features: budgetTableFeatures,
     data,
     columns,
     getRowId: (row) => getRowId(row),
+    getSubRows,
     state: {
       columnSizing: prefs.sizing,
       columnVisibility: prefs.visibility,
       sorting: enableSorting ? prefs.sorting : [],
+      expanded,
     },
     onColumnSizingChange: (u) => setPrefs((p) => ({ ...p, sizing: functionalUpdate(u, p.sizing) })),
     onColumnVisibilityChange: (u) =>
       setPrefs((p) => ({ ...p, visibility: functionalUpdate(u, p.visibility) })),
     onSortingChange: (u) => setPrefs((p) => ({ ...p, sorting: functionalUpdate(u, p.sorting) })),
+    onExpandedChange: setExpanded,
+    // Editing balances above the table changes `data`; keep open rows open.
+    autoResetExpanded: false,
     enableSorting,
     columnResizeMode: 'onChange',
     defaultColumn: { minSize: 40, size: 140 },
@@ -61,6 +70,15 @@ export function DataTable<T extends RowData>({
   return (
     <div className="data-table">
       <div className="data-table-toolbar">
+        {getSubRows && (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => table.toggleAllRowsExpanded(!table.getIsAllRowsExpanded())}
+          >
+            {table.getIsAllRowsExpanded() ? 'Collapse all' : 'Expand all'}
+          </button>
+        )}
         <details className="data-table-columns">
           <summary className="btn ghost">Columns</summary>
           <div className="data-table-columns-menu">

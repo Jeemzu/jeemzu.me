@@ -37,6 +37,7 @@ import { OneOffsEditor } from "./components/OneOffsEditor";
 import { ProjectionView } from "./components/ProjectionView";
 import { AccountPlanCard } from "./components/AccountPlanCard";
 import { PersonalSplitCard } from "./components/PersonalSplitCard";
+import { InfoTip } from "./components/InfoTip";
 import { FundingWarnings } from "./components/FundingWarnings";
 import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useProjectionRange } from "./components/useProjectionRange";
@@ -783,7 +784,21 @@ function BudgetWorkspace() {
           {tab === "projections" && (
             <>
               <section className="card">
-                <h3>{rangeLabel} balance projection</h3>
+                <h3>
+                  {rangeLabel} balance projection
+                  <InfoTip>
+                    Balances at the end of each week; click a week to see each
+                    day. Weeks start on payday Wednesdays, and the first row
+                    covers the start date (today unless “Plan from” is set)
+                    through the day before the next payday. Each paycheck is
+                    carved into auto-pay funding, shared essentials, and a
+                    personal remainder; every bill and debt drafts from the
+                    account it&apos;s flagged “Paid from”. Highlighted rows
+                    include a payday in a month with no pay schedule, so its
+                    deposits are unknown rather than zero. Hover a “Payments due” cell for
+                    the item list.
+                  </InfoTip>
+                </h3>
                 <ProjectionView
                   data={state.data}
                   start={start}
@@ -818,11 +833,19 @@ function BudgetWorkspace() {
                 />
               </section>
               <section className="card">
-                <h3>Personal paycheck split</h3>
+                <h3>
+                  Personal paycheck split
+                  <InfoTip>
+                    What each paycheck deposits into each account using{" "}
+                    {depositMode === "flat" ? "flat" : "monthly minimum"}{" "}
+                    auto-pay and essentials deposits. Personal is whatever is
+                    left after those two.
+                  </InfoTip>
+                </h3>
                 <PersonalSplitCard
                   data={state.data}
-                  plan={fundingPlan}
-                  strategy={strategy}
+                  months={fundingPlan.months}
+                  allocationFor={allocationFor}
                 />
               </section>
             </>
@@ -848,7 +871,16 @@ function BudgetWorkspace() {
             <>
               <div className="columns editors">
                 <section className="card">
-                  <h3>Income &amp; people</h3>
+                  <h3>
+                    Income &amp; people
+                    <InfoTip>
+                      Paychecks land every Wednesday, and the count comes from
+                      the calendar. Each paycheck is carved into auto-pay
+                      funding, shared essentials, and whatever is left as
+                      personal spending. Months with no row stay blank in the
+                      projection.
+                    </InfoTip>
+                  </h3>
                   <PeopleEditor
                     data={state.data}
                     allocationFor={allocationFor}
@@ -926,12 +958,14 @@ function BudgetWorkspace() {
               </section>
 
               <section className="card">
-                <h3>Temporary changes</h3>
-                <p className="muted">
-                  Pause or re-price a bill or debt for a stretch of time. The
-                  item itself stays as it is and resumes on its own once the
-                  range ends.
-                </p>
+                <h3>
+                  Temporary changes
+                  <InfoTip>
+                    Pause or re-price a bill or debt for a stretch of time.
+                    The item itself stays as it is and resumes on its own once
+                    the range ends.
+                  </InfoTip>
+                </h3>
                 <OverridesEditor
                   overrides={state.data.overrides}
                   bills={state.data.bills}

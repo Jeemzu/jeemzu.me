@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { BudgetData, DebtPaymentStrategy, PersonIncome } from '../types';
 import type { DepositMode } from '../lib/funding';
-import { computeProjection, type ProjectionWeek } from '../lib/projection';
+import { computeProjection, type ProjectionDay, type ProjectionOutflow, type ProjectionWeek } from '../lib/projection';
 import { formatMoney } from '../lib/money';
 import { MoneyInput } from './inputs';
 import { DataTable } from './DataTable';
@@ -18,9 +18,23 @@ interface Props {
   onSetAutopayBalance: (cents: number) => void;
 }
 
-function fmtISO(iso: string): string {
+type DayRow = ProjectionDay & { kind: 'day' };
+type WeekRow = ProjectionWeek & { kind: 'week'; subRows: DayRow[] };
+type Row = WeekRow | DayRow;
+
+function parseISO(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(y, m - 1, d));
+  return new Date(y, m - 1, d);
+}
+
+function fmtISO(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(parseISO(iso));
+}
+
+function fmtDay(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(
+    parseISO(iso),
+  );
 }
 
 function balanceClass(cents: number): string {
@@ -31,8 +45,8 @@ function balanceCell(cents: number) {
   return <span className={balanceClass(cents)}>{formatMoney(cents)}</span>;
 }
 
-function outflowTotal(week: ProjectionWeek): number {
-  return week.outflows.reduce((sum, o) => sum + o.amountCents, 0);
+function outflowTotal(outflows: ProjectionOutflow[]): number {
+  return outflows.reduce((sum, o) => sum + o.amountCents, 0);
 }
 
 export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
@@ -41,61 +55,66 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdat
     [data, start, weekCount, strategy, mode],
   );
   const startLabel = data.projectionStartISO ? `as of ${fmtISO(data.projectionStartISO)}` : 'today';
+  const rows = useMemo<WeekRow[]>(
+    () =>
+      projection.weeks.map((week) => ({
+        ...week,
+        kind: 'week',
+        subRows: week.days.map((day): DayRow => ({ ...day, kind: 'day' })),
+      })),
+    [projection],
+  );
 
-  const columns: BudgetColumn<ProjectionWeek>[] = [
+  const columns: BudgetColumn<Row>[] = [
     {
       id: 'week',
       header: 'Week',
-      size: 150,
-      accessorFn: (week) => week.startISO,
-      cell: ({ row: { original: week } }) => `${fmtISO(week.startISO)} – ${fmtISO(week.endISO)}`,
+      size: 170,
+      cell: ({ row }) => {
+        const r = row.original;
+        if (r.kind === 'day') return fmtDay(r.dateISO);
+        const expanded = row.getIsExpanded();
+        return (
+          <button
+            type="button"
+            className="row-toggle"
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Hide' : 'Show'} daily balances for ${fmtISO(r.startISO)} – ${fmtISO(r.endISO)}`}
+            onClick={row.getToggleExpandedHandler()}
+          >
+            <span aria-hidden="true" className="row-toggle-icon">▶</span>
+            {`${fmtISO(r.startISO)} – ${fmtISO(r.endISO)}`}
+          </button>
+        );
+      },
       enableHiding: false,
     },
-    {
-      id: 'paydays',
-      header: '💰',
-      size: 60,
-      meta: { headerTitle: 'Wednesday paydays in this week' },
-      accessorFn: (week) => week.paydayCount,
-      cell: ({ row: { original: week } }) =>
-        week.paydayCount === 0 ? (
-          ''
-        ) : week.incomeKnown ? (
-          '💰'
-        ) : (
-          <span title="No pay schedule for this month, so no deposits are counted.">❓</span>
-        ),
-    },
     ...projection.people.map(
-      (person, i): BudgetColumn<ProjectionWeek> => ({
+      (person, i): BudgetColumn<Row> => ({
         id: `person:${person.id}`,
         header: person.name,
         size: 120,
-        accessorFn: (week) => week.personal[i].endBalanceCents,
-        cell: ({ row: { original: week } }) => balanceCell(week.personal[i].endBalanceCents),
+        cell: ({ row: { original: r } }) => balanceCell(r.personal[i].endBalanceCents),
       }),
     ),
     {
       id: 'essentials',
       header: 'Essentials',
       size: 120,
-      accessorFn: (week) => week.essentials.endBalanceCents,
-      cell: ({ row: { original: week } }) => balanceCell(week.essentials.endBalanceCents),
+      cell: ({ row: { original: r } }) => balanceCell(r.essentials.endBalanceCents),
     },
     {
       id: 'autopay',
       header: 'Auto-pay',
       size: 120,
-      accessorFn: (week) => week.autopay.endBalanceCents,
-      cell: ({ row: { original: week } }) => balanceCell(week.autopay.endBalanceCents),
+      cell: ({ row: { original: r } }) => balanceCell(r.autopay.endBalanceCents),
     },
     {
       id: 'due',
       header: 'Payments due',
       size: 160,
-      accessorFn: outflowTotal,
-      cell: ({ row: { original: week } }) => {
-        const tooltip = week.outflows
+      cell: ({ row: { original: r } }) => {
+        const tooltip = r.outflows
           .map(
             (o) =>
               `${fmtISO(o.dateISO)} · ${o.name} — ${formatMoney(o.amountCents)} (${o.source === 'autopay' ? 'auto-pay' : 'shared'})`,
@@ -103,8 +122,8 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdat
           .join('\n');
         return (
           <span title={tooltip || 'Nothing due'}>
-            {week.outflows.length > 0
-              ? `${week.outflows.length} · ${formatMoney(outflowTotal(week))}`
+            {r.outflows.length > 0
+              ? `${r.outflows.length} · ${formatMoney(outflowTotal(r.outflows))}`
               : '—'}
           </span>
         );
@@ -152,21 +171,20 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdat
         </label>
       </div>
 
-      <DataTable
+      <DataTable<Row>
         tableId="projection"
         className="projection-table"
-        data={projection.weeks}
+        data={rows}
         columns={columns}
-        getRowId={(week) => week.startISO}
-        rowClassName={(week) => (week.incomeKnown ? undefined : 'income-unknown')}
+        getRowId={(r) => (r.kind === 'week' ? r.startISO : `day:${r.dateISO}`)}
+        getSubRows={(r) => (r.kind === 'week' ? r.subRows : undefined)}
+        rowClassName={(r) =>
+          [r.kind === 'day' && 'projection-day', !r.incomeKnown && 'income-unknown']
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+        enableSorting={false}
       />
-      <p className="muted">
-        Balances at the end of each week. Weeks start on payday Wednesdays; the first row covers
-        the start date (today unless “Plan from” is set) through the day before the next payday. Each paycheck is carved into auto-pay
-        funding, shared essentials, and a personal remainder; every bill and debt drafts from the
-        account it's flagged “Paid from”. A ❓ marks a payday in a month with no pay schedule, so
-        its deposits are unknown rather than zero. Hover a “Payments due” cell for the item list.
-      </p>
     </div>
   );
 }

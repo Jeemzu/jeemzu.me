@@ -303,11 +303,6 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
         </>
       )}
 
-      <p className="muted">
-        Paychecks land every Wednesday, and the count comes from the calendar. Each paycheck is
-        carved into auto-pay funding, shared essentials, and whatever is left as personal spending.
-        Months with no row stay blank in the projection.
-      </p>
       <button type="button" className="btn" onClick={onAdd}>
         + Add person
       </button>
