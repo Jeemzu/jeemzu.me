@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeProjection, toISODate } from './projection';
+import { computeProjection, toISODate, weeksForRange, type ProjectionRange } from './projection';
 import type { BudgetData } from '../types';
 import { emptyBudget } from '../types';
 import { bill, debt, paidPerson, person } from '../testFixtures';
@@ -84,6 +84,33 @@ describe('computeProjection', () => {
   it('produces the requested number of weeks (8 by default)', () => {
     expect(computeProjection(data, start).weeks).toHaveLength(8);
     expect(computeProjection(data, start, 4).weeks).toHaveLength(4);
+  });
+});
+
+describe('weeksForRange', () => {
+  const endsFor = (start: Date, range: ProjectionRange) =>
+    computeProjection(data, start, weeksForRange(range, start)).weeks.map((w) => w.endISO);
+
+  it('returns 8 for the default range', () => {
+    expect(weeksForRange('8w', new Date(2026, 8, 30))).toBe(8);
+  });
+
+  it('covers exactly through the date N months after the start', () => {
+    const ends = endsFor(new Date(2026, 8, 30), '6m');
+    expect(ends[ends.length - 1] >= '2027-03-30').toBe(true);
+    expect(ends[ends.length - 2] < '2027-03-30').toBe(true);
+  });
+
+  it('grows past 8 weeks for month ranges', () => {
+    const start = new Date(2026, 8, 25);
+    expect(weeksForRange('3m', start)).toBeGreaterThan(8);
+    expect(weeksForRange('6m', start)).toBeGreaterThan(weeksForRange('5m', start));
+  });
+
+  it('clamps to the end of a shorter target month', () => {
+    const ends = endsFor(new Date(2026, 7, 31), '6m');
+    expect(ends[ends.length - 1] >= '2027-02-28').toBe(true);
+    expect(ends[ends.length - 2] < '2027-02-28').toBe(true);
   });
 });
 

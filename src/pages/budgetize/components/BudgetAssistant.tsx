@@ -14,6 +14,7 @@ import { ProposalPreview } from './ProposalPreview';
 interface Props {
   data: BudgetData;
   start: Date;
+  weekCount: number;
   strategy: DebtPaymentStrategy;
   onApplyProposal: (ops: BudgetOp[]) => void;
 }
@@ -32,7 +33,7 @@ interface Turn {
   gap?: CapabilityGap | null;
 }
 
-export function BudgetAssistant({ data, start, strategy, onApplyProposal }: Props) {
+export function BudgetAssistant({ data, start, weekCount, strategy, onApplyProposal }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,8 +41,8 @@ export function BudgetAssistant({ data, start, strategy, onApplyProposal }: Prop
 
   // Recomputed from the live working copy, so unsaved edits go to the assistant too.
   const projection = useMemo(
-    () => computeProjection(data, start, 8, strategy),
-    [data, start, strategy],
+    () => computeProjection(data, start, weekCount, strategy),
+    [data, start, weekCount, strategy],
   );
 
   useEffect(() => {
@@ -130,6 +131,7 @@ export function BudgetAssistant({ data, start, strategy, onApplyProposal }: Prop
               <ProposalPreview
                 data={data}
                 start={start}
+                weekCount={weekCount}
                 strategy={strategy}
                 proposal={turn.proposal}
                 onApply={(ops) => applyAndClear(i, ops)}

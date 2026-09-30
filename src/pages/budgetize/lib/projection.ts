@@ -51,6 +51,44 @@ function addDays(d: Date, days: number): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
 }
 
+function daysUntilNextPayday(d: Date): number {
+  return ((PAYDAY_WEEKDAY - d.getDay() + 7) % 7) || 7;
+}
+
+export type ProjectionRange = '8w' | '3m' | '4m' | '5m' | '6m';
+
+export const PROJECTION_RANGES: { value: ProjectionRange; label: string }[] = [
+  { value: '8w', label: '8 weeks' },
+  { value: '3m', label: '3 months' },
+  { value: '4m', label: '4 months' },
+  { value: '5m', label: '5 months' },
+  { value: '6m', label: '6 months' },
+];
+
+export const DEFAULT_PROJECTION_RANGE: ProjectionRange = '8w';
+
+const MIN_WEEKS = 8;
+const RANGE_MONTHS: Record<ProjectionRange, number> = { '8w': 0, '3m': 3, '4m': 4, '5m': 5, '6m': 6 };
+
+/** Fewest projection weeks whose last week reaches `start` plus the range's months (never under 8). */
+export function weeksForRange(range: ProjectionRange, start: Date): number {
+  const months = RANGE_MONTHS[range];
+  if (months === 0) return MIN_WEEKS;
+  const startDate = dateOnly(start);
+  const targetMonthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + months + 1, 0);
+  const target = new Date(
+    targetMonthEnd.getFullYear(),
+    targetMonthEnd.getMonth(),
+    Math.min(startDate.getDate(), targetMonthEnd.getDate()),
+  );
+  const firstWeekEnd = addDays(startDate, daysUntilNextPayday(startDate) - 1);
+  const dayMs = 24 * 60 * 60 * 1000;
+  // Rounded because DST shifts make local-midnight differences off by an hour.
+  const daysLeft = Math.round((target.getTime() - firstWeekEnd.getTime()) / dayMs);
+  const weeks = daysLeft <= 0 ? 1 : 1 + Math.ceil(daysLeft / 7);
+  return Math.max(MIN_WEEKS, weeks);
+}
+
 /**
  * Weekly balance forecast anchored on Wednesday paydays. Week 1 runs from `start`
  * to the day before the next Wednesday, so money already reflected in current
@@ -67,7 +105,7 @@ export function computeProjection(
   strategy: DebtPaymentStrategy = 'suggested',
 ): Projection {
   const startDate = dateOnly(start);
-  const daysUntilNextWednesday = ((PAYDAY_WEEKDAY - startDate.getDay() + 7) % 7) || 7;
+  const daysUntilNextWednesday = daysUntilNextPayday(startDate);
 
   const balances = data.people.map((p) => p.personalBalanceCents);
   let essentialsBalance = data.essentialsBalanceCents;

@@ -8,13 +8,12 @@ import { formatMoney } from '../lib/money';
 interface Props {
   data: BudgetData;
   start: Date;
+  weekCount: number;
   strategy: DebtPaymentStrategy;
   proposal: BudgetProposal;
   onApply: (ops: BudgetOp[]) => void;
   onDiscard: () => void;
 }
-
-const WEEKS = 8;
 
 function fmtISO(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -64,11 +63,11 @@ function describeOp(op: BudgetOp, data: BudgetData): string {
   }
 }
 
-export function ProposalPreview({ data, start, strategy, proposal, onApply, onDiscard }: Props) {
+export function ProposalPreview({ data, start, weekCount, strategy, proposal, onApply, onDiscard }: Props) {
   // Runs the exact code the Apply button will, so the forecast shown is the one you get.
   const { rows, anyChange } = useMemo(() => {
-    const before = computeProjection(data, start, WEEKS, strategy);
-    const after = computeProjection(applyProposal(data, proposal.ops), start, WEEKS, strategy);
+    const before = computeProjection(data, start, weekCount, strategy);
+    const after = computeProjection(applyProposal(data, proposal.ops), start, weekCount, strategy);
 
     const built = before.weeks.map((week, i) => {
       const nextWeek = after.weeks[i];
@@ -94,7 +93,7 @@ export function ProposalPreview({ data, start, strategy, proposal, onApply, onDi
         (r) => r.essentials !== 0 || r.autopay !== 0 || r.personal.some((v) => v !== 0),
       ),
     };
-  }, [data, start, strategy, proposal.ops]);
+  }, [data, start, weekCount, strategy, proposal.ops]);
 
   const people = data.people;
 

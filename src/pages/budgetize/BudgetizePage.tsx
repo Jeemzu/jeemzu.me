@@ -15,7 +15,12 @@ import { budgetReducer, initialState } from "./state/budget";
 import { computeMonthSummary } from "./lib/schedule";
 import { addMonths, monthLabel, toISODate } from "./lib/paydays";
 import { resolveProjectionStart } from "./lib/recurrence";
-import { computeProjection } from "./lib/projection";
+import {
+  computeProjection,
+  PROJECTION_RANGES,
+  weeksForRange,
+  type ProjectionRange,
+} from "./lib/projection";
 import { computeAutopayPlan } from "./lib/autopay";
 import { computeFundingWarnings } from "./lib/warnings";
 import { parseBackup, parseBudgetData, serializeBackup } from "./lib/backup";
@@ -33,6 +38,7 @@ import { ProjectionView } from "./components/ProjectionView";
 import { AutopayCard } from "./components/AutopayCard";
 import { FundingWarnings } from "./components/FundingWarnings";
 import { BudgetAssistant } from "./components/BudgetAssistant";
+import { useProjectionRange } from "./components/useProjectionRange";
 import { useAuthStore } from "../../stores/authStore";
 import { deleteBudget, loadBudget, saveBudget } from "../../utils/budgetApi";
 import UserAuthModal from "../../components/shared/UserAuthModal";
@@ -112,6 +118,14 @@ function BudgetWorkspace() {
     () => ({ year: start.getFullYear(), month: start.getMonth() }),
     [start],
   );
+  const [projectionRange, setProjectionRange] = useProjectionRange();
+  const weekCount = useMemo(
+    () => weeksForRange(projectionRange, start),
+    [projectionRange, start],
+  );
+  const rangeLabel =
+    PROJECTION_RANGES.find((r) => r.value === projectionRange)?.label ??
+    "8 weeks";
 
   useEffect(() => {
     setMonthRef(startMonth);
@@ -124,10 +138,10 @@ function BudgetWorkspace() {
   );
 
   const fundingWarnings = useMemo(() => {
-    const projection = computeProjection(state.data, start, 8, strategy);
+    const projection = computeProjection(state.data, start, weekCount, strategy);
     const plan = computeAutopayPlan(state.data, start, 12, strategy);
     return computeFundingWarnings(state.data, projection, plan, strategy);
-  }, [state.data, start, strategy]);
+  }, [state.data, start, weekCount, strategy]);
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -632,6 +646,24 @@ function BudgetWorkspace() {
                 </button>
               )}
             </div>
+            <div className="strategy-toggle">
+              <label htmlFor="projection-range">Show</label>
+              <select
+                id="projection-range"
+                className="select-input"
+                value={projectionRange}
+                title="How far ahead the projection, warnings, and assistant look"
+                onChange={(e) =>
+                  setProjectionRange(e.target.value as ProjectionRange)
+                }
+              >
+                {PROJECTION_RANGES.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {tab === "month" && (
@@ -698,10 +730,11 @@ function BudgetWorkspace() {
           {tab === "projections" && (
             <div className="columns">
               <section className="card">
-                <h3>8-week balance projection</h3>
+                <h3>{rangeLabel} balance projection</h3>
                 <ProjectionView
                   data={state.data}
                   start={start}
+                  weekCount={weekCount}
                   strategy={strategy}
                   onUpdatePerson={(id, patch) =>
                     dispatch({ type: "update-person", id, patch })
@@ -731,6 +764,7 @@ function BudgetWorkspace() {
               <BudgetAssistant
                 data={state.data}
                 start={start}
+                weekCount={weekCount}
                 strategy={strategy}
                 onApplyProposal={(ops) =>
                   dispatch({ type: "apply-proposal", ops })
