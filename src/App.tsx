@@ -148,6 +148,23 @@ function App() {
     // Attempt a silent token refresh on load to restore any active admin session.
     void useAuthStore.getState().initialize();
   }, []);
+  useEffect(() => {
+    const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+    // Tabs left in the background can outlive the access token; renew on return.
+    function refreshIfStale() {
+      if (document.visibilityState !== "visible") return;
+      const { isAuthenticated, expiresAt, refreshSession } =
+        useAuthStore.getState();
+      if (isAuthenticated && expiresAt && expiresAt - Date.now() < REFRESH_WINDOW_MS)
+        void refreshSession();
+    }
+    document.addEventListener("visibilitychange", refreshIfStale);
+    window.addEventListener("focus", refreshIfStale);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfStale);
+      window.removeEventListener("focus", refreshIfStale);
+    };
+  }, []);
   return (
     <ErrorBoundary>
       <Box

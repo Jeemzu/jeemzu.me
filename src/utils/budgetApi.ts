@@ -9,7 +9,7 @@
  */
 
 import type { BudgetData } from "../pages/budgetize/types";
-import { useAuthStore } from "../stores/authStore";
+import { authFetch } from "./authFetch";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5050/api";
@@ -34,14 +34,9 @@ export type DeleteBudgetResult =
   | { status: "unauthorized" }
   | { status: "error" };
 
-function authHeader(): Record<string, string> {
-  const token = useAuthStore.getState().accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function loadBudget(): Promise<LoadBudgetResult> {
   try {
-    const response = await fetch(BUDGET_URL, { headers: { ...authHeader() } });
+    const response = await authFetch(BUDGET_URL);
     if (response.status === 404) return { status: "empty" };
     if (response.status === 401 || response.status === 403)
       return { status: "unauthorized" };
@@ -60,10 +55,7 @@ export async function loadBudget(): Promise<LoadBudgetResult> {
 
 export async function deleteBudget(): Promise<DeleteBudgetResult> {
   try {
-    const response = await fetch(BUDGET_URL, {
-      method: "DELETE",
-      headers: { ...authHeader() },
-    });
+    const response = await authFetch(BUDGET_URL, { method: "DELETE" });
     if (response.ok || response.status === 404) return { status: "ok" };
     if (response.status === 401 || response.status === 403)
       return { status: "unauthorized" };
@@ -79,9 +71,9 @@ export async function saveBudget(
   revision: string | null,
 ): Promise<SaveBudgetResult> {
   try {
-    const response = await fetch(BUDGET_URL, {
+    const response = await authFetch(BUDGET_URL, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", ...authHeader() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data, revision }),
     });
     if (response.status === 409) return { status: "conflict" };
