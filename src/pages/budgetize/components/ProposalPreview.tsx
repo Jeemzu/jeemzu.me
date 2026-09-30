@@ -113,7 +113,7 @@ export function ProposalPreview({ data, start, weekCount, strategy, mode, propos
         ))}
       </ul>
 
-      <h5>Effect on your {WEEKS}-week forecast</h5>
+      <h5>Effect on your {weekCount}-week forecast</h5>
       {anyChange ? (
         <table className="proposal-delta">
           <thead>
@@ -155,7 +155,7 @@ export function ProposalPreview({ data, start, weekCount, strategy, mode, propos
         </table>
       ) : (
         <p className="muted">
-          No change to the next {WEEKS} weeks — this affects dates further out.
+          No change to the next {weekCount} weeks — this affects dates further out.
         </p>
       )}
 
