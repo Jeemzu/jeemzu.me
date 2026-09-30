@@ -1,5 +1,7 @@
 import type { OneOffAccount, OneOffEvent, PersonIncome } from '../types';
 import { MoneyInput } from './inputs';
+import { DataTable } from './DataTable';
+import type { BudgetColumn } from './tableFeatures';
 
 interface Props {
   oneOffs: OneOffEvent[];
@@ -27,6 +29,124 @@ export function OneOffsEditor({ oneOffs, people, onAdd, onUpdate, onRemove }: Pr
       note: '',
     });
 
+  const columns: BudgetColumn<OneOffEvent>[] = [
+    {
+      id: 'name',
+      header: 'What',
+      size: 200,
+      accessorFn: (e) => e.name,
+      cell: ({ row: { original: e } }) => (
+        <input
+          className="text-input"
+          value={e.name}
+          aria-label={`Name for ${e.name || 'one-time entry'}`}
+          onChange={(ev) => onUpdate(e.id, { name: ev.target.value })}
+        />
+      ),
+      enableHiding: false,
+    },
+    {
+      id: 'kind',
+      header: 'Type',
+      size: 120,
+      accessorFn: (e) => e.kind,
+      cell: ({ row: { original: e } }) => (
+        <select
+          className="select-input"
+          value={e.kind}
+          aria-label={`Whether ${e.name} is money in or out`}
+          onChange={(ev) => onUpdate(e.id, { kind: ev.target.value as 'expense' | 'income' })}
+        >
+          <option value="expense">Expense</option>
+          <option value="income">Deposit</option>
+        </select>
+      ),
+    },
+    {
+      id: 'amount',
+      header: 'Amount',
+      size: 150,
+      accessorFn: (e) => e.amountCents,
+      cell: ({ row: { original: e } }) => (
+        <MoneyInput
+          cents={e.amountCents}
+          ariaLabel={`Amount for ${e.name}`}
+          onCommit={(amountCents) => onUpdate(e.id, { amountCents })}
+        />
+      ),
+    },
+    {
+      id: 'date',
+      header: 'Date',
+      size: 150,
+      accessorFn: (e) => e.dateISO,
+      cell: ({ row: { original: e } }) => (
+        <input
+          type="date"
+          className="text-input"
+          value={e.dateISO}
+          aria-label={`Date for ${e.name}`}
+          onChange={(ev) => onUpdate(e.id, { dateISO: ev.target.value })}
+        />
+      ),
+    },
+    {
+      id: 'account',
+      header: 'Account',
+      size: 180,
+      meta: { headerTitle: 'Which account the money moves through' },
+      accessorFn: (e) =>
+        e.account === 'personal'
+          ? (people.find((p) => p.id === e.personId)?.name ?? '')
+          : e.account,
+      cell: ({ row: { original: e } }) => (
+        <select
+          className="select-input"
+          value={e.account === 'personal' ? `personal:${e.personId ?? ''}` : e.account}
+          aria-label={`Account for ${e.name}`}
+          onChange={(ev) => {
+            const value = ev.target.value;
+            if (value.startsWith('personal:')) {
+              onUpdate(e.id, {
+                account: 'personal',
+                personId: value.slice('personal:'.length),
+              });
+            } else {
+              onUpdate(e.id, { account: value as OneOffAccount, personId: null });
+            }
+          }}
+        >
+          <option value="shared">Shared essentials</option>
+          <option value="autopay">Auto-pay</option>
+          {people.map((p) => (
+            <option key={p.id} value={`personal:${p.id}`}>
+              {p.name} (personal)
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      size: 48,
+      meta: { headerAriaLabel: 'Actions' },
+      enableSorting: false,
+      enableResizing: false,
+      enableHiding: false,
+      cell: ({ row: { original: e } }) => (
+        <button
+          type="button"
+          className="btn danger ghost"
+          title={`Remove ${e.name}`}
+          onClick={() => onRemove(e.id)}
+        >
+          ✕
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="oneoffs-editor">
       {oneOffs.length === 0 ? (
@@ -35,99 +155,7 @@ export function OneOffsEditor({ oneOffs, people, onAdd, onUpdate, onRemove }: Pr
           doesn&apos;t repeat — a car repair, a bonus, a tax refund.
         </p>
       ) : (
-        <div className="table-wrap">
-          <table className="bills-table">
-            <thead>
-              <tr>
-                <th>What</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th title="Which account the money moves through">Account</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {oneOffs.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <input
-                      className="text-input"
-                      value={e.name}
-                      aria-label={`Name for ${e.name || 'one-time entry'}`}
-                      onChange={(ev) => onUpdate(e.id, { name: ev.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="select-input"
-                      value={e.kind}
-                      aria-label={`Whether ${e.name} is money in or out`}
-                      onChange={(ev) =>
-                        onUpdate(e.id, { kind: ev.target.value as 'expense' | 'income' })
-                      }
-                    >
-                      <option value="expense">Expense</option>
-                      <option value="income">Deposit</option>
-                    </select>
-                  </td>
-                  <td>
-                    <MoneyInput
-                      cents={e.amountCents}
-                      ariaLabel={`Amount for ${e.name}`}
-                      onCommit={(amountCents) => onUpdate(e.id, { amountCents })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      className="text-input"
-                      value={e.dateISO}
-                      aria-label={`Date for ${e.name}`}
-                      onChange={(ev) => onUpdate(e.id, { dateISO: ev.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="select-input"
-                      value={e.account === 'personal' ? `personal:${e.personId ?? ''}` : e.account}
-                      aria-label={`Account for ${e.name}`}
-                      onChange={(ev) => {
-                        const value = ev.target.value;
-                        if (value.startsWith('personal:')) {
-                          onUpdate(e.id, {
-                            account: 'personal',
-                            personId: value.slice('personal:'.length),
-                          });
-                        } else {
-                          onUpdate(e.id, { account: value as OneOffAccount, personId: null });
-                        }
-                      }}
-                    >
-                      <option value="shared">Shared essentials</option>
-                      <option value="autopay">Auto-pay</option>
-                      {people.map((p) => (
-                        <option key={p.id} value={`personal:${p.id}`}>
-                          {p.name} (personal)
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn danger ghost"
-                      title={`Remove ${e.name}`}
-                      onClick={() => onRemove(e.id)}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable tableId="one-offs" data={oneOffs} columns={columns} getRowId={(e) => e.id} />
       )}
 
       <button type="button" className="btn" onClick={add}>

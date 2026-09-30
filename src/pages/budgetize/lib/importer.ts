@@ -38,6 +38,7 @@ export interface ColumnMapping {
   nameCol: number;
   amountCol: number;
   dueDayCol: number | null;
+  autopayCol: number | null;
 }
 
 export interface DebtColumnMapping {
@@ -126,6 +127,7 @@ const AMOUNT_EXACT = /^(monthly\s+)?(payment|amount|bill|cost)s?$/i;
 const NAME_MATCH = /name|bill|payee|description|account/i;
 const NAME_EXCLUDE = /rate|date|amount|payment|balance|category/i;
 const DUE_MATCH = /due/i;
+const AUTOPAY_MATCH = /auto[\s-]?pay/i;
 const BALANCE_MATCH = /balance/i;
 const MIN_PAYMENT_MATCH = /min\.?(imum)?\s.*payment/i;
 const PROMO_MATCH = /promotion/i;
@@ -330,6 +332,7 @@ function billMappingFor(region: TableRegion): ColumnMapping | null {
     nameCol,
     amountCol,
     dueDayCol: pickNearest(headers, DUE_MATCH, amountCol),
+    autopayCol: pickNearest(headers, AUTOPAY_MATCH, amountCol),
   };
 }
 
@@ -382,7 +385,8 @@ export function extractBills(grid: CellGrid, mapping: ColumnMapping): ImportExtr
       name,
       amountCents,
       dueDay,
-      paidFrom: 'shared',
+      paidFrom:
+        mapping.autopayCol !== null && parseCheckbox(row[mapping.autopayCol]) ? 'autopay' : 'shared',
       ...monthlyRecurrence(),
     });
     reports.push({ rowNumber, name, status, message });
@@ -428,7 +432,7 @@ function debtMappingFor(region: TableRegion): DebtColumnMapping | null {
   };
 }
 
-function parsePromotion(raw: CellValue | undefined): boolean {
+function parseCheckbox(raw: CellValue | undefined): boolean {
   if (typeof raw === 'boolean') return raw;
   if (typeof raw === 'number') return raw !== 0;
   if (typeof raw === 'string') return /^(true|yes|y|x|1|✓)$/i.test(raw.trim());
@@ -493,7 +497,7 @@ export function extractDebts(grid: CellGrid, mapping: DebtColumnMapping): DebtEx
       balanceCents: balanceCents ?? 0,
       minPaymentCents: minPaymentCents ?? 0,
       suggestedPaymentCents: suggestedCents !== null && suggestedCents >= 0 ? suggestedCents : null,
-      hasPromotion: mapping.promoCol === null ? false : parsePromotion(row[mapping.promoCol]),
+      hasPromotion: mapping.promoCol === null ? false : parseCheckbox(row[mapping.promoCol]),
       interestRateBps: mapping.rateCol === null ? null : parsePercentBps(row[mapping.rateCol]),
       promoEndISO: mapping.promoEndCol === null ? null : parseSheetDate(row[mapping.promoEndCol]),
       postPromoRateBps:
@@ -683,10 +687,10 @@ export function buildTemplateWorkbook(): ArrayBuffer {
     ['Example Promo Card', 8, 2595.2, 75, 0, true, '2027-06-01', 0.28, 216.27],
   ]);
   const bills = utils.aoa_to_sheet([
-    ['Name', 'Monthly Payment', 'Due Date'],
-    ['Rent', 3250, 1],
-    ['Electric', 300, 1],
-    ['Water', 20, 1],
+    ['Name', 'Monthly Payment', 'Autopay', 'Due Date'],
+    ['Rent', 3250, false, 1],
+    ['Electric', 300, true, 1],
+    ['Water', 20, true, 1],
   ]);
   const income = utils.aoa_to_sheet([
     [

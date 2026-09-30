@@ -37,12 +37,12 @@ const accountsSheet: CellGrid = [
   [null, null, 38960.64, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null],
   ['Regular Bills', null, null, null, null, 'Totals', null, null, null],
-  ['Name', 'Monthly Payment', 'Due Date', null, null, 'Cost Category', 'Amount', null, null],
-  ['Rent', 3250, 1, null, null, 'Credit Card Balance', 32960.64, null, null],
-  ['Electric', 300, 1, null, null, 'Debt Balance', 179111.33, null, null],
-  ['Water', 20, null, null, null, 'Minimum Autopay/month', 3047, null, null],
-  ['James Therapy', null, 6, null, null, 'Essential/month', 3870, null, null],
-  ['Spectrum', 90, 21, null, null, null, null, null, null],
+  ['Name', 'Monthly Payment', 'Autopay', 'Due Date', null, 'Cost Category', 'Amount', null, null],
+  ['Rent', 3250, false, 1, null, 'Credit Card Balance', 32960.64, null, null],
+  ['Electric', 300, true, 1, null, 'Debt Balance', 179111.33, null, null],
+  ['Water', 20, 'TRUE', null, null, 'Minimum Autopay/month', 3047, null, null],
+  ['James Therapy', null, false, 6, null, 'Essential/month', 3870, null, null],
+  ['Spectrum', 90, null, 21, null, null, null, null, null],
   [null, 4344.23, null, null, null, null, null, null, null],
 ];
 
@@ -56,7 +56,7 @@ describe('findTableRegions', () => {
       r.bodyEndRow,
     ]);
     expect(regions).toContainEqual(['Payable Accounts', 1, 0, 8, 7]);
-    expect(regions).toContainEqual(['Regular Bills', 12, 0, 2, 19]);
+    expect(regions).toContainEqual(['Regular Bills', 12, 0, 3, 19]);
     expect(regions).toContainEqual(['Totals', 12, 5, 6, 17]);
   });
 });
@@ -68,7 +68,8 @@ describe('detectMapping', () => {
       bodyEndRow: 19,
       nameCol: 0,
       amountCol: 1,
-      dueDayCol: 2,
+      dueDayCol: 3,
+      autopayCol: 2,
     });
   });
 
@@ -80,7 +81,8 @@ describe('detectMapping', () => {
       bodyEndRow: 4,
       nameCol: 0,
       amountCol: 1,
-      dueDayCol: 2,
+      dueDayCol: 3,
+      autopayCol: 2,
     });
   });
 
@@ -116,6 +118,26 @@ describe('extractBills', () => {
     const { reports } = extractBills(accountsSheet, mapping);
     expect(reports).toHaveLength(5); // 4 bills + 1 error, no totals noise
     expect(reports.some((r) => r.name === '(blank)')).toBe(false);
+  });
+
+  it('reads the Autopay checkbox into paidFrom, defaulting blanks to shared', () => {
+    const { bills } = extractBills(accountsSheet, mapping);
+    expect(bills.map((b) => [b.name, b.paidFrom])).toEqual([
+      ['Rent', 'shared'],
+      ['Electric', 'autopay'],
+      ['Water', 'autopay'],
+      ['Spectrum', 'shared'],
+    ]);
+  });
+
+  it('imports every bill as shared when there is no Autopay column', () => {
+    const grid: CellGrid = [
+      ['Name', 'Monthly Payment', 'Due Date'],
+      ['Rent', 3250, 1],
+    ];
+    const mapping = detectMapping(grid)!;
+    expect(mapping.autopayCol).toBeNull();
+    expect(extractBills(grid, mapping).bills[0].paidFrom).toBe('shared');
   });
 
   it('errors on out-of-range or non-numeric due days', () => {
