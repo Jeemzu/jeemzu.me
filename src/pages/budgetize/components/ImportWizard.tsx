@@ -11,18 +11,22 @@ import {
   gridColumnCount,
   readWorkbook,
 } from '../lib/importer';
+import { parseBackup } from '../lib/backup';
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { monthlyGrossCents } from '../types';
+import type { BudgetData } from '../types';
 import { InfoTip } from './InfoTip';
 
 const PREVIEW_ROWS = 12;
-const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.xlsm', '.ods', '.csv'];
+const SPREADSHEET_EXTENSIONS = ['.xlsx', '.xls', '.xlsm', '.ods', '.csv'];
+const ACCEPTED_EXTENSIONS = [...SPREADSHEET_EXTENSIONS, '.json'];
 
 interface Props {
   dirty: boolean;
   hasData: boolean;
   onImport: (payload: ImportPayload) => void;
+  onRestore: (data: BudgetData) => void;
   onClose: () => void;
 }
 
@@ -60,8 +64,9 @@ function ReportTable({ reports }: { reports: RowReport[] }) {
   );
 }
 
-export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
+export function ImportWizard({ dirty, hasData, onImport, onRestore, onClose }: Props) {
   const [workbook, setWorkbook] = useState<WorkbookGrids | null>(null);
+  const [backup, setBackup] = useState<BudgetData | null>(null);
   const [fileName, setFileName] = useState('');
   const [fileError, setFileError] = useState('');
   const [manual, setManual] = useState(false);
@@ -102,6 +107,19 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
       setFileError(`Unsupported file type. Use one of: ${ACCEPTED_EXTENSIONS.join(', ')}.`);
       return;
     }
+    if (lowerName.endsWith('.json')) {
+      const result = parseBackup(await file.text());
+      if (!result.ok) {
+        setFileError(result.error);
+        return;
+      }
+      setFileName(file.name);
+      setBackup(result.data);
+      setWorkbook(null);
+      setManual(false);
+      setFileError('');
+      return;
+    }
     try {
       const grids = readWorkbook(await file.arrayBuffer());
       if (grids.sheetNames.length === 0) {
@@ -109,12 +127,13 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
         return;
       }
       setFileName(file.name);
+      setBackup(null);
       setWorkbook(grids);
       setManual(false);
       applySheet(grids, grids.sheetNames[0]);
       setFileError('');
     } catch {
-      setFileError('Could not read that file as an Excel workbook (.xlsx).');
+      setFileError('Could not read that file as a spreadsheet.');
     }
   }
 
@@ -177,6 +196,16 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     onClose();
   }
 
+  function handleRestore() {
+    if (!backup) return;
+    if (hasData) {
+      const suffix = dirty ? ' You have unsaved edits that will be lost.' : '';
+      if (!window.confirm(`Restoring replaces your entire budget.${suffix} Continue?`)) return;
+    }
+    onRestore(backup);
+    onClose();
+  }
+
   function handleManualImport() {
     if (!manualExtraction || manualExtraction.bills.length === 0) return;
     if (!confirmReplace(['bills'])) return;
@@ -232,7 +261,7 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
       className="overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Import Excel workbook"
+      aria-label="Import data"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -240,14 +269,16 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
     >
       <div className={`modal${dragging ? ' drag-active' : ''}`}>
         <div className="modal-head">
-          <h2>Import from Excel</h2>
+          <h2>Import data</h2>
           <button type="button" className="btn ghost" onClick={onClose} aria-label="Close import">
             ✕
           </button>
         </div>
 
         <div className="modal-body">
-          {workbook ? (
+          {backup ? (
+            <div className="import-file-row">{fileInput(`Change file (${fileName})`)}</div>
+          ) : workbook ? (
             <div className="import-file-row">
               {fileInput(`Change file (${fileName})`)}
               <button type="button" className="btn ghost" onClick={downloadTemplateWorkbook}>
@@ -260,7 +291,7 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
           ) : (
             <div className="dropzone">
               <p className="drop-hint">
-                {dragging ? 'Drop to import' : 'Drag & drop a workbook here'}
+                {dragging ? 'Drop to import' : 'Drag & drop a spreadsheet or backup (.json) here'}
               </p>
               <span>or</span>
               <div className="import-file-row">
@@ -273,9 +304,33 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
             </div>
           )}
 
-          {workbook && dragging && <p className="drop-hint">Drop to replace {fileName}</p>}
+          {(workbook || backup) && dragging && (
+            <p className="drop-hint">Drop to replace {fileName}</p>
+          )}
 
           {fileError && <p className="banner error">{fileError}</p>}
+
+          {backup && (
+            <>
+              <h3>
+                Backup <span className="muted">“{fileName}”</span>
+              </h3>
+              <div className="table-wrap report-wrap">
+                <table className="report-table">
+                  <tbody>
+                    <tr><td>Bills</td><td>{backup.bills.length}</td></tr>
+                    <tr><td>Debt accounts</td><td>{backup.debts.length}</td></tr>
+                    <tr><td>People</td><td>{backup.people.length}</td></tr>
+                    <tr><td>Overrides</td><td>{backup.overrides.length}</td></tr>
+                    <tr><td>One-offs</td><td>{backup.oneOffs.length}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="banner warning">
+                Restoring replaces your entire budget with this backup.
+              </p>
+            </>
+          )}
 
           {workbook && analysis && !manual && (
             <>
@@ -479,7 +534,11 @@ export function ImportWizard({ dirty, hasData, onImport, onClose }: Props) {
           <button type="button" className="btn ghost" onClick={onClose}>
             Cancel
           </button>
-          {manual ? (
+          {backup ? (
+            <button type="button" className="btn primary" onClick={handleRestore}>
+              Restore backup
+            </button>
+          ) : manual ? (
             <button
               type="button"
               className="btn primary"

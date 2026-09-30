@@ -23,7 +23,7 @@ import {
 } from "./lib/projection";
 import { computeFundingPlan, createFundedAllocator } from "./lib/funding";
 import { computeFundingWarnings } from "./lib/warnings";
-import { parseBackup, parseBudgetData, serializeBackup } from "./lib/backup";
+import { parseBudgetData, serializeBackup } from "./lib/backup";
 import { downloadBlob } from "./lib/download";
 import { SummaryCards } from "./components/SummaryCards";
 import { CalendarView } from "./components/CalendarView";
@@ -107,7 +107,6 @@ function BudgetWorkspace() {
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   const strategy = state.data.debtStrategy;
   const setStrategy = (next: DebtPaymentStrategy) =>
@@ -357,25 +356,6 @@ function BudgetWorkspace() {
     }
   }
 
-  async function handleRestoreFile(file: File) {
-    const result = parseBackup(await file.text());
-    if (!result.ok) {
-      setNotice({ kind: "error", text: result.error });
-      return;
-    }
-    if (
-      state.dirty &&
-      !window.confirm("You have unsaved edits. Replace them with this backup?")
-    ) {
-      return;
-    }
-    dispatch({ type: "restore", data: result.data });
-    setNotice({
-      kind: "info",
-      text: `Backup loaded: ${result.data.bills.length} bills, ${result.data.debts.length} debts, ${result.data.people.length} people. Choose Save to store it.`,
-    });
-  }
-
   function handleUnreadableDownload() {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadBlob(
@@ -496,28 +476,14 @@ function BudgetWorkspace() {
               className="btn"
               onClick={() => setImportOpen(true)}
             >
-              Import Excel
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => void handleTemplateDownload()}
-            >
-              Download spreadsheet template
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => restoreInputRef.current?.click()}
-            >
-              Restore backup
+              Import…
             </button>
             <button
               type="button"
               className="btn"
               onClick={handleBackupDownload}
             >
-              Download backup
+              Export backup
             </button>
             {isAuthenticated && (
               <button
@@ -584,7 +550,7 @@ function BudgetWorkspace() {
               <h2>Welcome!</h2>
               <p>
                 Import your Excel budget workbook to pull in your bills, debt
-                accounts, and paycheck deposits.{" "}
+                accounts, and paycheck deposits, or restore a backup (.json).{" "}
                 {isAuthenticated
                   ? "Choose Save to store your budget so you can pick it up on another machine."
                   : "Sign in to save your budget so you can pick it up on another machine."}
@@ -594,7 +560,7 @@ function BudgetWorkspace() {
                 className="btn primary"
                 onClick={() => setImportOpen(true)}
               >
-                Import your workbook
+                Import workbook or backup
               </button>
               <button
                 type="button"
@@ -995,18 +961,6 @@ function BudgetWorkspace() {
           )}
         </main>
 
-        <input
-          ref={restoreInputRef}
-          type="file"
-          accept=".json,application/json"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleRestoreFile(file);
-            e.target.value = "";
-          }}
-        />
-
         {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
         {importOpen &&
           createPortal(
@@ -1030,7 +984,14 @@ function BudgetWorkspace() {
                     ].filter(Boolean);
                     setNotice({
                       kind: "info",
-                      text: `Imported ${parts.join(", ")} from Excel. Choose Save to store it.`,
+                      text: `Imported ${parts.join(", ")} from spreadsheet. Choose Save to store it.`,
+                    });
+                  }}
+                  onRestore={(data) => {
+                    dispatch({ type: "restore", data });
+                    setNotice({
+                      kind: "info",
+                      text: `Backup loaded: ${data.bills.length} bills, ${data.debts.length} debts, ${data.people.length} people. Choose Save to store it.`,
                     });
                   }}
                   onClose={() => setImportOpen(false)}
