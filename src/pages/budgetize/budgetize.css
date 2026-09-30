@@ -1218,21 +1218,21 @@
     white-space: nowrap;
   }
 
-  .projection-table th {
+  .bills-table.grouped th {
     text-align: center;
   }
 
-  .projection-table .acct-start {
+  .bills-table .col-sep {
     border-left: 2px solid var(--line);
   }
 
-  .projection-table td.acct-flow {
+  .bills-table td.col-part {
     font-size: 0.9em;
     opacity: 0.85;
   }
 
   /* A gradient layers over row backgrounds (day rows, unknown income) instead of replacing them. */
-  .projection-table .acct-balance {
+  .bills-table .col-total {
     background-image: linear-gradient(rgba(139, 106, 43, 0.08), rgba(139, 106, 43, 0.08));
     font-weight: 600;
   }

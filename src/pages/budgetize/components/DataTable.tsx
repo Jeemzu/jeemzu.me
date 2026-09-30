@@ -74,6 +74,23 @@ export function DataTable<T extends RowData>({
   // Marked by id, not :first-child, because a rowSpan above shifts which <td> comes first.
   const stickyId = table.getVisibleLeafColumns()[0]?.id;
   const stickyClass = (columnId: string) => (columnId === stickyId ? 'sticky-col' : undefined);
+  const grouped = table.getHeaderGroups().length > 1;
+  // A divider marks each boundary where a column group starts or ends.
+  const leaves = table.getVisibleLeafColumns();
+  const topId = (column: (typeof leaves)[number]) => {
+    let top = column;
+    while (top.parent) top = top.parent;
+    return top.id;
+  };
+  const sepIds = new Set(
+    leaves
+      .filter((column, i) => {
+        const prev = leaves[i - 1];
+        return prev && (column.parent || prev.parent) && topId(column) !== topId(prev);
+      })
+      .map((column) => column.id),
+  );
+  const sepClass = (columnId: string) => (sepIds.has(columnId) ? 'col-sep' : undefined);
 
   return (
     <div className="data-table">
@@ -108,7 +125,7 @@ export function DataTable<T extends RowData>({
       </div>
       <div className="table-wrap data-table-wrap">
         <table
-          className={`bills-table ${className ?? ''}`}
+          className={`bills-table ${grouped ? 'grouped' : ''} ${className ?? ''}`}
           style={{ width: '100%', minWidth: table.getTotalSize() }}
         >
           <colgroup>
@@ -126,13 +143,20 @@ export function DataTable<T extends RowData>({
                   const meta = column.columnDef.meta;
                   const sorted = column.getIsSorted();
                   const label = render(column.columnDef.header, header.getContext());
+                  let firstLeaf = header;
+                  while (firstLeaf.subHeaders.length > 0) firstLeaf = firstLeaf.subHeaders[0];
                   return (
                     <th
                       key={header.id}
                       colSpan={header.colSpan > 1 ? header.colSpan : undefined}
                       rowSpan={header.rowSpan > 1 ? header.rowSpan : undefined}
                       className={
-                        [stickyClass(column.id), !isLeaf && 'group-header', meta?.headerClassName]
+                        [
+                          stickyClass(column.id),
+                          sepClass(firstLeaf.column.id),
+                          !isLeaf && 'group-header',
+                          meta?.headerClassName,
+                        ]
                           .filter(Boolean)
                           .join(' ') || undefined
                       }
@@ -184,7 +208,11 @@ export function DataTable<T extends RowData>({
                       key={cell.id}
                       rowSpan={span > 1 ? span : undefined}
                       className={
-                        [stickyClass(cell.column.id), cell.column.columnDef.meta?.cellClassName]
+                        [
+                          stickyClass(cell.column.id),
+                          sepClass(cell.column.id),
+                          cell.column.columnDef.meta?.cellClassName,
+                        ]
                           .filter(Boolean)
                           .join(' ') || undefined
                       }
@@ -198,10 +226,18 @@ export function DataTable<T extends RowData>({
           </tbody>
           {hasFooter && (
             <tfoot>
-              {table.getFooterGroups().map((group) => (
+              {/* Only the leaf row; group-level footer rows would be empty. */}
+              {table.getFooterGroups().slice(0, 1).map((group) => (
                 <tr key={group.id}>
                   {group.headers.map((header) => (
-                    <td key={header.id} className={stickyClass(header.column.id)}>
+                    <td
+                      key={header.id}
+                      className={
+                        [stickyClass(header.column.id), sepClass(header.column.id)]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
+                    >
                       {render(header.column.columnDef.footer, header.getContext())}
                     </td>
                   ))}

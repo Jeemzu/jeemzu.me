@@ -5,7 +5,7 @@ import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import { InfoTip } from './InfoTip';
-import type { BudgetColumn } from './tableFeatures';
+import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
 
 interface Props {
   data: BudgetData;
@@ -41,25 +41,31 @@ const COLUMNS: BudgetColumn<Row>[] = [
     cell: ({ row: { original: r } }) => amount(r.share, (s) => s.grossPerPaycheckCents),
   },
   {
-    id: 'autopay',
-    header: '− Auto-pay',
-    size: 120,
-    meta: { headerTitle: 'Deposited to auto-pay each paycheck', cellClassName: 'total-cell' },
-    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.autopayPerPaycheckCents),
-  },
-  {
-    id: 'essentials',
-    header: '− Essentials',
-    size: 120,
-    meta: { headerTitle: 'Deposited to essentials each paycheck', cellClassName: 'total-cell' },
-    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.essentialsPerPaycheckCents),
-  },
-  {
-    id: 'personal',
-    header: '= Personal',
-    size: 120,
-    meta: { headerTitle: 'Deposited to the personal account each paycheck', cellClassName: 'total-cell' },
-    cell: ({ row: { original: r } }) => amount(r.share, (s) => s.personalPerPaycheckCents),
+    id: 'split',
+    header: 'Per paycheck to',
+    columns: [
+      {
+        id: 'autopay',
+        header: 'Auto-pay',
+        size: 120,
+        meta: { ...PART_META, headerTitle: 'Deposited to auto-pay each paycheck' },
+        cell: ({ row: { original: r } }) => amount(r.share, (s) => s.autopayPerPaycheckCents),
+      },
+      {
+        id: 'essentials',
+        header: 'Essentials',
+        size: 120,
+        meta: { ...PART_META, headerTitle: 'Deposited to essentials each paycheck' },
+        cell: ({ row: { original: r } }) => amount(r.share, (s) => s.essentialsPerPaycheckCents),
+      },
+      {
+        id: 'personal',
+        header: 'Personal',
+        size: 120,
+        meta: { ...TOTAL_META, headerTitle: 'Deposited to the personal account each paycheck' },
+        cell: ({ row: { original: r } }) => amount(r.share, (s) => s.personalPerPaycheckCents),
+      },
+    ],
   },
 ];
 

@@ -23,6 +23,11 @@ export interface BudgetColumnMeta {
   headerClassName?: string;
 }
 
+/** Subdued component column inside a group. */
+export const PART_META: BudgetColumnMeta = { cellClassName: 'total-cell col-part' };
+/** Emphasized total/result column inside a group. */
+export const TOTAL_META: BudgetColumnMeta = { headerClassName: 'col-total', cellClassName: 'total-cell col-total' };
+
 export const budgetTableFeatures = tableFeatures({
   columnSizingFeature,
   columnResizingFeature,

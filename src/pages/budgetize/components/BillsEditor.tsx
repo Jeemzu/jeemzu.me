@@ -52,63 +52,69 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
       footer: () => <span className="total-cell">{formatMoney(totalCents)}</span>,
     },
     {
-      id: 'dueDay',
-      header: 'Due day',
-      size: 100,
-      accessorFn: (bill) => (isDayStrided(bill.frequency) ? 0 : bill.dueDay),
-      cell: ({ row: { original: bill } }) =>
-        isDayStrided(bill.frequency) ? (
-          <span className="muted" title="Weekly bills count from their start date instead">
-            —
-          </span>
-        ) : (
-          <DayInput
-            value={bill.dueDay}
-            ariaLabel={`Due day for ${bill.name}`}
-            onCommit={(dueDay) => onUpdate(bill.id, { dueDay })}
-          />
-        ),
-    },
-    {
-      id: 'frequency',
-      header: 'Repeats',
-      size: 150,
-      accessorFn: (bill) => bill.frequency,
-      cell: ({ row: { original: bill } }) => (
-        <FrequencyField
-          item={bill}
-          label={bill.name || 'this bill'}
-          onChange={(patch) => onUpdate(bill.id, patch)}
-        />
-      ),
-    },
-    {
-      id: 'start',
-      header: 'Starts',
-      size: 150,
-      meta: { headerTitle: 'Leave blank for no start date' },
-      accessorFn: (bill) => bill.startISO ?? '',
-      cell: ({ row: { original: bill } }) => (
-        <StartDateField
-          item={bill}
-          label={bill.name || 'this bill'}
-          onChange={(patch) => onUpdate(bill.id, patch)}
-        />
-      ),
-    },
-    {
-      id: 'end',
-      header: 'Ends',
-      size: 150,
-      meta: { headerTitle: 'Leave blank for no end date' },
-      accessorFn: (bill) => bill.endISO ?? '',
-      cell: ({ row: { original: bill } }) => (
-        <EndDateField
-          item={bill}
-          label={bill.name || 'this bill'}
-          onChange={(patch) => onUpdate(bill.id, patch)}
-        />
-      ),
+      id: 'schedule',
+      header: 'Schedule',
+      columns: [
+        {
+          id: 'dueDay',
+          header: 'Due day',
+          size: 100,
+          accessorFn: (bill) => (isDayStrided(bill.frequency) ? 0 : bill.dueDay),
+          cell: ({ row: { original: bill } }) =>
+            isDayStrided(bill.frequency) ? (
+              <span className="muted" title="Weekly bills count from their start date instead">
+                —
+              </span>
+            ) : (
+              <DayInput
+                value={bill.dueDay}
+                ariaLabel={`Due day for ${bill.name}`}
+                onCommit={(dueDay) => onUpdate(bill.id, { dueDay })}
+              />
+            ),
+        },
+        {
+          id: 'frequency',
+          header: 'Repeats',
+          size: 150,
+          accessorFn: (bill) => bill.frequency,
+          cell: ({ row: { original: bill } }) => (
+            <FrequencyField
+              item={bill}
+              label={bill.name || 'this bill'}
+              onChange={(patch) => onUpdate(bill.id, patch)}
+            />
+          ),
+        },
+        {
+          id: 'start',
+          header: 'Starts',
+          size: 150,
+          meta: { headerTitle: 'Leave blank for no start date' },
+          accessorFn: (bill) => bill.startISO ?? '',
+          cell: ({ row: { original: bill } }) => (
+            <StartDateField
+              item={bill}
+              label={bill.name || 'this bill'}
+              onChange={(patch) => onUpdate(bill.id, patch)}
+            />
+          ),
+        },
+        {
+          id: 'end',
+          header: 'Ends',
+          size: 150,
+          meta: { headerTitle: 'Leave blank for no end date' },
+          accessorFn: (bill) => bill.endISO ?? '',
+          cell: ({ row: { original: bill } }) => (
+            <EndDateField
+              item={bill}
+              label={bill.name || 'this bill'}
+              onChange={(patch) => onUpdate(bill.id, patch)}
+            />
+          ),
+        },
+      ],
     },
     {
       id: 'paidFrom',

@@ -11,7 +11,7 @@ import { formatMoney } from '../lib/money';
 import { scheduledMonths, type AllocationResolver, type PersonMonthAllocation } from '../lib/allocation';
 import { getPaydays, monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
-import type { BudgetColumn } from './tableFeatures';
+import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
 
 interface ScheduleRow {
   ref: MonthRef;
@@ -168,56 +168,62 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
       cell: ({ row: { original: r } }) => r.person.name,
     },
     {
-      id: 'gross',
-      header: 'Gross / paycheck',
-      size: 160,
-      cell: ({ row: { original: r } }) => (
-        <MoneyInput
-          cents={r.entry?.perPaycheckCents ?? 0}
-          ariaLabel={`${r.person.name} gross per paycheck in ${monthLabel(r.ref)}`}
-          onCommit={(cents) =>
-            onUpdate(r.person.id, { schedule: setMonth(r.person.schedule, r.ref, cents) })
-          }
-        />
-      ),
+      id: 'grossGroup',
+      header: 'Gross',
+      columns: [
+        {
+          id: 'gross',
+          header: 'Per paycheck',
+          size: 160,
+          cell: ({ row: { original: r } }) => (
+            <MoneyInput
+              cents={r.entry?.perPaycheckCents ?? 0}
+              ariaLabel={`${r.person.name} gross per paycheck in ${monthLabel(r.ref)}`}
+              onCommit={(cents) =>
+                onUpdate(r.person.id, { schedule: setMonth(r.person.schedule, r.ref, cents) })
+              }
+            />
+          ),
+        },
+        {
+          id: 'grossMonth',
+          header: 'Per month',
+          size: 130,
+          meta: { cellClassName: 'total-cell' },
+          cell: ({ row: { original: r } }) =>
+            r.entry ? formatMoney(monthlyGrossCents(r.entry)) : '—',
+        },
+      ],
     },
     {
-      id: 'grossMonth',
-      header: 'Gross / month',
-      size: 130,
-      meta: { cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) =>
-        r.entry ? formatMoney(monthlyGrossCents(r.entry)) : '—',
-    },
-    {
-      id: 'autopay',
-      header: 'Auto-pay',
-      size: 120,
-      meta: {
-        headerTitle: 'Carved out of each paycheck to fund the auto-pay account',
-        cellClassName: 'total-cell',
-      },
-      cell: ({ row: { original: r } }) => formatMoney(r.share?.autopayPerPaycheckCents ?? 0),
-    },
-    {
-      id: 'essentials',
-      header: 'Essentials',
-      size: 120,
-      meta: {
-        headerTitle: 'Carved out of each paycheck to fund shared bills',
-        cellClassName: 'total-cell',
-      },
-      cell: ({ row: { original: r } }) => formatMoney(r.share?.essentialsPerPaycheckCents ?? 0),
-    },
-    {
-      id: 'personal',
-      header: 'Personal',
-      size: 120,
-      meta: { headerTitle: 'What is left of each paycheck', cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) => {
-        const personal = r.share?.personalPerPaycheckCents ?? 0;
-        return <span className={personal < 0 ? 'negative' : undefined}>{formatMoney(personal)}</span>;
-      },
+      id: 'split',
+      header: 'Paycheck split',
+      columns: [
+        {
+          id: 'autopay',
+          header: 'Auto-pay',
+          size: 120,
+          meta: { ...PART_META, headerTitle: 'Carved out of each paycheck to fund the auto-pay account' },
+          cell: ({ row: { original: r } }) => formatMoney(r.share?.autopayPerPaycheckCents ?? 0),
+        },
+        {
+          id: 'essentials',
+          header: 'Essentials',
+          size: 120,
+          meta: { ...PART_META, headerTitle: 'Carved out of each paycheck to fund shared bills' },
+          cell: ({ row: { original: r } }) => formatMoney(r.share?.essentialsPerPaycheckCents ?? 0),
+        },
+        {
+          id: 'personal',
+          header: 'Personal',
+          size: 120,
+          meta: { ...TOTAL_META, headerTitle: 'What is left of each paycheck' },
+          cell: ({ row: { original: r } }) => {
+            const personal = r.share?.personalPerPaycheckCents ?? 0;
+            return <span className={personal < 0 ? 'negative' : undefined}>{formatMoney(personal)}</span>;
+          },
+        },
+      ],
     },
     {
       id: 'actions',

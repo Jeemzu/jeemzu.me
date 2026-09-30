@@ -4,7 +4,7 @@ import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import { InfoTip } from './InfoTip';
-import type { BudgetColumn } from './tableFeatures';
+import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
 
 interface Props {
   data: BudgetData;
@@ -67,52 +67,64 @@ export function AccountPlanCard({ data, plan, account }: Props) {
       cell: ({ row: { original: r } }) => r.paydayCount,
     },
     {
-      id: 'bills',
-      header: 'Bills',
-      size: 110,
-      meta: { cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) => formatMoney(r.need.billsCents),
+      id: 'charges',
+      header: 'Charges',
+      columns: [
+        {
+          id: 'bills',
+          header: 'Bills',
+          size: 110,
+          meta: PART_META,
+          cell: ({ row: { original: r } }) => formatMoney(r.need.billsCents),
+        },
+        {
+          id: 'debts',
+          header: 'Debts',
+          size: 110,
+          meta: PART_META,
+          cell: ({ row: { original: r } }) => formatMoney(r.need.debtCents),
+        },
+        {
+          id: 'oneOffs',
+          header: 'One-offs',
+          size: 110,
+          meta: PART_META,
+          cell: ({ row: { original: r } }) => formatMoney(r.need.oneOffCents),
+        },
+        {
+          id: 'need',
+          header: 'Need',
+          size: 120,
+          meta: TOTAL_META,
+          cell: ({ row: { original: r } }) => formatMoney(r.need.totalCents),
+        },
+      ],
     },
     {
-      id: 'debts',
-      header: 'Debts',
-      size: 110,
-      meta: { cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) => formatMoney(r.need.debtCents),
+      id: 'deposit',
+      header: 'Deposit / payday',
+      columns: [
+        {
+          id: 'minDeposit',
+          header: 'Minimum',
+          size: 130,
+          meta: {
+            ...TOTAL_META,
+            headerTitle: 'Smallest deposit each payday that keeps the balance from going negative',
+          },
+          cell: ({ row: { original: r } }) => incomeCell(r, r.minPerPaydayCents),
+        },
+        ...data.people.map(
+          (person, i): BudgetColumn<AccountMonthPlan> => ({
+            id: `person:${person.id}`,
+            header: person.name,
+            size: 120,
+            meta: { ...PART_META, headerTitle: `${person.name}'s share per payday` },
+            cell: ({ row: { original: r } }) => incomeCell(r, r.minShares[i] ?? 0),
+          }),
+        ),
+      ],
     },
-    {
-      id: 'oneOffs',
-      header: 'One-offs',
-      size: 110,
-      meta: { cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) => formatMoney(r.need.oneOffCents),
-    },
-    {
-      id: 'need',
-      header: 'Need',
-      size: 120,
-      meta: { cellClassName: 'total-cell' },
-      cell: ({ row: { original: r } }) => formatMoney(r.need.totalCents),
-    },
-    {
-      id: 'minDeposit',
-      header: 'Min / payday',
-      size: 130,
-      meta: {
-        headerTitle: 'Smallest deposit each payday that keeps the balance from going negative',
-        cellClassName: 'total-cell',
-      },
-      cell: ({ row: { original: r } }) => incomeCell(r, r.minPerPaydayCents),
-    },
-    ...data.people.map(
-      (person, i): BudgetColumn<AccountMonthPlan> => ({
-        id: `person:${person.id}`,
-        header: person.name,
-        size: 120,
-        meta: { headerTitle: `${person.name}'s share per payday`, cellClassName: 'total-cell' },
-        cell: ({ row: { original: r } }) => incomeCell(r, r.minShares[i] ?? 0),
-      }),
-    ),
     {
       id: 'endBalance',
       header: 'End balance',

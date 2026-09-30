@@ -5,7 +5,7 @@ import { computeProjection, type AccountWeek, type ProjectionDay, type Projectio
 import { formatMoney } from '../lib/money';
 import { MoneyInput } from './inputs';
 import { DataTable } from './DataTable';
-import type { BudgetColumn } from './tableFeatures';
+import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
 
 interface Props {
   data: BudgetData;
@@ -56,35 +56,26 @@ function accountGroup(id: string, header: string, pick: (r: Row) => AccountWeek)
   return {
     id,
     header,
-    meta: { headerClassName: 'acct-start' },
     columns: [
       {
         id: `${id}:in`,
         header: 'In',
         size: 110,
-        meta: {
-          headerTitle: `Paycheck share and one-time income into ${header}`,
-          headerClassName: 'acct-start acct-flow',
-          cellClassName: 'acct-start acct-flow',
-        },
+        meta: { ...PART_META, headerTitle: `Paycheck share and one-time income into ${header}` },
         cell: ({ row: { original: r } }) => flowCell(pick(r).depositCents, 'pos'),
       },
       {
         id: `${id}:out`,
         header: 'Out',
         size: 110,
-        meta: {
-          headerTitle: `Bills, debt payments and one-time expenses from ${header}`,
-          headerClassName: 'acct-flow',
-          cellClassName: 'acct-flow',
-        },
+        meta: { ...PART_META, headerTitle: `Bills, debt payments and one-time expenses from ${header}` },
         cell: ({ row: { original: r } }) => flowCell(pick(r).outflowCents, 'neg'),
       },
       {
         id: `${id}:balance`,
         header: 'Balance',
         size: 120,
-        meta: { headerClassName: 'acct-balance', cellClassName: 'acct-balance' },
+        meta: TOTAL_META,
         cell: ({ row: { original: r } }) => balanceCell(pick(r).endBalanceCents),
       },
     ],
@@ -137,7 +128,6 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onSetEs
       id: 'due',
       header: 'Payments due',
       size: 160,
-      meta: { headerClassName: 'acct-start', cellClassName: 'acct-start' },
       cell: ({ row: { original: r } }) => {
         const tooltip = r.outflows
           .map(

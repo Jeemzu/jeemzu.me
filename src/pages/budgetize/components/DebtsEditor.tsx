@@ -3,7 +3,7 @@ import { plannedDebtPaymentCents } from '../types';
 import { DayInput, MoneyInput } from './inputs';
 import { EndDateField, FrequencyField, StartDateField } from './RecurrenceFields';
 import { DataTable } from './DataTable';
-import type { BudgetColumn } from './tableFeatures';
+import { TOTAL_META, type BudgetColumn } from './tableFeatures';
 import { isDayStrided } from '../lib/recurrence';
 import { formatMoney } from '../lib/money';
 
@@ -58,158 +58,176 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
       footer: () => <span className="total-cell">{formatMoney(balanceTotal)}</span>,
     },
     {
-      id: 'minPayment',
-      header: 'Min / mo',
-      size: 140,
-      accessorFn: (debt) => debt.minPaymentCents,
-      cell: ({ row: { original: debt } }) => (
-        <MoneyInput
-          cents={debt.minPaymentCents}
-          ariaLabel={`Minimum payment for ${debt.name}`}
-          onCommit={(minPaymentCents) => onUpdate(debt.id, { minPaymentCents })}
-        />
-      ),
-      footer: () => <span className="total-cell">{formatMoney(minTotal)}</span>,
+      id: 'payment',
+      header: 'Payment / mo',
+      columns: [
+        {
+          id: 'minPayment',
+          header: 'Min',
+          size: 140,
+          accessorFn: (debt) => debt.minPaymentCents,
+          cell: ({ row: { original: debt } }) => (
+            <MoneyInput
+              cents={debt.minPaymentCents}
+              ariaLabel={`Minimum payment for ${debt.name}`}
+              onCommit={(minPaymentCents) => onUpdate(debt.id, { minPaymentCents })}
+            />
+          ),
+          footer: () => <span className="total-cell">{formatMoney(minTotal)}</span>,
+        },
+        {
+          id: 'suggested',
+          header: 'Suggested',
+          size: 140,
+          accessorFn: (debt) => debt.suggestedPaymentCents ?? 0,
+          cell: ({ row: { original: debt } }) => (
+            <MoneyInput
+              cents={debt.suggestedPaymentCents ?? 0}
+              ariaLabel={`Suggested payment for ${debt.name}`}
+              onCommit={(suggestedPaymentCents) => onUpdate(debt.id, { suggestedPaymentCents })}
+            />
+          ),
+        },
+        {
+          id: 'planned',
+          header: 'Planned',
+          size: 130,
+          meta: { ...TOTAL_META, headerTitle: plannedHint },
+          accessorFn: (debt) => plannedDebtPaymentCents(debt, strategy),
+          cell: ({ row: { original: debt } }) => formatMoney(plannedDebtPaymentCents(debt, strategy)),
+          footer: () => <span className="total-cell">{formatMoney(plannedTotal)}</span>,
+        },
+      ],
     },
     {
-      id: 'promo',
-      header: 'Promo',
-      size: 80,
-      meta: { headerTitle: 'Has an active promotion', cellClassName: 'checkbox-cell' },
-      accessorFn: (debt) => (debt.hasPromotion ? 1 : 0),
-      cell: ({ row: { original: debt } }) => (
-        <input
-          type="checkbox"
-          checked={debt.hasPromotion}
-          aria-label={`Promotion active for ${debt.name}`}
-          onChange={(e) => onUpdate(debt.id, { hasPromotion: e.target.checked })}
-        />
-      ),
+      id: 'interest',
+      header: 'Interest',
+      columns: [
+        {
+          id: 'promo',
+          header: 'Promo',
+          size: 80,
+          meta: { headerTitle: 'Has an active promotion', cellClassName: 'checkbox-cell' },
+          accessorFn: (debt) => (debt.hasPromotion ? 1 : 0),
+          cell: ({ row: { original: debt } }) => (
+            <input
+              type="checkbox"
+              checked={debt.hasPromotion}
+              aria-label={`Promotion active for ${debt.name}`}
+              onChange={(e) => onUpdate(debt.id, { hasPromotion: e.target.checked })}
+            />
+          ),
+        },
+        {
+          id: 'promoEnd',
+          header: 'Promo ends',
+          size: 150,
+          meta: { headerTitle: 'Reference only — no interest math is done with these' },
+          accessorFn: (debt) => debt.promoEndISO ?? '',
+          cell: ({ row: { original: debt } }) => (
+            <input
+              className="text-input"
+              type="date"
+              value={debt.promoEndISO ?? ''}
+              aria-label={`Promotion end date for ${debt.name}`}
+              onChange={(e) => onUpdate(debt.id, { promoEndISO: e.target.value || null })}
+            />
+          ),
+        },
+        {
+          id: 'rate',
+          header: 'Rate',
+          size: 100,
+          meta: { headerTitle: 'Reference only' },
+          accessorFn: (debt) => debt.interestRateBps ?? -1,
+          cell: ({ row: { original: debt } }) => (
+            <RateInput
+              bps={debt.interestRateBps}
+              ariaLabel={`Interest rate for ${debt.name}`}
+              onCommit={(interestRateBps) => onUpdate(debt.id, { interestRateBps })}
+            />
+          ),
+        },
+        {
+          id: 'rateAfter',
+          header: 'Rate after',
+          size: 100,
+          meta: { headerTitle: 'Reference only — the rate once the promotion ends' },
+          accessorFn: (debt) => debt.postPromoRateBps ?? -1,
+          cell: ({ row: { original: debt } }) => (
+            <RateInput
+              bps={debt.postPromoRateBps}
+              ariaLabel={`Post-promotion interest rate for ${debt.name}`}
+              onCommit={(postPromoRateBps) => onUpdate(debt.id, { postPromoRateBps })}
+            />
+          ),
+        },
+      ],
     },
     {
-      id: 'promoEnd',
-      header: 'Promo ends',
-      size: 150,
-      meta: { headerTitle: 'Reference only — no interest math is done with these' },
-      accessorFn: (debt) => debt.promoEndISO ?? '',
-      cell: ({ row: { original: debt } }) => (
-        <input
-          className="text-input"
-          type="date"
-          value={debt.promoEndISO ?? ''}
-          aria-label={`Promotion end date for ${debt.name}`}
-          onChange={(e) => onUpdate(debt.id, { promoEndISO: e.target.value || null })}
-        />
-      ),
-    },
-    {
-      id: 'rate',
-      header: 'Rate',
-      size: 100,
-      meta: { headerTitle: 'Reference only' },
-      accessorFn: (debt) => debt.interestRateBps ?? -1,
-      cell: ({ row: { original: debt } }) => (
-        <RateInput
-          bps={debt.interestRateBps}
-          ariaLabel={`Interest rate for ${debt.name}`}
-          onCommit={(interestRateBps) => onUpdate(debt.id, { interestRateBps })}
-        />
-      ),
-    },
-    {
-      id: 'rateAfter',
-      header: 'Rate after',
-      size: 100,
-      meta: { headerTitle: 'Reference only — the rate once the promotion ends' },
-      accessorFn: (debt) => debt.postPromoRateBps ?? -1,
-      cell: ({ row: { original: debt } }) => (
-        <RateInput
-          bps={debt.postPromoRateBps}
-          ariaLabel={`Post-promotion interest rate for ${debt.name}`}
-          onCommit={(postPromoRateBps) => onUpdate(debt.id, { postPromoRateBps })}
-        />
-      ),
-    },
-    {
-      id: 'suggested',
-      header: 'Suggested / mo',
-      size: 140,
-      accessorFn: (debt) => debt.suggestedPaymentCents ?? 0,
-      cell: ({ row: { original: debt } }) => (
-        <MoneyInput
-          cents={debt.suggestedPaymentCents ?? 0}
-          ariaLabel={`Suggested payment for ${debt.name}`}
-          onCommit={(suggestedPaymentCents) => onUpdate(debt.id, { suggestedPaymentCents })}
-        />
-      ),
-    },
-    {
-      id: 'planned',
-      header: 'Planned / mo',
-      size: 130,
-      meta: { headerTitle: plannedHint, cellClassName: 'total-cell' },
-      accessorFn: (debt) => plannedDebtPaymentCents(debt, strategy),
-      cell: ({ row: { original: debt } }) => formatMoney(plannedDebtPaymentCents(debt, strategy)),
-      footer: () => <span className="total-cell">{formatMoney(plannedTotal)}</span>,
-    },
-    {
-      id: 'dueDay',
-      header: 'Due day',
-      size: 100,
-      accessorFn: (debt) => (isDayStrided(debt.frequency) ? 0 : debt.dueDay),
-      cell: ({ row: { original: debt } }) =>
-        isDayStrided(debt.frequency) ? (
-          <span className="muted" title="Weekly payments count from their start date instead">
-            —
-          </span>
-        ) : (
-          <DayInput
-            value={debt.dueDay}
-            ariaLabel={`Due day for ${debt.name}`}
-            onCommit={(dueDay) => onUpdate(debt.id, { dueDay })}
-          />
-        ),
-    },
-    {
-      id: 'frequency',
-      header: 'Repeats',
-      size: 150,
-      accessorFn: (debt) => debt.frequency,
-      cell: ({ row: { original: debt } }) => (
-        <FrequencyField
-          item={debt}
-          label={debt.name || 'this debt'}
-          onChange={(patch) => onUpdate(debt.id, patch)}
-        />
-      ),
-    },
-    {
-      id: 'start',
-      header: 'Starts',
-      size: 150,
-      meta: { headerTitle: 'Leave blank for no start date' },
-      accessorFn: (debt) => debt.startISO ?? '',
-      cell: ({ row: { original: debt } }) => (
-        <StartDateField
-          item={debt}
-          label={debt.name || 'this debt'}
-          onChange={(patch) => onUpdate(debt.id, patch)}
-        />
-      ),
-    },
-    {
-      id: 'end',
-      header: 'Ends',
-      size: 150,
-      meta: { headerTitle: 'Leave blank for no end date' },
-      accessorFn: (debt) => debt.endISO ?? '',
-      cell: ({ row: { original: debt } }) => (
-        <EndDateField
-          item={debt}
-          label={debt.name || 'this debt'}
-          onChange={(patch) => onUpdate(debt.id, patch)}
-        />
-      ),
+      id: 'schedule',
+      header: 'Schedule',
+      columns: [
+        {
+          id: 'dueDay',
+          header: 'Due day',
+          size: 100,
+          accessorFn: (debt) => (isDayStrided(debt.frequency) ? 0 : debt.dueDay),
+          cell: ({ row: { original: debt } }) =>
+            isDayStrided(debt.frequency) ? (
+              <span className="muted" title="Weekly payments count from their start date instead">
+                —
+              </span>
+            ) : (
+              <DayInput
+                value={debt.dueDay}
+                ariaLabel={`Due day for ${debt.name}`}
+                onCommit={(dueDay) => onUpdate(debt.id, { dueDay })}
+              />
+            ),
+        },
+        {
+          id: 'frequency',
+          header: 'Repeats',
+          size: 150,
+          accessorFn: (debt) => debt.frequency,
+          cell: ({ row: { original: debt } }) => (
+            <FrequencyField
+              item={debt}
+              label={debt.name || 'this debt'}
+              onChange={(patch) => onUpdate(debt.id, patch)}
+            />
+          ),
+        },
+        {
+          id: 'start',
+          header: 'Starts',
+          size: 150,
+          meta: { headerTitle: 'Leave blank for no start date' },
+          accessorFn: (debt) => debt.startISO ?? '',
+          cell: ({ row: { original: debt } }) => (
+            <StartDateField
+              item={debt}
+              label={debt.name || 'this debt'}
+              onChange={(patch) => onUpdate(debt.id, patch)}
+            />
+          ),
+        },
+        {
+          id: 'end',
+          header: 'Ends',
+          size: 150,
+          meta: { headerTitle: 'Leave blank for no end date' },
+          accessorFn: (debt) => debt.endISO ?? '',
+          cell: ({ row: { original: debt } }) => (
+            <EndDateField
+              item={debt}
+              label={debt.name || 'this debt'}
+              onChange={(patch) => onUpdate(debt.id, patch)}
+            />
+          ),
+        },
+      ],
     },
     {
       id: 'paidFrom',
