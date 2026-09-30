@@ -996,11 +996,39 @@
     color: var(--danger, #b3261e);
   }
 
-  .people-tables {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-    gap: 1rem;
-    align-items: start;
+  .people-editor {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .people-section {
+    min-width: 0;
+  }
+
+  .people-list {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .people-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .people-section-heading h4 {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .schedule-section-heading {
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.6rem;
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
   }
 
   .schedule-add {
@@ -1008,7 +1036,7 @@
     flex-wrap: wrap;
     gap: 0.75rem;
     align-items: flex-end;
-    margin: 0.75rem 0;
+    justify-content: flex-end;
   }
 
   .schedule-add label {
@@ -1471,8 +1499,7 @@
 
   /* ---- Responsive ---- */
   @media (max-width: 900px) {
-    .columns,
-    .people-tables {
+    .columns {
       grid-template-columns: 1fr;
     }
 
@@ -1506,6 +1533,15 @@
 
     .stat-value {
       font-size: 1.2rem;
+    }
+
+    .schedule-section-heading {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .schedule-add {
+      justify-content: flex-start;
     }
   }
 }

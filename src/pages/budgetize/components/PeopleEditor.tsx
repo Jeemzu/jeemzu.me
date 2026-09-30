@@ -249,71 +249,81 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
 
   return (
     <div className="people-editor">
-      {people.length === 0 ? (
-        <p className="muted">
-          Add each person, then import the Gross Income table or enter their pay month by month.
-        </p>
-      ) : (
-        <>
-          <div className="people-tables">
+      <section className="people-section">
+        <div className="people-list">
+          <div className="people-section-heading">
+            <h4>People</h4>
+            <button type="button" className="btn" onClick={onAdd}>
+              + Add person
+            </button>
+          </div>
+
+          {people.length === 0 ? (
+            <p className="muted">
+              Add each person, then import the Gross Income table or enter their pay month by month.
+            </p>
+          ) : (
             <DataTable
               tableId="people"
               data={people}
               columns={personColumns}
               getRowId={(person) => person.id}
             />
+          )}
+        </div>
+      </section>
 
-            {months.length === 0 ? (
-              <p className="muted">No pay months yet — add one below or import the workbook.</p>
-            ) : (
-              <DataTable
-                tableId="pay-schedule"
-                className="schedule-table"
-                data={scheduleRows}
-                columns={scheduleColumns}
-                getRowId={(r) => `${r.ref.year}-${r.ref.month}-${r.person.id}`}
-                enableSorting={false}
-                getCellRowSpan={(columnId, r) =>
-                  monthGroupColumns.has(columnId) ? (r.personIndex === 0 ? people.length : 0) : 1
-                }
-              />
-            )}
+      {people.length > 0 && (
+        <section className="people-section schedule-section">
+          <div className="people-section-heading schedule-section-heading">
+            <h4>Pay schedule</h4>
+            <div className="schedule-add">
+              <label>
+                Year
+                <input
+                  className="text-input"
+                  type="number"
+                  value={draft.year}
+                  onChange={(e) => setDraft({ ...draft, year: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                Month
+                <select
+                  className="select-input"
+                  value={draft.month}
+                  onChange={(e) => setDraft({ ...draft, month: Number(e.target.value) })}
+                >
+                  {MONTH_NAMES.map((name, index) => (
+                    <option key={name} value={index}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="btn" onClick={addMonth}>
+                + Add pay month
+              </button>
+            </div>
           </div>
 
-          <div className="schedule-add">
-            <label>
-              Year
-              <input
-                className="text-input"
-                type="number"
-                value={draft.year}
-                onChange={(e) => setDraft({ ...draft, year: Number(e.target.value) })}
-              />
-            </label>
-            <label>
-              Month
-              <select
-                className="select-input"
-                value={draft.month}
-                onChange={(e) => setDraft({ ...draft, month: Number(e.target.value) })}
-              >
-                {MONTH_NAMES.map((name, index) => (
-                  <option key={name} value={index}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="btn" onClick={addMonth}>
-              + Add pay month
-            </button>
-          </div>
-        </>
+          {months.length === 0 ? (
+            <p className="muted">No pay months yet — add one above or import the workbook.</p>
+          ) : (
+            <DataTable
+              tableId="pay-schedule"
+              className="schedule-table"
+              data={scheduleRows}
+              columns={scheduleColumns}
+              getRowId={(r) => `${r.ref.year}-${r.ref.month}-${r.person.id}`}
+              enableSorting={false}
+              getCellRowSpan={(columnId, r) =>
+                monthGroupColumns.has(columnId) ? (r.personIndex === 0 ? people.length : 0) : 1
+              }
+            />
+          )}
+        </section>
       )}
-
-      <button type="button" className="btn" onClick={onAdd}>
-        + Add person
-      </button>
     </div>
   );
 }
