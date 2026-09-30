@@ -11,7 +11,7 @@ interface AuthState {
     accessToken: string | null;
     username: string | null;
     role: AppRole | null;
-    /** Unix timestamp (ms) when the access token expires — for future proactive refresh. */
+    /** Unix timestamp (ms) when the access token expires. */
     expiresAt: number | null;
     isAuthenticated: boolean;
     /** True once the session-restore attempt on app load has settled. */
@@ -30,6 +30,11 @@ interface AuthActions {
      * setting any auth state.
      */
     initialize: () => Promise<void>;
+    /**
+     * Swaps the refresh cookie for a new access token. Resolves false when the
+     * session is gone, but leaves auth state alone so unsaved work isn't cleared.
+     */
+    refreshSession: () => Promise<boolean>;
 }
 
 /**
@@ -67,7 +72,17 @@ function stateFromToken(
     };
 }
 
-export const useAuthStore = create<AuthState & AuthActions>((set) => ({
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshWithRetry(retry: boolean): Promise<ApiSchemas['TokenResponse'] | null> {
+    const first = await refreshRequest();
+    if (first?.accessToken || !retry) return first;
+    // Another tab may have just rotated the cookie; give it a moment and try the new one.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return refreshRequest();
+}
+
+export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     accessToken: null,
     username: null,
     role: null,
@@ -114,16 +129,24 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     },
 
     initialize: async () => {
-        try {
-            const result = await refreshRequest();
-            if (result?.accessToken) {
-                const username = extractUsernameFromJwt(result.accessToken);
-                set({ ...stateFromToken(result, username), isInitialized: true });
-                return;
-            }
-        } catch {
-            // No active session — perfectly normal for first-time visitors
-        }
+        await get().refreshSession();
         set({ isInitialized: true });
+    },
+
+    refreshSession: () => {
+        refreshInFlight ??= (async () => {
+            try {
+                const result = await refreshWithRetry(get().isAuthenticated);
+                if (!result?.accessToken) return false;
+                const username = get().username ?? extractUsernameFromJwt(result.accessToken);
+                set(stateFromToken(result, username));
+                return true;
+            } catch {
+                return false;
+            } finally {
+                refreshInFlight = null;
+            }
+        })();
+        return refreshInFlight;
     },
 }));

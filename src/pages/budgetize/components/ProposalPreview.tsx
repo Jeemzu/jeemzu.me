@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { BudgetData, DebtPaymentStrategy } from '../types';
+import type { DepositMode } from '../lib/funding';
 import type { BudgetOp, BudgetProposal } from '../../../utils/budgetAgentApi';
 import { computeProjection } from '../lib/projection';
 import { applyProposal } from '../lib/proposal';
@@ -8,13 +9,13 @@ import { formatMoney } from '../lib/money';
 interface Props {
   data: BudgetData;
   start: Date;
+  weekCount: number;
   strategy: DebtPaymentStrategy;
+  mode: DepositMode;
   proposal: BudgetProposal;
   onApply: (ops: BudgetOp[]) => void;
   onDiscard: () => void;
 }
-
-const WEEKS = 8;
 
 function fmtISO(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -64,11 +65,11 @@ function describeOp(op: BudgetOp, data: BudgetData): string {
   }
 }
 
-export function ProposalPreview({ data, start, strategy, proposal, onApply, onDiscard }: Props) {
+export function ProposalPreview({ data, start, weekCount, strategy, mode, proposal, onApply, onDiscard }: Props) {
   // Runs the exact code the Apply button will, so the forecast shown is the one you get.
   const { rows, anyChange } = useMemo(() => {
-    const before = computeProjection(data, start, WEEKS, strategy);
-    const after = computeProjection(applyProposal(data, proposal.ops), start, WEEKS, strategy);
+    const before = computeProjection(data, start, weekCount, strategy, mode);
+    const after = computeProjection(applyProposal(data, proposal.ops), start, weekCount, strategy, mode);
 
     const built = before.weeks.map((week, i) => {
       const nextWeek = after.weeks[i];
@@ -94,7 +95,7 @@ export function ProposalPreview({ data, start, strategy, proposal, onApply, onDi
         (r) => r.essentials !== 0 || r.autopay !== 0 || r.personal.some((v) => v !== 0),
       ),
     };
-  }, [data, start, strategy, proposal.ops]);
+  }, [data, start, weekCount, strategy, mode, proposal.ops]);
 
   const people = data.people;
 
@@ -112,7 +113,7 @@ export function ProposalPreview({ data, start, strategy, proposal, onApply, onDi
         ))}
       </ul>
 
-      <h5>Effect on your {WEEKS}-week forecast</h5>
+      <h5>Effect on your {weekCount}-week forecast</h5>
       {anyChange ? (
         <table className="proposal-delta">
           <thead>
@@ -154,7 +155,7 @@ export function ProposalPreview({ data, start, strategy, proposal, onApply, onDi
         </table>
       ) : (
         <p className="muted">
-          No change to the next {WEEKS} weeks — this affects dates further out.
+          No change to the next {weekCount} weeks — this affects dates further out.
         </p>
       )}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeProjection, toISODate } from './projection';
+import { computeProjection, toISODate, weeksForRange, type ProjectionRange } from './projection';
 import type { BudgetData } from '../types';
 import { emptyBudget } from '../types';
 import { bill, debt, paidPerson, person } from '../testFixtures';
@@ -31,27 +31,27 @@ describe('computeProjection', () => {
     expect(weeks[0].essentials.endBalanceCents).toBe(2000_00);
   });
 
-  it('splits each paycheck into essentials and personal using the month it lands in', () => {
+  it('deposits each month only what keeps essentials from going negative', () => {
     const { weeks } = computeProjection(data, start, 3);
     const week2 = weeks[1];
     expect(week2.startISO).toBe('2026-09-30');
     expect(week2.endISO).toBe('2026-10-06');
     expect(week2.paydayCount).toBe(1);
     expect(week2.incomeKnown).toBe(true);
-    // September: $1,600 of shared need over 5 paydays → $320 a payday, split 25/75.
-    expect(week2.essentials.depositCents).toBe(320_00);
-    expect(week2.personal.map((a) => a.depositCents)).toEqual([420_00, 1260_00]);
+    // The $2,000 balance already covers October's $1,600 due before Oct 7, so September deposits nothing.
+    expect(week2.essentials.depositCents).toBe(0);
+    expect(week2.personal.map((a) => a.depositCents)).toEqual([500_00, 1500_00]);
     expect(week2.outflows.map((o) => [o.name, o.amountCents, o.dateISO])).toEqual([
       ['Rent', 1200_00, '2026-10-01'],
       ['Plain', 400_00, '2026-10-02'],
     ]);
-    expect(week2.essentials.endBalanceCents).toBe(2000_00 + 320_00 - 1600_00);
+    expect(week2.essentials.endBalanceCents).toBe(2000_00 - 1600_00);
 
-    // October has one fewer payday, so each one carries more of the same need.
+    // October's 4 paydays rebuild $1,600 for November's early charges: ($1,600 + $1,600 − $2,000) ÷ 4.
     const week3 = weeks[2];
     expect(week3.startISO).toBe('2026-10-07');
-    expect(week3.essentials.depositCents).toBe(400_00);
-    expect(week3.personal.map((a) => a.depositCents)).toEqual([400_00, 1200_00]);
+    expect(week3.essentials.depositCents).toBe(300_00);
+    expect(week3.personal.map((a) => a.depositCents)).toEqual([425_00, 1275_00]);
   });
 
   it('starts week 1 as a full payday week when today is Wednesday', () => {
@@ -87,6 +87,33 @@ describe('computeProjection', () => {
   });
 });
 
+describe('weeksForRange', () => {
+  const endsFor = (start: Date, range: ProjectionRange) =>
+    computeProjection(data, start, weeksForRange(range, start)).weeks.map((w) => w.endISO);
+
+  it('returns 8 for the default range', () => {
+    expect(weeksForRange('8w', new Date(2026, 8, 30))).toBe(8);
+  });
+
+  it('covers exactly through the date N months after the start', () => {
+    const ends = endsFor(new Date(2026, 8, 30), '6m');
+    expect(ends[ends.length - 1] >= '2027-03-30').toBe(true);
+    expect(ends[ends.length - 2] < '2027-03-30').toBe(true);
+  });
+
+  it('grows past 8 weeks for month ranges', () => {
+    const start = new Date(2026, 8, 25);
+    expect(weeksForRange('3m', start)).toBeGreaterThan(8);
+    expect(weeksForRange('6m', start)).toBeGreaterThan(weeksForRange('5m', start));
+  });
+
+  it('clamps to the end of a shorter target month', () => {
+    const ends = endsFor(new Date(2026, 7, 31), '6m');
+    expect(ends[ends.length - 1] >= '2027-02-28').toBe(true);
+    expect(ends[ends.length - 2] < '2027-02-28').toBe(true);
+  });
+});
+
 describe('computeProjection with missing income months', () => {
   const start = new Date(2026, 8, 25);
 
@@ -117,14 +144,14 @@ describe('computeProjection auto-pay lane', () => {
     bills: [bill({ name: 'Electric', amountCents: 400_00, dueDay: 15, paidFrom: 'autopay' })],
   };
 
-  it('carves each payday auto-pay share straight out of gross pay', () => {
+  it('deposits nothing until a charge needs covering', () => {
     const { weeks } = computeProjection(autopayData, start, 2);
     const week2 = weeks[1];
     expect(week2.paydayCount).toBe(1);
-    // September: $400 of auto-pay need over 5 paydays → $80 a payday, split 25/75.
-    expect(week2.autopay).toEqual({ depositCents: 80_00, outflowCents: 0, endBalanceCents: 80_00 });
+    // Nothing drafts auto-pay before Oct 7, so September's payday keeps all its pay.
+    expect(week2.autopay).toEqual({ depositCents: 0, outflowCents: 0, endBalanceCents: 0 });
     expect(week2.essentials.depositCents).toBe(0);
-    expect(week2.personal.map((a) => a.depositCents)).toEqual([480_00, 1440_00]);
+    expect(week2.personal.map((a) => a.depositCents)).toEqual([500_00, 1500_00]);
   });
 
   it('drafts auto-pay items from the auto-pay lane, not essentials', () => {
@@ -134,14 +161,15 @@ describe('computeProjection auto-pay lane', () => {
       { kind: 'bill', name: 'Electric', amountCents: 400_00, dateISO: '2026-10-15', source: 'autopay', personId: null },
     ]);
     expect(week4.essentials.outflowCents).toBe(0);
-    // Sep 30 ($80) + Oct 7 ($100) + Oct 14 ($100) − $400
-    expect(week4.autopay.endBalanceCents).toBe(-120_00);
+    // Oct 7 and Oct 14 must cover the Oct 15 charge: $200 each.
+    expect(week4.autopay.endBalanceCents).toBe(0);
   });
 
   it('starts the auto-pay lane from the current balance', () => {
     const seeded = { ...autopayData, autopayBalanceCents: 500_00 };
     const { weeks } = computeProjection(seeded, start, 4);
-    expect(weeks[3].autopay.endBalanceCents).toBe(380_00);
+    // The balance already covers October, so nothing is deposited.
+    expect(weeks[3].autopay.endBalanceCents).toBe(100_00);
   });
 });
 

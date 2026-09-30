@@ -1,6 +1,6 @@
-import type { BudgetData, DebtPaymentStrategy, MonthRef } from '../types';
-import type { AutopayPlan } from './autopay';
-import { allocateMonth } from './allocation';
+import type { BudgetData, MonthRef } from '../types';
+import type { AllocationResolver } from './allocation';
+import type { FundingPlan } from './funding';
 import { formatMoney } from './money';
 import { monthLabel, parseMonthRef } from './paydays';
 import type { Projection, ProjectionWeek } from './projection';
@@ -13,14 +13,14 @@ export interface FundingWarning {
 /**
  * Flags every way the funding plan fails to add up: months the projection covers
  * with no income data, paychecks too small for their auto-pay and essentials
- * carve-outs, projected negative balances, and missing auto-pay opening funds.
+ * carve-outs, projected negative balances, and missing opening funds.
  * Errors come first.
  */
 export function computeFundingWarnings(
   data: BudgetData,
   projection: Projection,
-  plan: AutopayPlan,
-  strategy: DebtPaymentStrategy = 'suggested',
+  plan: FundingPlan,
+  allocationFor: AllocationResolver,
 ): FundingWarning[] {
   const warnings: FundingWarning[] = [];
 
@@ -37,7 +37,7 @@ export function computeFundingWarnings(
     }
   }
 
-  const blankMonths = months.filter((ref) => !allocateMonth(data, ref, strategy).hasIncome);
+  const blankMonths = months.filter((ref) => !allocationFor(ref).hasIncome);
   if (data.people.length > 0 && blankMonths.length > 0) {
     warnings.push({
       severity: 'warn',
@@ -46,7 +46,7 @@ export function computeFundingWarnings(
   }
 
   for (const ref of months) {
-    const allocation = allocateMonth(data, ref, strategy);
+    const allocation = allocationFor(ref);
     if (!allocation.hasIncome) continue;
     for (const person of allocation.people) {
       if (!person.hasIncome || person.personalPerPaycheckCents >= 0) continue;
@@ -75,10 +75,14 @@ export function computeFundingWarnings(
     }
   }
 
-  if (plan.bufferCents > 0) {
+  for (const [label, funding] of [
+    ['auto-pay', plan.autopay],
+    ['essentials', plan.essentials],
+  ] as const) {
+    if (funding.openingFundsCents <= 0) continue;
     warnings.push({
       severity: 'warn',
-      message: `The auto-pay account needs ${formatMoney(plan.bufferCents)} in opening funds beyond its current balance to never dip negative (simulated from ${plan.simStartISO}).`,
+      message: `The ${label} account needs ${formatMoney(funding.openingFundsCents)} in opening funds beyond its current balance to cover charges due before the first deposit (planned from ${plan.startISO}).`,
     });
   }
 

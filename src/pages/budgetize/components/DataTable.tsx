@@ -54,6 +54,9 @@ export function DataTable<T extends RowData>({
 
   const hideable = table.getAllLeafColumns().filter((c) => c.getCanHide());
   const hasFooter = table.getVisibleLeafColumns().some((c) => c.columnDef.footer !== undefined);
+  // Marked by id, not :first-child, because a rowSpan above shifts which <td> comes first.
+  const stickyId = table.getVisibleLeafColumns()[0]?.id;
+  const stickyClass = (columnId: string) => (columnId === stickyId ? 'sticky-col' : undefined);
 
   return (
     <div className="data-table">
@@ -98,6 +101,7 @@ export function DataTable<T extends RowData>({
                   return (
                     <th
                       key={header.id}
+                      className={stickyClass(column.id)}
                       title={meta?.headerTitle}
                       aria-label={meta?.headerAriaLabel}
                       aria-sort={
@@ -145,7 +149,11 @@ export function DataTable<T extends RowData>({
                     <td
                       key={cell.id}
                       rowSpan={span > 1 ? span : undefined}
-                      className={cell.column.columnDef.meta?.cellClassName}
+                      className={
+                        [stickyClass(cell.column.id), cell.column.columnDef.meta?.cellClassName]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
                     >
                       {render(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -159,7 +167,7 @@ export function DataTable<T extends RowData>({
               {table.getFooterGroups().map((group) => (
                 <tr key={group.id}>
                   {group.headers.map((header) => (
-                    <td key={header.id}>
+                    <td key={header.id} className={stickyClass(header.column.id)}>
                       {render(header.column.columnDef.footer, header.getContext())}
                     </td>
                   ))}

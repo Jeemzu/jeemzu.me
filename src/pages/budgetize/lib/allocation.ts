@@ -1,7 +1,7 @@
-import type { BudgetData, DebtPaymentStrategy, MonthRef, PersonIncome } from '../types';
-import { findMonthlyIncome, monthlyGrossCents, plannedDebtPaymentCents } from '../types';
-import { getPaydays } from './paydays';
-import { monthlyEquivalentCents } from './recurrence';
+import type { AccountSource, BudgetData, DebtPaymentStrategy, MonthRef, PersonIncome } from '../types';
+import { findMonthlyIncome, monthlyGrossCents } from '../types';
+import { daysInMonth, getPaydays } from './paydays';
+import { entriesOn } from './ledger';
 
 /** Split a total into per-person amounts proportional to weights, summing exactly. */
 export function splitProportionally(totalCents: number, weights: number[]): number[] {
@@ -21,25 +21,39 @@ export function splitProportionally(totalCents: number, weights: number[]): numb
   return shares;
 }
 
-/** Steady-state monthly outflow, normalizing non-monthly frequencies and ignoring overrides. */
-export function steadyMonthlyOutflowCents(
+export interface AccountNeed {
+  billsCents: number;
+  debtCents: number;
+  oneOffCents: number;
+  totalCents: number;
+}
+
+export function emptyNeed(): AccountNeed {
+  return { billsCents: 0, debtCents: 0, oneOffCents: 0, totalCents: 0 };
+}
+
+export function addToNeed(need: AccountNeed, kind: 'bill' | 'debt' | 'one-off', cents: number): void {
+  if (kind === 'bill') need.billsCents += cents;
+  else if (kind === 'debt') need.debtCents += cents;
+  else need.oneOffCents += cents;
+  need.totalCents += cents;
+}
+
+/** What an account is charged in a month: stated amounts after overrides and date windows, plus one-off expenses. */
+export function monthNeed(
   data: BudgetData,
-  paidFrom: 'shared' | 'autopay',
+  paidFrom: AccountSource,
+  ref: MonthRef,
   strategy: DebtPaymentStrategy = 'suggested',
-): number {
-  const bills = data.bills.reduce(
-    (sum, bill) =>
-      bill.paidFrom === paidFrom ? sum + monthlyEquivalentCents(bill, bill.amountCents) : sum,
-    0,
-  );
-  const debts = data.debts.reduce(
-    (sum, debt) =>
-      debt.paidFrom === paidFrom
-        ? sum + monthlyEquivalentCents(debt, plannedDebtPaymentCents(debt, strategy))
-        : sum,
-    0,
-  );
-  return bills + debts;
+): AccountNeed {
+  const need = emptyNeed();
+  const days = daysInMonth(ref.year, ref.month);
+  for (let day = 1; day <= days; day++) {
+    for (const entry of entriesOn(data, new Date(ref.year, ref.month, day), strategy).outflows) {
+      if (entry.source === paidFrom) addToNeed(need, entry.kind, entry.amountCents);
+    }
+  }
+  return need;
 }
 
 export interface PersonMonthAllocation {
@@ -60,6 +74,8 @@ export interface MonthAllocation {
   month: MonthRef;
   /** True when at least one person has income data for this month. */
   hasIncome: boolean;
+  autopayNeed: AccountNeed;
+  essentialsNeed: AccountNeed;
   autopayNeedCents: number;
   essentialsNeedCents: number;
   grossMonthlyCents: number;
@@ -88,8 +104,10 @@ export function allocateMonth(
   const grossMonthly = entries.map((entry) => (entry ? monthlyGrossCents(entry) : 0));
   const hasIncome = entries.some((entry) => entry !== null);
 
-  const autopayNeedCents = hasIncome ? steadyMonthlyOutflowCents(data, 'autopay', strategy) : 0;
-  const essentialsNeedCents = hasIncome ? steadyMonthlyOutflowCents(data, 'shared', strategy) : 0;
+  const autopayNeed = hasIncome ? monthNeed(data, 'autopay', ref, strategy) : emptyNeed();
+  const essentialsNeed = hasIncome ? monthNeed(data, 'shared', ref, strategy) : emptyNeed();
+  const autopayNeedCents = autopayNeed.totalCents;
+  const essentialsNeedCents = essentialsNeed.totalCents;
   const autopayShares = splitProportionally(autopayNeedCents, grossMonthly);
   const essentialsShares = splitProportionally(essentialsNeedCents, grossMonthly);
 
@@ -128,6 +146,8 @@ export function allocateMonth(
   return {
     month: ref,
     hasIncome,
+    autopayNeed,
+    essentialsNeed,
     autopayNeedCents,
     essentialsNeedCents,
     grossMonthlyCents: grossMonthly.reduce((a, b) => a + b, 0),
@@ -135,8 +155,13 @@ export function allocateMonth(
   };
 }
 
+export type AllocationResolver = (ref: MonthRef) => MonthAllocation;
+
 /** Memoized `allocateMonth` for callers that walk many dates across a few months. */
-export function createAllocator(data: BudgetData, strategy: DebtPaymentStrategy = 'suggested') {
+export function createAllocator(
+  data: BudgetData,
+  strategy: DebtPaymentStrategy = 'suggested',
+): AllocationResolver {
   const cache = new Map<string, MonthAllocation>();
   return (ref: MonthRef): MonthAllocation => {
     const key = `${ref.year}-${ref.month}`;

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { BudgetData, DebtPaymentStrategy, PersonIncome } from '../types';
+import type { DepositMode } from '../lib/funding';
 import { computeProjection, type ProjectionWeek } from '../lib/projection';
 import { formatMoney } from '../lib/money';
 import { MoneyInput } from './inputs';
@@ -9,7 +10,9 @@ import type { BudgetColumn } from './tableFeatures';
 interface Props {
   data: BudgetData;
   start: Date;
+  weekCount: number;
   strategy: DebtPaymentStrategy;
+  mode: DepositMode;
   onUpdatePerson: (id: string, patch: Partial<Omit<PersonIncome, 'id'>>) => void;
   onSetEssentialsBalance: (cents: number) => void;
   onSetAutopayBalance: (cents: number) => void;
@@ -32,8 +35,11 @@ function outflowTotal(week: ProjectionWeek): number {
   return week.outflows.reduce((sum, o) => sum + o.amountCents, 0);
 }
 
-export function ProjectionView({ data, start, strategy, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
-  const projection = useMemo(() => computeProjection(data, start, 8, strategy), [data, start, strategy]);
+export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
+  const projection = useMemo(
+    () => computeProjection(data, start, weekCount, strategy, mode),
+    [data, start, weekCount, strategy, mode],
+  );
   const startLabel = data.projectionStartISO ? `as of ${fmtISO(data.projectionStartISO)}` : 'today';
 
   const columns: BudgetColumn<ProjectionWeek>[] = [

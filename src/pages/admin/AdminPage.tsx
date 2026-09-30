@@ -32,14 +32,10 @@ import {
 import { FaChevronDown, FaTrash, FaSync } from "react-icons/fa";
 import { FONTS } from "../../lib/globals";
 import { goldButtonSx, headingSx, panelSx } from "../../lib/medievalStyles";
+import { authFetch } from "../../utils/authFetch";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5050/api";
-
-function authHeader(): Record<string, string> {
-  const token = useAuthStore.getState().accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 interface AdminUser {
   id: string;
@@ -136,9 +132,7 @@ function HealthPanel() {
 
     // Database and agent service, both probed server-side — the agent is private.
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/health`, {
-        headers: authHeader(),
-      });
+      const resp = await authFetch(`${API_BASE_URL}/admin/health`);
       if (resp.ok) {
         const data = (await resp.json()) as ServiceHealth[];
         results.push(...data);
@@ -214,9 +208,8 @@ function IngestPanel() {
     setLoading(true);
     setResult(null);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/knowledge/ingest`, {
+      const resp = await authFetch(`${API_BASE_URL}/admin/knowledge/ingest`, {
         method: "POST",
-        headers: authHeader(),
       });
       if (resp.ok) {
         const data = await resp.json();
@@ -274,9 +267,7 @@ function KnowledgePanel() {
   const loadChunks = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/knowledge/chunks`, {
-        headers: authHeader(),
-      });
+      const resp = await authFetch(`${API_BASE_URL}/admin/knowledge/chunks`);
       if (resp.ok) {
         const data = await resp.json();
         setChunks(data.chunks ?? []);
@@ -362,9 +353,7 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/users`, {
-        headers: authHeader(),
-      });
+      const resp = await authFetch(`${API_BASE_URL}/admin/users`);
       if (resp.ok) setUsers(await resp.json());
     } catch {
       /* ignore */
@@ -378,9 +367,9 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
   }, [loadUsers]);
 
   async function handleRoleChange(username: string, newRole: string) {
-    await fetch(`${API_BASE_URL}/admin/users/${username}/role`, {
+    await authFetch(`${API_BASE_URL}/admin/users/${username}/role`, {
       method: "PATCH",
-      headers: { ...authHeader(), "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole }),
     });
     void loadUsers();
@@ -388,9 +377,8 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
 
   async function handleDelete() {
     if (!deleteTarget) return;
-    await fetch(`${API_BASE_URL}/admin/users/${deleteTarget}`, {
+    await authFetch(`${API_BASE_URL}/admin/users/${deleteTarget}`, {
       method: "DELETE",
-      headers: authHeader(),
     });
     setDeleteTarget(null);
     void loadUsers();
@@ -504,9 +492,7 @@ function BudgetGapsPanel() {
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/budget/gaps`, {
-        headers: { ...authHeader() },
-      });
+      const resp = await authFetch(`${API_BASE_URL}/admin/budget/gaps`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       setGaps((await resp.json()) as BudgetGap[]);
     } catch {

@@ -630,6 +630,19 @@
     background: var(--card);
   }
 
+  /* Collapsed borders don't travel with sticky cells, so the divider is a shadow. */
+  .data-table-wrap .bills-table .sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--card);
+    box-shadow: inset -1px 0 var(--line);
+  }
+
+  .data-table-wrap .bills-table th.sticky-col {
+    z-index: 3;
+  }
+
   .data-table-wrap .bills-table th,
   .data-table-wrap .bills-table td {
     overflow: hidden;
@@ -915,6 +928,13 @@
   .projection-table tr.income-unknown td {
     background: var(--warn-soft);
     opacity: 0.75;
+  }
+
+  /* Translucent sticky cells would show scrolled columns through them. */
+  .projection-table tr.income-unknown td.sticky-col {
+    background: var(--warn-soft);
+    opacity: 1;
+    color: var(--ink-soft);
   }
 
   .report-table th {

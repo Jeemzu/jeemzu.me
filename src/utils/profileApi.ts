@@ -7,7 +7,7 @@
  */
 
 import type { components } from '../types/api.generated';
-import { useAuthStore } from '../stores/authStore';
+import { authFetch } from './authFetch';
 
 type ApiSchemas = components['schemas'];
 
@@ -15,18 +15,11 @@ const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
     'http://localhost:5050/api';
 
-function authHeader(): Record<string, string> {
-    const token = useAuthStore.getState().accessToken;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 const jsonHeaders = { 'Content-Type': 'application/json' };
 
 /** GET /api/users/me — the signed-in user's own account settings. */
 export async function getProfileRequest(): Promise<ApiSchemas['ProfileResponse']> {
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
-        headers: { ...authHeader() },
-    });
+    const response = await authFetch(`${API_BASE_URL}/users/me`);
     if (!response.ok) throw new Error(`Could not load profile (${response.status})`);
     return (await response.json()) as ApiSchemas['ProfileResponse'];
 }
@@ -35,9 +28,9 @@ export async function getProfileRequest(): Promise<ApiSchemas['ProfileResponse']
 export async function updateProfilePreferencesRequest(
     body: ApiSchemas['UpdateUserRequest'],
 ): Promise<ApiSchemas['ProfileResponse']> {
-    const response = await fetch(`${API_BASE_URL}/users/me/preferences`, {
+    const response = await authFetch(`${API_BASE_URL}/users/me/preferences`, {
         method: 'POST',
-        headers: { ...jsonHeaders, ...authHeader() },
+        headers: jsonHeaders,
         body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error(`Could not save preferences (${response.status})`);
@@ -52,9 +45,9 @@ export async function updateProfilePreferencesRequest(
 export async function changeUsernameRequest(
     body: ApiSchemas['ChangeUsernameRequest'],
 ): Promise<{ token: ApiSchemas['TokenResponse'] } | { conflict: true }> {
-    const response = await fetch(`${API_BASE_URL}/users/me/username`, {
+    const response = await authFetch(`${API_BASE_URL}/users/me/username`, {
         method: 'POST',
-        headers: { ...jsonHeaders, ...authHeader() },
+        headers: jsonHeaders,
         credentials: 'include',
         body: JSON.stringify(body),
     });
@@ -70,9 +63,9 @@ export async function changeUsernameRequest(
 export async function changePasswordRequest(
     body: ApiSchemas['ChangePasswordRequest'],
 ): Promise<ApiSchemas['TokenResponse'] | null> {
-    const response = await fetch(`${API_BASE_URL}/users/me/password`, {
+    const response = await authFetch(`${API_BASE_URL}/users/me/password`, {
         method: 'POST',
-        headers: { ...jsonHeaders, ...authHeader() },
+        headers: jsonHeaders,
         credentials: 'include',
         body: JSON.stringify(body),
     });
@@ -83,9 +76,8 @@ export async function changePasswordRequest(
 
 /** POST /api/users/me/resend-verification — re-sends the verification link. */
 export async function resendVerificationRequest(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/users/me/resend-verification`, {
+    const response = await authFetch(`${API_BASE_URL}/users/me/resend-verification`, {
         method: 'POST',
-        headers: { ...authHeader() },
     });
     if (!response.ok) throw new Error(`Could not resend verification (${response.status})`);
 }

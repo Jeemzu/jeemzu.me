@@ -9,7 +9,7 @@
 
 import type { components } from '../types/api.generated';
 import type { GameHighScore, UserGameData } from '../lib/GameTypes';
-import { useAuthStore } from '../stores/authStore';
+import { authFetch } from './authFetch';
 
 type ApiSchemas = components['schemas'];
 
@@ -18,12 +18,6 @@ type ApiSchemas = components['schemas'];
 export interface GameSummary {
     allTimeHigh: { score: number; username: string } | null;
     personalBest: number;
-}
-
-/** Returns the Authorization header when the user is logged in, otherwise {}. */
-function authHeader(): Record<string, string> {
-    const token = useAuthStore.getState().accessToken;
-    return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 const API_BASE_URL =
@@ -44,9 +38,9 @@ export async function saveHighScore(
             score,
             timestamp: Date.now(),
         };
-        const response = await fetch(`${API_BASE_URL}/scores`, {
+        const response = await authFetch(`${API_BASE_URL}/scores`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeader() },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
         if (!response.ok) throw new Error('Failed to save score');
@@ -87,9 +81,7 @@ export async function getHighScores(gameId: string, limit = 10): Promise<GameHig
  */
 export async function getGameSummary(gameId: string): Promise<GameSummary> {
     try {
-        const response = await fetch(`${API_BASE_URL}/scores/${gameId}/summary`, {
-            headers: { ...authHeader() },
-        });
+        const response = await authFetch(`${API_BASE_URL}/scores/${gameId}/summary`);
         if (!response.ok) throw new Error('Failed to fetch game summary');
         const data = (await response.json()) as ApiSchemas['GameSummaryResponse'];
         const rec = data.allTimeRecord;
@@ -136,9 +128,9 @@ export async function updateUserPreferences(
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const body: ApiSchemas['UpdateUserRequest'] = { optedIn };
-        const response = await fetch(`${API_BASE_URL}/users`, {
+        const response = await authFetch(`${API_BASE_URL}/users`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...authHeader() },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
         if (!response.ok) throw new Error('Failed to update preferences');

@@ -9,7 +9,7 @@
 
 import type { BudgetData } from "../pages/budgetize/types";
 import type { Projection } from "../pages/budgetize/lib/projection";
-import { useAuthStore } from "../stores/authStore";
+import { authFetch } from "./authFetch";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5050/api";
@@ -83,11 +83,6 @@ export type BudgetChatResult =
   | { status: "unavailable" }
   | { status: "error" };
 
-function authHeader(): Record<string, string> {
-  const token = useAuthStore.getState().accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function budgetChat(
   question: string,
   history: AssistantMessage[],
@@ -97,9 +92,9 @@ export async function budgetChat(
   today: string,
 ): Promise<BudgetChatResult> {
   try {
-    const response = await fetch(`${API_BASE_URL}/budget/chat`, {
+    const response = await authFetch(`${API_BASE_URL}/budget/chat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         question,
         history,
@@ -135,9 +130,9 @@ export async function budgetChat(
 /** Fire-and-forget: a failure here must never interrupt the conversation. */
 export async function reportCapabilityGap(gap: CapabilityGap): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/budget/gaps`, {
+    const response = await authFetch(`${API_BASE_URL}/budget/gaps`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeader() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         request: gap.request,
         reason: gap.reason,
