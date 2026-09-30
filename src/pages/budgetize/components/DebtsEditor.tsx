@@ -15,6 +15,8 @@ interface Props {
   onRemove: (id: string) => void;
 }
 
+const DEFAULT_HIDDEN = ['promo', 'promoEnd', 'rate', 'rateAfter', 'planned', 'frequency', 'paidFrom'];
+
 export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Props) {
   const balanceTotal = debts.reduce((sum, d) => sum + d.balanceCents, 0);
   const minTotal = debts.reduce((sum, d) => sum + d.minPaymentCents, 0);
@@ -253,7 +255,13 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
       {debts.length === 0 ? (
         <p className="muted">No debt accounts yet. Import your workbook or add one below.</p>
       ) : (
-        <DataTable tableId="debts" data={debts} columns={columns} getRowId={(debt) => debt.id} />
+        <DataTable
+          tableId="debts"
+          data={debts}
+          columns={columns}
+          getRowId={(debt) => debt.id}
+          defaultHidden={DEFAULT_HIDDEN}
+        />
       )}
       <button type="button" className="btn" onClick={onAdd}>
         + Add debt account

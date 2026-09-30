@@ -249,28 +249,30 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
         </p>
       ) : (
         <>
-          <DataTable
-            tableId="people"
-            data={people}
-            columns={personColumns}
-            getRowId={(person) => person.id}
-          />
-
-          {months.length === 0 ? (
-            <p className="muted">No pay months yet — add one below or import the workbook.</p>
-          ) : (
+          <div className="people-tables">
             <DataTable
-              tableId="pay-schedule"
-              className="schedule-table"
-              data={scheduleRows}
-              columns={scheduleColumns}
-              getRowId={(r) => `${r.ref.year}-${r.ref.month}-${r.person.id}`}
-              enableSorting={false}
-              getCellRowSpan={(columnId, r) =>
-                monthGroupColumns.has(columnId) ? (r.personIndex === 0 ? people.length : 0) : 1
-              }
+              tableId="people"
+              data={people}
+              columns={personColumns}
+              getRowId={(person) => person.id}
             />
-          )}
+
+            {months.length === 0 ? (
+              <p className="muted">No pay months yet — add one below or import the workbook.</p>
+            ) : (
+              <DataTable
+                tableId="pay-schedule"
+                className="schedule-table"
+                data={scheduleRows}
+                columns={scheduleColumns}
+                getRowId={(r) => `${r.ref.year}-${r.ref.month}-${r.person.id}`}
+                enableSorting={false}
+                getCellRowSpan={(columnId, r) =>
+                  monthGroupColumns.has(columnId) ? (r.personIndex === 0 ? people.length : 0) : 1
+                }
+              />
+            )}
+          </div>
 
           <div className="schedule-add">
             <label>

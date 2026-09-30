@@ -11,6 +11,7 @@
   --accent-soft: #f2e7cc;
   --danger: #a3301f;
   --danger-soft: #f7e3dd;
+  --good: #2f6b35;
   --warn: #9a6114;
   --warn-soft: #f7ecd6;
   --info-soft: #e6ecf2;
@@ -109,10 +110,11 @@
   }
 
   .app {
-    max-width: 1280px;
+    /* 80% of wide screens, but never narrower than the original 1280px layout. */
+    max-width: max(80vw, 1280px);
     margin: 0 auto;
     /* Top padding clears the site's sticky navbar. */
-    padding: 1.5rem 1rem 3rem;
+    padding: 1.5rem 1.5rem 3rem;
   }
 
   /* ---- Top bar ---- */
@@ -388,8 +390,15 @@
     align-items: start;
   }
 
-  .columns.editors {
-    grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
+  .card-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .card-row > .card {
+    min-width: 0;
   }
 
   .side-col {
@@ -692,11 +701,19 @@
     margin-bottom: 0;
   }
 
-  .data-table-wrap .bills-table th {
+  /* Sticky on thead, not th, so stacked header rows don't slide over each other. */
+  .data-table-wrap .bills-table thead {
     position: sticky;
     top: 0;
     z-index: 2;
+  }
+
+  .data-table-wrap .bills-table th {
     background: var(--card);
+  }
+
+  .data-table-wrap .bills-table th.group-header {
+    text-align: center;
   }
 
   /* Collapsed borders don't travel with sticky cells, so the divider is a shadow. */
@@ -979,6 +996,13 @@
     color: var(--danger, #b3261e);
   }
 
+  .people-tables {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
   .schedule-add {
     display: flex;
     flex-wrap: wrap;
@@ -1089,6 +1113,13 @@
     color: var(--ink);
   }
 
+  .view-tab:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: var(--line);
+    color: var(--ink-soft);
+  }
+
   .view-tab.active {
     background: var(--accent);
     border-color: var(--accent);
@@ -1187,8 +1218,31 @@
     white-space: nowrap;
   }
 
+  .projection-table th {
+    text-align: center;
+  }
+
+  .projection-table .acct-start {
+    border-left: 2px solid var(--line);
+  }
+
+  .projection-table td.acct-flow {
+    font-size: 0.9em;
+    opacity: 0.85;
+  }
+
+  /* A gradient layers over row backgrounds (day rows, unknown income) instead of replacing them. */
+  .projection-table .acct-balance {
+    background-image: linear-gradient(rgba(139, 106, 43, 0.08), rgba(139, 106, 43, 0.08));
+    font-weight: 600;
+  }
+
   .neg {
     color: var(--danger);
+  }
+
+  .pos {
+    color: var(--good);
   }
 
   /* ---- Auto-pay plan ---- */
@@ -1202,11 +1256,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
-  }
-
-  .personal-split-name {
-    margin: 0 0 0.35rem;
-    font-size: 0.9rem;
   }
 
   .autopay-lines {
@@ -1423,7 +1472,7 @@
   /* ---- Responsive ---- */
   @media (max-width: 900px) {
     .columns,
-    .columns.editors {
+    .people-tables {
       grid-template-columns: 1fr;
     }
 

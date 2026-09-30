@@ -16,11 +16,18 @@ interface Props<T extends RowData> {
   getCellRowSpan?: (columnId: string, row: T, rowIndex: number) => number;
   /** Nested rows shown when their parent is expanded; adds Expand/Collapse all to the toolbar. */
   getSubRows?: (row: T) => T[] | undefined;
+  /** Column ids hidden until the user turns them on. */
+  defaultHidden?: string[];
 }
 
 // Called as a plain function, not via flexRender, so inputs in cells aren't remounted (and blurred) on each render.
 function render<C>(content: string | ((ctx: C) => ReactNode) | undefined, ctx: C): ReactNode {
   return typeof content === 'function' ? content(ctx) : content;
+}
+
+function columnLabel(parentHeader: unknown, header: unknown, id: string): string {
+  const own = typeof header === 'string' ? header : id;
+  return typeof parentHeader === 'string' ? `${parentHeader}: ${own}` : own;
 }
 
 export function DataTable<T extends RowData>({
@@ -33,8 +40,9 @@ export function DataTable<T extends RowData>({
   enableSorting = true,
   getCellRowSpan,
   getSubRows,
+  defaultHidden,
 }: Props<T>) {
-  const { prefs, setPrefs, reset } = useTablePrefs(tableId);
+  const { prefs, setPrefs, reset } = useTablePrefs(tableId, defaultHidden);
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useTable({
@@ -89,7 +97,7 @@ export function DataTable<T extends RowData>({
                   checked={column.getIsVisible()}
                   onChange={column.getToggleVisibilityHandler()}
                 />
-                {typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id}
+                {columnLabel(column.parent?.columnDef.header, column.columnDef.header, column.id)}
               </label>
             ))}
             <button type="button" className="btn ghost" onClick={reset}>
@@ -101,7 +109,7 @@ export function DataTable<T extends RowData>({
       <div className="table-wrap data-table-wrap">
         <table
           className={`bills-table ${className ?? ''}`}
-          style={{ width: table.getTotalSize() }}
+          style={{ width: '100%', minWidth: table.getTotalSize() }}
         >
           <colgroup>
             {table.getVisibleLeafColumns().map((column) => (
@@ -112,21 +120,29 @@ export function DataTable<T extends RowData>({
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => {
+                  if (header.rowSpan === 0) return null;
                   const { column } = header;
+                  const isLeaf = header.subHeaders.length === 0;
                   const meta = column.columnDef.meta;
                   const sorted = column.getIsSorted();
                   const label = render(column.columnDef.header, header.getContext());
                   return (
                     <th
                       key={header.id}
-                      className={stickyClass(column.id)}
+                      colSpan={header.colSpan > 1 ? header.colSpan : undefined}
+                      rowSpan={header.rowSpan > 1 ? header.rowSpan : undefined}
+                      className={
+                        [stickyClass(column.id), !isLeaf && 'group-header', meta?.headerClassName]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
                       title={meta?.headerTitle}
                       aria-label={meta?.headerAriaLabel}
                       aria-sort={
                         sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined
                       }
                     >
-                      {column.getCanSort() ? (
+                      {isLeaf && column.getCanSort() ? (
                         <button
                           type="button"
                           className="th-sort"
@@ -140,7 +156,7 @@ export function DataTable<T extends RowData>({
                       ) : (
                         label
                       )}
-                      {column.getCanResize() && (
+                      {isLeaf && column.getCanResize() && (
                         <div
                           role="separator"
                           aria-orientation="vertical"

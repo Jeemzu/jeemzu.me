@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import type { BudgetData, DebtPaymentStrategy, PersonIncome } from '../types';
+import type { BudgetData, DebtPaymentStrategy } from '../types';
 import type { DepositMode } from '../lib/funding';
-import { computeProjection, type ProjectionDay, type ProjectionOutflow, type ProjectionWeek } from '../lib/projection';
+import { computeProjection, type AccountWeek, type ProjectionDay, type ProjectionOutflow, type ProjectionWeek } from '../lib/projection';
 import { formatMoney } from '../lib/money';
 import { MoneyInput } from './inputs';
 import { DataTable } from './DataTable';
@@ -13,7 +13,6 @@ interface Props {
   weekCount: number;
   strategy: DebtPaymentStrategy;
   mode: DepositMode;
-  onUpdatePerson: (id: string, patch: Partial<Omit<PersonIncome, 'id'>>) => void;
   onSetEssentialsBalance: (cents: number) => void;
   onSetAutopayBalance: (cents: number) => void;
 }
@@ -49,7 +48,50 @@ function outflowTotal(outflows: ProjectionOutflow[]): number {
   return outflows.reduce((sum, o) => sum + o.amountCents, 0);
 }
 
-export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdatePerson, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
+function flowCell(cents: number, className: string) {
+  return cents > 0 ? <span className={`total-cell ${className}`}>{formatMoney(cents)}</span> : '—';
+}
+
+function accountGroup(id: string, header: string, pick: (r: Row) => AccountWeek): BudgetColumn<Row> {
+  return {
+    id,
+    header,
+    meta: { headerClassName: 'acct-start' },
+    columns: [
+      {
+        id: `${id}:in`,
+        header: 'In',
+        size: 110,
+        meta: {
+          headerTitle: `Paycheck share and one-time income into ${header}`,
+          headerClassName: 'acct-start acct-flow',
+          cellClassName: 'acct-start acct-flow',
+        },
+        cell: ({ row: { original: r } }) => flowCell(pick(r).depositCents, 'pos'),
+      },
+      {
+        id: `${id}:out`,
+        header: 'Out',
+        size: 110,
+        meta: {
+          headerTitle: `Bills, debt payments and one-time expenses from ${header}`,
+          headerClassName: 'acct-flow',
+          cellClassName: 'acct-flow',
+        },
+        cell: ({ row: { original: r } }) => flowCell(pick(r).outflowCents, 'neg'),
+      },
+      {
+        id: `${id}:balance`,
+        header: 'Balance',
+        size: 120,
+        meta: { headerClassName: 'acct-balance', cellClassName: 'acct-balance' },
+        cell: ({ row: { original: r } }) => balanceCell(pick(r).endBalanceCents),
+      },
+    ],
+  };
+}
+
+export function ProjectionView({ data, start, weekCount, strategy, mode, onSetEssentialsBalance, onSetAutopayBalance }: Props) {
   const projection = useMemo(
     () => computeProjection(data, start, weekCount, strategy, mode),
     [data, start, weekCount, strategy, mode],
@@ -89,30 +131,13 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdat
       },
       enableHiding: false,
     },
-    ...projection.people.map(
-      (person, i): BudgetColumn<Row> => ({
-        id: `person:${person.id}`,
-        header: person.name,
-        size: 120,
-        cell: ({ row: { original: r } }) => balanceCell(r.personal[i].endBalanceCents),
-      }),
-    ),
-    {
-      id: 'essentials',
-      header: 'Essentials',
-      size: 120,
-      cell: ({ row: { original: r } }) => balanceCell(r.essentials.endBalanceCents),
-    },
-    {
-      id: 'autopay',
-      header: 'Auto-pay',
-      size: 120,
-      cell: ({ row: { original: r } }) => balanceCell(r.autopay.endBalanceCents),
-    },
+    accountGroup('essentials', 'Essentials', (r) => r.essentials),
+    accountGroup('autopay', 'Auto-pay', (r) => r.autopay),
     {
       id: 'due',
       header: 'Payments due',
       size: 160,
+      meta: { headerClassName: 'acct-start', cellClassName: 'acct-start' },
       cell: ({ row: { original: r } }) => {
         const tooltip = r.outflows
           .map(
@@ -140,17 +165,6 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onUpdat
     <div className="projection">
       <div className="balances-row">
         <span className="field-label">Starting balances ({startLabel}):</span>
-        {data.people.map((person) => (
-          <label key={person.id} className="balance-field">
-            {person.name}
-            <MoneyInput
-              cents={person.personalBalanceCents}
-              ariaLabel={`Current balance for ${person.name}`}
-              allowNegative
-              onCommit={(personalBalanceCents) => onUpdatePerson(person.id, { personalBalanceCents })}
-            />
-          </label>
-        ))}
         <label className="balance-field">
           Essentials
           <MoneyInput

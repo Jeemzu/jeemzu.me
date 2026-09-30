@@ -19,23 +19,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function load(tableId: string): TablePrefs {
+function defaults(hidden: string[] = []): TablePrefs {
+  return { ...EMPTY, visibility: Object.fromEntries(hidden.map((id) => [id, false])) };
+}
+
+function load(tableId: string, base: TablePrefs): TablePrefs {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(storageKey(tableId)) ?? 'null');
-    if (!isRecord(parsed)) return EMPTY;
+    if (!isRecord(parsed)) return base;
     return {
       sizing: isRecord(parsed.sizing) ? (parsed.sizing as ColumnSizingState) : {},
-      visibility: isRecord(parsed.visibility) ? (parsed.visibility as ColumnVisibilityState) : {},
+      // Saved choices win; defaults fill in columns the user never toggled.
+      visibility: {
+        ...base.visibility,
+        ...(isRecord(parsed.visibility) ? (parsed.visibility as ColumnVisibilityState) : {}),
+      },
       sorting: Array.isArray(parsed.sorting) ? (parsed.sorting as SortingState) : [],
     };
   } catch {
-    return EMPTY;
+    return base;
   }
 }
 
 /** Column widths, visibility and sort order, remembered per table in this browser. */
-export function useTablePrefs(tableId: string) {
-  const [prefs, setPrefs] = useState<TablePrefs>(() => load(tableId));
+export function useTablePrefs(tableId: string, defaultHidden?: string[]) {
+  const [prefs, setPrefs] = useState<TablePrefs>(() => load(tableId, defaults(defaultHidden)));
 
   useEffect(() => {
     // Debounced so dragging a column edge doesn't write on every pixel.
@@ -49,7 +57,7 @@ export function useTablePrefs(tableId: string) {
     return () => window.clearTimeout(timer);
   }, [tableId, prefs]);
 
-  const reset = () => setPrefs(EMPTY);
+  const reset = () => setPrefs(defaults(defaultHidden));
 
   return { prefs, setPrefs, reset };
 }

@@ -616,6 +616,11 @@ function BudgetWorkspace() {
                   aria-selected={tab === entry.id}
                   // The assistant needs a signed-in session to reach the API.
                   disabled={entry.id === "assistant" && !isAuthenticated}
+                  title={
+                    entry.id === "assistant" && !isAuthenticated
+                      ? "Sign in to use the assistant"
+                      : undefined
+                  }
                   className={`view-tab${tab === entry.id ? " active" : ""}`}
                   onClick={() => setTab(entry.id)}
                 >
@@ -805,9 +810,6 @@ function BudgetWorkspace() {
                   weekCount={weekCount}
                   strategy={strategy}
                   mode={depositMode}
-                  onUpdatePerson={(id, patch) =>
-                    dispatch({ type: "update-person", id, patch })
-                  }
                   onSetEssentialsBalance={(cents) =>
                     dispatch({ type: "set-essentials-balance", cents })
                   }
@@ -816,38 +818,30 @@ function BudgetWorkspace() {
                   }
                 />
               </section>
-              <section className="card">
-                <h3>Auto-pay account plan</h3>
-                <AccountPlanCard
-                  data={state.data}
-                  plan={fundingPlan}
-                  account="autopay"
-                />
-              </section>
-              <section className="card">
-                <h3>Essentials account plan</h3>
-                <AccountPlanCard
-                  data={state.data}
-                  plan={fundingPlan}
-                  account="shared"
-                />
-              </section>
-              <section className="card">
-                <h3>
-                  Personal paycheck split
-                  <InfoTip>
-                    What each paycheck deposits into each account using{" "}
-                    {depositMode === "flat" ? "flat" : "monthly minimum"}{" "}
-                    auto-pay and essentials deposits. Personal is whatever is
-                    left after those two.
-                  </InfoTip>
-                </h3>
-                <PersonalSplitCard
-                  data={state.data}
-                  months={fundingPlan.months}
-                  allocationFor={allocationFor}
-                />
-              </section>
+              <div className="card-row">
+                <section className="card">
+                  <h3>Auto-pay account plan</h3>
+                  <AccountPlanCard
+                    data={state.data}
+                    plan={fundingPlan}
+                    account="autopay"
+                  />
+                </section>
+                <section className="card">
+                  <h3>Essentials account plan</h3>
+                  <AccountPlanCard
+                    data={state.data}
+                    plan={fundingPlan}
+                    account="shared"
+                  />
+                </section>
+              </div>
+              <PersonalSplitCard
+                data={state.data}
+                months={fundingPlan.months}
+                allocationFor={allocationFor}
+                mode={depositMode}
+              />
             </>
           )}
 
@@ -869,62 +863,61 @@ function BudgetWorkspace() {
 
           {tab === "data" && (
             <>
-              <div className="columns editors">
-                <section className="card">
-                  <h3>
-                    Income &amp; people
-                    <InfoTip>
-                      Paychecks land every Wednesday, and the count comes from
-                      the calendar. Each paycheck is carved into auto-pay
-                      funding, shared essentials, and whatever is left as
-                      personal spending. Months with no row stay blank in the
-                      projection.
-                    </InfoTip>
-                  </h3>
-                  <PeopleEditor
-                    data={state.data}
-                    allocationFor={allocationFor}
-                    onAdd={() =>
-                      dispatch({
-                        type: "add-person",
-                        person: {
-                          id: crypto.randomUUID(),
-                          name: "New person",
-                          schedule: [],
-                          personalBalanceCents: 0,
-                        },
-                      })
-                    }
-                    onUpdate={(id, patch) =>
-                      dispatch({ type: "update-person", id, patch })
-                    }
-                    onRemove={(id) => dispatch({ type: "remove-person", id })}
-                  />
-                </section>
-                <section className="card grow">
-                  <h3>Monthly bills</h3>
-                  <BillsEditor
-                    bills={state.data.bills}
-                    onAdd={() =>
-                      dispatch({
-                        type: "add-bill",
-                        bill: {
-                          id: crypto.randomUUID(),
-                          name: "New bill",
-                          amountCents: 0,
-                          dueDay: 1,
-                          paidFrom: "shared",
-                          ...monthlyRecurrence(),
-                        },
-                      })
-                    }
-                    onUpdate={(id, patch) =>
-                      dispatch({ type: "update-bill", id, patch })
-                    }
-                    onRemove={(id) => dispatch({ type: "remove-bill", id })}
-                  />
-                </section>
-              </div>
+              <section className="card">
+                <h3>
+                  Income &amp; people
+                  <InfoTip>
+                    Paychecks land every Wednesday, and the count comes from
+                    the calendar. Each paycheck is carved into auto-pay
+                    funding, shared essentials, and whatever is left as
+                    personal spending. Months with no row stay blank in the
+                    projection.
+                  </InfoTip>
+                </h3>
+                <PeopleEditor
+                  data={state.data}
+                  allocationFor={allocationFor}
+                  onAdd={() =>
+                    dispatch({
+                      type: "add-person",
+                      person: {
+                        id: crypto.randomUUID(),
+                        name: "New person",
+                        schedule: [],
+                        personalBalanceCents: 0,
+                      },
+                    })
+                  }
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-person", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-person", id })}
+                />
+              </section>
+
+              <section className="card">
+                <h3>Monthly bills</h3>
+                <BillsEditor
+                  bills={state.data.bills}
+                  onAdd={() =>
+                    dispatch({
+                      type: "add-bill",
+                      bill: {
+                        id: crypto.randomUUID(),
+                        name: "New bill",
+                        amountCents: 0,
+                        dueDay: 1,
+                        paidFrom: "shared",
+                        ...monthlyRecurrence(),
+                      },
+                    })
+                  }
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-bill", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-bill", id })}
+                />
+              </section>
 
               <section className="card">
                 <h3>Debt accounts</h3>
@@ -957,41 +950,47 @@ function BudgetWorkspace() {
                 />
               </section>
 
-              <section className="card">
-                <h3>
-                  Temporary changes
-                  <InfoTip>
-                    Pause or re-price a bill or debt for a stretch of time.
-                    The item itself stays as it is and resumes on its own once
-                    the range ends.
-                  </InfoTip>
-                </h3>
-                <OverridesEditor
-                  overrides={state.data.overrides}
-                  bills={state.data.bills}
-                  debts={state.data.debts}
-                  onAdd={(override) =>
-                    dispatch({ type: "add-override", override })
-                  }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-override", id, patch })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-override", id })}
-                />
-              </section>
+              <div className="card-row">
+                <section className="card">
+                  <h3>
+                    Temporary changes
+                    <InfoTip>
+                      Pause or re-price a bill or debt for a stretch of time.
+                      The item itself stays as it is and resumes on its own
+                      once the range ends.
+                    </InfoTip>
+                  </h3>
+                  <OverridesEditor
+                    overrides={state.data.overrides}
+                    bills={state.data.bills}
+                    debts={state.data.debts}
+                    onAdd={(override) =>
+                      dispatch({ type: "add-override", override })
+                    }
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-override", id, patch })
+                    }
+                    onRemove={(id) =>
+                      dispatch({ type: "remove-override", id })
+                    }
+                  />
+                </section>
 
-              <section className="card">
-                <h3>One-time entries</h3>
-                <OneOffsEditor
-                  oneOffs={state.data.oneOffs}
-                  people={state.data.people}
-                  onAdd={(event) => dispatch({ type: "add-one-off", event })}
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-one-off", id, patch })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-one-off", id })}
-                />
-              </section>
+                <section className="card">
+                  <h3>One-time entries</h3>
+                  <OneOffsEditor
+                    oneOffs={state.data.oneOffs}
+                    people={state.data.people}
+                    onAdd={(event) => dispatch({ type: "add-one-off", event })}
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-one-off", id, patch })
+                    }
+                    onRemove={(id) =>
+                      dispatch({ type: "remove-one-off", id })
+                    }
+                  />
+                </section>
+              </div>
             </>
           )}
         </main>

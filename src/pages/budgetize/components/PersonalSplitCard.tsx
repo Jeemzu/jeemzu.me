@@ -1,14 +1,17 @@
 import type { BudgetData, MonthRef } from '../types';
 import type { AllocationResolver, PersonMonthAllocation } from '../lib/allocation';
+import type { DepositMode } from '../lib/funding';
 import { formatMoney } from '../lib/money';
 import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
+import { InfoTip } from './InfoTip';
 import type { BudgetColumn } from './tableFeatures';
 
 interface Props {
   data: BudgetData;
   months: MonthRef[];
   allocationFor: AllocationResolver;
+  mode: DepositMode;
 }
 
 interface Row {
@@ -60,16 +63,28 @@ const COLUMNS: BudgetColumn<Row>[] = [
   },
 ];
 
-export function PersonalSplitCard({ data, months, allocationFor }: Props) {
+export function PersonalSplitCard({ data, months, allocationFor, mode }: Props) {
   if (data.people.length === 0 || months.length === 0) {
-    return <p className="muted">Add people and their pay months to see what is left for personal spending.</p>;
+    return (
+      <section className="card">
+        <h3>Personal paycheck split</h3>
+        <p className="muted">Add people and their pay months to see what is left for personal spending.</p>
+      </section>
+    );
   }
 
   return (
-    <div className="autopay">
+    <div className="card-row">
       {data.people.map((person, i) => (
-        <div key={person.id}>
-          <h4 className="personal-split-name">{person.name}</h4>
+        <section key={person.id} className="card">
+          <h3>
+            Personal paycheck split — {person.name}
+            <InfoTip>
+              What each paycheck deposits into each account using{' '}
+              {mode === 'flat' ? 'flat' : 'monthly minimum'} auto-pay and essentials deposits.
+              Personal is whatever is left after those two.
+            </InfoTip>
+          </h3>
           <DataTable
             tableId={`personal-split:${person.id}`}
             data={months.map((month) => ({ month, share: allocationFor(month).people[i] }))}
@@ -77,7 +92,7 @@ export function PersonalSplitCard({ data, months, allocationFor }: Props) {
             getRowId={(r) => `${r.month.year}-${r.month.month}`}
             enableSorting={false}
           />
-        </div>
+        </section>
       ))}
     </div>
   );

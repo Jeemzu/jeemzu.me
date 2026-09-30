@@ -20,6 +20,7 @@ export interface BudgetColumnMeta {
   headerTitle?: string;
   headerAriaLabel?: string;
   cellClassName?: string;
+  headerClassName?: string;
 }
 
 export const budgetTableFeatures = tableFeatures({
