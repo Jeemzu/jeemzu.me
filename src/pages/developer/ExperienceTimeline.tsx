@@ -198,7 +198,7 @@ const JourneyDescriptionList = ({
   );
 };
 
-const MyJourney = () => {
+const ExperienceTimeline = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery("(max-width:900px)");
   const [open, setOpen] = useState(false);
@@ -336,4 +336,4 @@ const MyJourney = () => {
   );
 };
 
-export default MyJourney;
+export default ExperienceTimeline;

@@ -5,7 +5,6 @@ import {
   useTheme,
   Box,
   IconButton,
-  Divider,
   Stack,
   Modal,
 } from "@mui/material";
@@ -36,38 +35,9 @@ const Footer = () => {
       >
         <Container maxWidth="lg">
           <Grid container spacing={2}>
-            {/* Left Section - Branding */}
-            <Grid
-              size={{ xs: 12, md: 4 }}
-              sx={{ textAlign: { xs: "center", md: "left" } }}
-            >
-              <Typography
-                variant="h5"
-                fontFamily={FONTS.MEDIEVAL_DISPLAY}
-                sx={{
-                  color: theme.palette.medievalGold.main,
-                  letterSpacing: "0.06em",
-                  textShadow: MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW,
-                  mb: 0.5,
-                }}
-              >
-                James Friedenberg
-              </Typography>
-              <Typography
-                variant="caption"
-                fontFamily={FONTS.MEDIEVAL_SERIF}
-                sx={{
-                  color: theme.palette.parchment.dark,
-                  lineHeight: 1.5,
-                }}
-              >
-                Building cool things for Minecraft and beyond
-              </Typography>
-            </Grid>
-
-            {/* Center Section - Quick Links */}
-            <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: "center" }}>
-              <Stack spacing={0.5} sx={{ alignItems: "center" }}>
+            {/* Left Section - Quick Links */}
+            <Grid size={{ xs: 12, md: 6 }} sx={{ textAlign: { xs: "center", md: "left" } }}>
+              <Stack spacing={0.5} sx={{ alignItems: { xs: "center", md: "flex-start" } }}>
                 <Typography
                   variant="body2"
                   fontFamily={FONTS.MEDIEVAL_DISPLAY}
@@ -142,7 +112,7 @@ const Footer = () => {
 
             {/* Right Section - Copyright */}
             <Grid
-              size={{ xs: 12, md: 4 }}
+              size={{ xs: 12, md: 6 }}
               sx={{ textAlign: { xs: "center", md: "right" } }}
             >
               <Typography
@@ -166,27 +136,6 @@ const Footer = () => {
                 }}
               >
                 Built with React + TypeScript
-              </Typography>
-            </Grid>
-
-            {/* Bottom Divider */}
-            <Grid size={12}>
-              <Divider
-                sx={{ borderColor: "rgba(200, 162, 74, 0.20)", mt: 1.5 }}
-              />
-              <Typography
-                variant="caption"
-                fontFamily={FONTS.MEDIEVAL_SERIF}
-                sx={{
-                  color: theme.palette.parchment.dark,
-                  opacity: 0.6,
-                  textAlign: "center",
-                  display: "block",
-                  mt: 1,
-                  fontSize: "0.7rem",
-                }}
-              >
-                Made with ☕ and 💚
               </Typography>
             </Grid>
           </Grid>

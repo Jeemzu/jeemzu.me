@@ -84,7 +84,7 @@ const ProjectCard = ({
   );
 };
 
-const Projects = () => {
+const ProjectGrid = () => {
   const [, navigate] = useLocation();
   return (
     <Box
@@ -120,4 +120,4 @@ const Projects = () => {
   );
 };
 
-export default Projects;
+export default ProjectGrid;

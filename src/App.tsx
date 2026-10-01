@@ -78,12 +78,12 @@ function Custom404() {
   );
 }
 
-const LandingPage = LC(lazy(() => import("./pages/landing/LandingPage")));
+const HomePage = LC(lazy(() => import("./pages/home/HomePage")));
 const AboutPage = LC(lazy(() => import("./pages/developer/AboutPage")));
-const ProjectsPage = LC(lazy(() => import("./pages/projects/ProjectsPage")));
+const ProjectsPage = LC(lazy(() => import("./pages/developer/ProjectsPage")));
 const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")));
 const ExperiencePage = LC(
-  lazy(() => import("./pages/experience/ExperiencePage")),
+  lazy(() => import("./pages/developer/ExperiencePage")),
 );
 const LevelEditorPage = LC(
   lazy(() => import("./pages/editor/LevelEditorPage")),
@@ -106,7 +106,7 @@ export function Routes() {
       <PageTransition>
         {(location) => (
           <Switch location={location}>
-            <Route path="/" component={LandingPage} />
+            <Route path="/" component={HomePage} />
             <Route path="/developer">
               <DeveloperLayout>
                 <AboutPage />

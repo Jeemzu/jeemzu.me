@@ -1,17 +1,17 @@
 import { Container } from "@mui/material";
 import PageHeading from "../../components/shared/PageHeading";
-import MyJourney from "./MyJourney";
+import ProjectGrid from "./ProjectGrid";
 
-const ExperiencePage = () => {
+const ProjectsPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
       <PageHeading
-        title="Experience"
-        subtitle="My professional path and experiences in software engineering"
+        title="Projects"
+        subtitle="Selected projects and products I've built"
       />
-      <MyJourney />
+      <ProjectGrid />
     </Container>
   );
 };
 
-export default ExperiencePage;
+export default ProjectsPage;

@@ -25,7 +25,7 @@ const SUGGESTED_QUESTIONS = [
   "Would James be a good fit for a startup?",
 ];
 
-const LandingChat = () => {
+const DeveloperChat = () => {
   const isMobile = useMediaQuery("(max-width:600px)");
 
   const [history, setHistory] = useState<ConversationMessage[]>([]);
@@ -298,4 +298,4 @@ const LandingChat = () => {
   );
 };
 
-export default LandingChat;
+export default DeveloperChat;

@@ -34,7 +34,7 @@ export const projectData: ProjectDataProps[] = [
     {
         title: 'This Website!',
         img: websiteImg,
-        description: 'My personal portfolio website built with React and TypeScript',
+        description: 'A personal web hub for browser games, developer tools, budgeting, and projects, built with React and TypeScript.',
         link: 'https://github.com/Jeemzu/jeemzu.com',
         degrees: 0
     },

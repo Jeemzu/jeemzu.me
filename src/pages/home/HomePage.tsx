@@ -273,7 +273,7 @@ const AppCard = ({
   );
 };
 
-const LandingPage = () => {
+const HomePage = () => {
   const theme = useTheme();
 
   return (
@@ -333,4 +333,4 @@ const LandingPage = () => {
   );
 };
 
-export default LandingPage;
+export default HomePage;

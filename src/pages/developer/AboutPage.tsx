@@ -11,7 +11,7 @@ import { FaEnvelope } from "react-icons/fa6";
 import { useState } from "react";
 import { FONTS } from "../../lib/globals";
 import { goldButtonSx, panelSx } from "../../lib/medievalStyles";
-import LandingChat from "./LandingChat";
+import DeveloperChat from "./DeveloperChat";
 import ContactModal from "../../components/ContactModal";
 
 const AboutPage = () => {
@@ -66,7 +66,7 @@ const AboutPage = () => {
             textAlign: "left",
           }}
         >
-          Software Engineer at Mojang Studios
+          Senior Software Developer at zuMedia
         </Typography>
 
         <Typography
@@ -81,8 +81,7 @@ const AboutPage = () => {
             textAlign: "left",
           }}
         >
-          Developing cool new features for Minecraft. Passionate about clean
-          code, collaboration, gaming, and woodworking.
+          Developing cool new stuff that will change the world! Passionate about building useful features, collaboration, gaming, and woodworking.
         </Typography>
 
         <Stack
@@ -114,7 +113,7 @@ const AboutPage = () => {
       </Box>
 
       <Box sx={{ mt: { xs: 3, md: 4 } }}>
-        <LandingChat />
+        <DeveloperChat />
       </Box>
 
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
