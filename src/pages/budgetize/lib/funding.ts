@@ -11,6 +11,7 @@ import {
 } from './allocation';
 import { entriesOn } from './ledger';
 import { addMonths, daysInMonth, PAYDAY_WEEKDAY, toISODate } from './paydays';
+import { lockedDeposit, monthlyLock, unlockedShares } from './contributions';
 
 /** Which deposit amounts drive the projection: each month's minimum, or one flat weekly amount. */
 export type DepositMode = 'minimum' | 'flat';
@@ -26,6 +27,10 @@ export interface AccountMonthPlan {
   minPerPaydayCents: number;
   /** Parallel to `data.people`. */
   minShares: number[];
+  /** Flat-mode shares for this month; locks vary per payday with the calendar. */
+  flatShares: number[];
+  shortfallCents: number;
+  excessCents: number;
   /** Balance at the end of the month under minimum deposits. */
   endBalanceCents: number;
 }
@@ -37,6 +42,8 @@ export interface AccountFunding {
   flatPerPaydayCents: number;
   /** Parallel to `data.people`, split by share of total gross pay across the plan. */
   flatShares: number[];
+  /** Flat portion supplied by unlocked people, before fixed monthly contributions. */
+  flatUnlockedPerPaydayCents: number;
   /** Balance to add now so charges due before the first deposit don't overdraw. */
   openingFundsCents: number;
 }
@@ -77,6 +84,23 @@ function planAccount(
   strategy: DebtPaymentStrategy,
 ): AccountFunding {
   const { months, allocations, days, totalGross } = timeline;
+  const locks = data.people.map((person) => monthlyLock(person, account));
+  const hasLocks = locks.some((lock) => lock !== null);
+  const eligible = allocations.map((allocation) => allocation.people.map((p) => p.hasIncome));
+  const canAdjust = eligible.map((people) => people.some((known, i) => known && locks[i] === null));
+  const lockedByDay = days.map((day, t) => {
+    if (!day.deposits) return 0;
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + t);
+    return locks.reduce<number>((sum, lock, i) =>
+      sum + (lock !== null && eligible[day.monthIndex][i]
+        ? lockedDeposit(lock, months[day.monthIndex], date.getDate())
+        : 0), 0);
+  });
+  const sharesFor = (unlocked: number, i: number, weights: number[]) => {
+    const shares = unlockedShares(unlocked, weights, eligible[i], locks);
+    return shares.map((share, p) =>
+      locks[p] !== null && eligible[i][p] ? lockedDeposit(locks[p], months[i]) : share);
+  };
   const needs = months.map(() => emptyNeed());
   // Charges minus one-off deposits for this account, per day.
   const net = days.map((day, t) => {
@@ -124,24 +148,43 @@ function planAccount(
     let deposits = 0;
     let paydayCount = 0;
     let perPayday = 0;
+    let lockedReceived = 0;
+    let uncovered = 0;
     for (; t < days.length && days[t].monthIndex === i; t++) {
       spent += net[t];
-      if (deposits > 0) perPayday = Math.max(perPayday, perDeposit(spent - carry, deposits));
+      uncovered = Math.max(uncovered, spent - carry - lockedReceived);
+      if (deposits > 0) {
+        perPayday = Math.max(perPayday, perDeposit(spent - carry - lockedReceived, deposits));
+      }
       if (days[t].isPayday) paydayCount++;
       if (days[t].deposits) deposits++;
+      lockedReceived += lockedByDay[t];
     }
     if (deposits > 0) {
-      perPayday = Math.max(perPayday, perDeposit(spent + reserveAfter(t - 1) - carry, deposits));
+      perPayday = Math.max(
+        perPayday,
+        perDeposit(spent + reserveAfter(t - 1) - carry - lockedReceived, deposits),
+      );
     }
-    carry += perPayday * deposits - spent;
+    uncovered = Math.max(uncovered, spent + reserveAfter(t - 1) - carry - lockedReceived);
+    const unlocked = canAdjust[i] ? perPayday : 0;
+    const shortfallCents = canAdjust[i] ? 0 : uncovered;
+    const excessCents = Math.max(0, carry + lockedReceived - spent - reserveAfter(t - 1));
+    carry += lockedReceived + unlocked * deposits - spent;
     const allocation = allocations[i];
+    const minShares = hasLocks
+      ? sharesFor(unlocked, i, allocation.people.map((p) => p.grossMonthlyCents))
+      : splitProportionally(perPayday, allocation.people.map((p) => p.grossMonthlyCents));
     return {
       month,
       hasIncome: allocation.hasIncome,
       paydayCount,
       need: needs[i],
-      minPerPaydayCents: perPayday,
-      minShares: splitProportionally(perPayday, allocation.people.map((p) => p.grossMonthlyCents)),
+      minPerPaydayCents: minShares.reduce((sum, share) => sum + share, 0),
+      minShares,
+      flatShares: [],
+      shortfallCents,
+      excessCents: hasLocks && lockedReceived > 0 && perPayday === 0 ? excessCents : 0,
       endBalanceCents: carry,
     };
   });
@@ -149,17 +192,25 @@ function planAccount(
   let spent = 0;
   let deposits = 0;
   let flat = 0;
+  let lockedReceived = 0;
   for (let d = 0; d < days.length; d++) {
     spent += net[d];
-    if (deposits > 0) flat = Math.max(flat, perDeposit(spent - funded, deposits));
-    if (days[d].deposits) deposits++;
+    if (deposits > 0) flat = Math.max(flat, perDeposit(spent - funded - lockedReceived, deposits));
+    lockedReceived += lockedByDay[d];
+    if (days[d].deposits && (!hasLocks || canAdjust[days[d].monthIndex])) deposits++;
   }
+  const legacyFlatShares = splitProportionally(flat, totalGross);
+  monthPlans.forEach((month, i) => {
+    month.flatShares = hasLocks ? sharesFor(flat, i, totalGross) : legacyFlatShares;
+  });
+  const flatShares = monthPlans[0]?.flatShares ?? data.people.map(() => 0);
 
   return {
     account,
     months: monthPlans,
-    flatPerPaydayCents: flat,
-    flatShares: splitProportionally(flat, totalGross),
+    flatPerPaydayCents: flatShares.reduce((sum, share) => sum + share, 0),
+    flatShares,
+    flatUnlockedPerPaydayCents: flat,
     openingFundsCents,
   };
 }
@@ -235,7 +286,7 @@ export function createFundedAllocator(
     let allocation = base;
     if (i !== undefined && base.hasIncome) {
       const sharesFor = (funding: AccountFunding) =>
-        mode === 'flat' ? funding.flatShares : funding.months[i].minShares;
+        mode === 'flat' ? funding.months[i].flatShares : funding.months[i].minShares;
       const autopay = sharesFor(plan.autopay);
       const essentials = sharesFor(plan.essentials);
       allocation = {

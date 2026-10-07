@@ -139,7 +139,9 @@ export function DataTable<T extends RowData>({
                 {group.headers.map((header) => {
                   if (header.rowSpan === 0) return null;
                   const { column } = header;
-                  const isLeaf = header.subHeaders.length === 0;
+                  // Judged by the column, not the header: an ungrouped column in a grouped table is a
+                  // row-spanning placeholder whose subHeaders hold its own leaf header.
+                  const isLeaf = column.columns.length === 0;
                   const meta = column.columnDef.meta;
                   const sorted = column.getIsSorted();
                   const label = render(column.columnDef.header, header.getContext());

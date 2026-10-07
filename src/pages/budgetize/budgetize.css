@@ -46,6 +46,18 @@
     font-weight: 400;
   }
 
+  .contribution-lock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .contribution-lock label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
   /* ---- Info tooltips ---- */
   .info-tip {
     position: relative;

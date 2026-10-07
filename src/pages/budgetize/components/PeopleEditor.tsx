@@ -12,6 +12,7 @@ import { scheduledMonths, type AllocationResolver, type PersonMonthAllocation } 
 import { getPaydays, monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
+import { monthlyLock } from '../lib/contributions';
 
 interface ScheduleRow {
   ref: MonthRef;
@@ -27,6 +28,7 @@ interface Props {
   allocationFor: AllocationResolver;
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Omit<PersonIncome, 'id'>>) => void;
+  onUpdateMany: (updates: { id: string; patch: Partial<Omit<PersonIncome, 'id'>> }[]) => void;
   onRemove: (id: string) => void;
 }
 
@@ -62,27 +64,70 @@ function setMonth(
   ].sort(compareMonthlyIncome);
 }
 
-export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }: Props) {
+export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onUpdateMany, onRemove }: Props) {
   const { people } = data;
   const months = scheduledMonths(people);
   const now = new Date();
   const [draft, setDraft] = useState<MonthRef>({ year: now.getFullYear(), month: now.getMonth() });
 
   const addMonth = () => {
-    for (const person of people) {
-      if (person.schedule.some((e) => e.year === draft.year && e.month === draft.month)) continue;
-      onUpdate(person.id, { schedule: setMonth(person.schedule, draft, 0) });
-    }
+    onUpdateMany(people
+      .filter((person) => !person.schedule.some((e) => e.year === draft.year && e.month === draft.month))
+      .map((person) => ({ id: person.id, patch: { schedule: setMonth(person.schedule, draft, 0) } })));
   };
 
   const removeMonth = (ref: MonthRef) => {
     if (!window.confirm(`Remove ${monthLabel(ref)} pay for everyone?`)) return;
-    for (const person of people) {
-      onUpdate(person.id, {
-        schedule: person.schedule.filter((e) => !(e.year === ref.year && e.month === ref.month)),
-      });
-    }
+    onUpdateMany(people.map((person) => ({
+      id: person.id,
+      patch: { schedule: person.schedule.filter((e) => !(e.year === ref.year && e.month === ref.month)) },
+    })));
   };
+
+  const lockColumns: BudgetColumn<PersonIncome>[] = (['autopay', 'shared'] as const).map((account) => {
+    const label = account === 'autopay' ? 'Auto-pay' : 'Essentials';
+    const field = account === 'autopay' ? 'autopayLockedMonthlyCents' : 'essentialsLockedMonthlyCents';
+    return {
+      id: `${account}-lock`,
+      header: `${label} monthly lock`,
+      size: 220,
+      enableSorting: false,
+      cell: ({ row: { original: person } }) => {
+        const cents = monthlyLock(person, account);
+        return (
+          <div className="contribution-lock">
+            <label>
+              <input
+                type="checkbox"
+                checked={cents !== null}
+                aria-label={`Lock ${person.name}'s monthly ${label} contribution`}
+                onChange={(event) => {
+                  const ref = person.schedule.find((entry) =>
+                    entry.year === now.getFullYear() && entry.month === now.getMonth())
+                    ?? person.schedule[0];
+                  const share = ref ? allocationFor(ref).people.find((p) => p.personId === person.id) : null;
+                  const perPayday = account === 'autopay'
+                    ? share?.autopayPerPaycheckCents
+                    : share?.essentialsPerPaycheckCents;
+                  onUpdate(person.id, { [field]: event.target.checked
+                    ? (perPayday ?? 0) * (ref ? getPaydays(ref.year, ref.month).length : 0)
+                    : null });
+                }}
+              />
+              {cents !== null ? 'Locked' : 'Proportional'}
+            </label>
+            {cents !== null && (
+              <MoneyInput
+                cents={cents}
+                ariaLabel={`${person.name} locked monthly ${label} contribution`}
+                onCommit={(amount) => onUpdate(person.id, { [field]: amount })}
+              />
+            )}
+          </div>
+        );
+      },
+    };
+  });
 
   const personColumns: BudgetColumn<PersonIncome>[] = [
     {
@@ -114,6 +159,7 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
         />
       ),
     },
+    ...lockColumns,
     {
       id: 'actions',
       header: '',
@@ -257,6 +303,11 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onRemove }:
               + Add person
             </button>
           </div>
+          <p className="muted">
+            Lock either account to a fixed monthly amount across all pay months. Unlocked people
+            share the remaining funding by gross income. Locks apply only in months with entered pay;
+            deposits are spread over that month's Wednesdays, with at most a one-cent rounding difference.
+          </p>
 
           {people.length === 0 ? (
             <p className="muted">

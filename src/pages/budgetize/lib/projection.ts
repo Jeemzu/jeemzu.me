@@ -2,6 +2,7 @@ import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
 import { fundedAllocator, type DepositMode } from './funding';
 import { entriesOn, type LedgerEntry } from './ledger';
+import { allocationOnPayday } from './allocation';
 
 export { toISODate } from './paydays';
 
@@ -150,7 +151,7 @@ export function computeProjection(
         paydayCount++;
         const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
         if (!allocation.hasIncome) dayIncomeKnown = false;
-        allocation.people.forEach((share, i) => {
+        allocationOnPayday(allocation, d.getDate()).forEach((share, i) => {
           personal[i].depositCents += share.personalPerPaycheckCents;
           autopay.depositCents += share.autopayPerPaycheckCents;
           essentials.depositCents += share.essentialsPerPaycheckCents;

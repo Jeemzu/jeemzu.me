@@ -4,6 +4,7 @@ import type { FundingPlan } from './funding';
 import { formatMoney } from './money';
 import { monthLabel, parseMonthRef } from './paydays';
 import type { Projection, ProjectionWeek } from './projection';
+import { monthlyLock } from './contributions';
 
 export interface FundingWarning {
   severity: 'error' | 'warn';
@@ -48,12 +49,37 @@ export function computeFundingWarnings(
   for (const ref of months) {
     const allocation = allocationFor(ref);
     if (!allocation.hasIncome) continue;
+    for (const person of data.people) {
+      if (person.schedule.some((entry) => entry.year === ref.year && entry.month === ref.month)) continue;
+      if (monthlyLock(person, 'autopay') === null && monthlyLock(person, 'shared') === null) continue;
+      warnings.push({
+        severity: 'warn',
+        message: `${person.name} has a monthly contribution lock but no entered pay for ${monthLabel(ref)}, so their locked contributions are not deposited that month.`,
+      });
+    }
     for (const person of allocation.people) {
       if (!person.hasIncome || person.personalPerPaycheckCents >= 0) continue;
       warnings.push({
         severity: 'error',
         message: `${person.name}'s ${monthLabel(ref)} paycheck can't cover their share of the bills: ${formatMoney(person.grossPerPaycheckCents)} gross is less than the ${formatMoney(person.autopayPerPaycheckCents + person.essentialsPerPaycheckCents)} auto-pay plus essentials carve-out, so nothing is left for personal spending.`,
       });
+    }
+    const monthIndex = plan.months.findIndex((month) => month.year === ref.year && month.month === ref.month);
+    if (monthIndex === -1) continue;
+    for (const [label, funding] of [['auto-pay', plan.autopay], ['essentials', plan.essentials]] as const) {
+      const month = funding.months[monthIndex];
+      if (month.shortfallCents > 0) {
+        warnings.push({
+          severity: 'error',
+          message: `All people with entered pay are locked for ${label} in ${monthLabel(ref)}. The monthly minimum plan is short ${formatMoney(month.shortfallCents)}; unlock someone, increase a fixed contribution, or add funds. Locked amounts have not changed.`,
+        });
+      }
+      if (month.excessCents > 0) {
+        warnings.push({
+          severity: 'warn',
+          message: `Fixed ${label} contributions and existing funds exceed the monthly minimum requirement in ${monthLabel(ref)} by ${formatMoney(month.excessCents)}. Unlocked contributions are $0 in minimum mode; locked amounts have not changed.`,
+        });
+      }
     }
   }
 

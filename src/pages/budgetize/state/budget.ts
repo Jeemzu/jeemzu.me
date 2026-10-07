@@ -33,6 +33,7 @@ export type Action =
   | { type: 'remove-debt'; id: string }
   | { type: 'add-person'; person: PersonIncome }
   | { type: 'update-person'; id: string; patch: Partial<Omit<PersonIncome, 'id'>> }
+  | { type: 'update-people'; updates: { id: string; patch: Partial<Omit<PersonIncome, 'id'>> }[] }
   | { type: 'remove-person'; id: string }
   | { type: 'add-override'; override: ScheduleOverride }
   | { type: 'update-override'; id: string; patch: Partial<Omit<ScheduleOverride, 'id'>> }
@@ -71,6 +72,12 @@ function mergePeople(current: PersonIncome[], imported: ImportedPerson[]): Perso
       name: person.name,
       schedule: [...schedule.values()].sort(compareMonthlyIncome),
       personalBalanceCents: existing?.personalBalanceCents ?? 0,
+      ...(existing?.autopayLockedMonthlyCents === undefined ? {} : {
+        autopayLockedMonthlyCents: existing.autopayLockedMonthlyCents,
+      }),
+      ...(existing?.essentialsLockedMonthlyCents === undefined ? {} : {
+        essentialsLockedMonthlyCents: existing.essentialsLockedMonthlyCents,
+      }),
     };
   });
 }
@@ -146,6 +153,17 @@ export function budgetReducer(state: AppState, action: Action): AppState {
           ...state.data,
           people: state.data.people.filter((p) => p.id !== action.id),
           oneOffs: state.data.oneOffs.filter((e) => e.personId !== action.id),
+        },
+        dirty: true,
+      };
+    case 'update-people':
+      return {
+        data: {
+          ...state.data,
+          people: state.data.people.map((person) => {
+            const update = action.updates.find((item) => item.id === person.id);
+            return update ? { ...person, ...update.patch } : person;
+          }),
         },
         dirty: true,
       };

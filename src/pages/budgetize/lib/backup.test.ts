@@ -55,6 +55,20 @@ const sample: BudgetData = {
 };
 
 describe('backup roundtrip', () => {
+  it('preserves separate contribution locks including zero and null', () => {
+    const data = { ...sample, people: [{
+      ...sample.people[0], autopayLockedMonthlyCents: 0, essentialsLockedMonthlyCents: 12345,
+    }, { ...sample.people[0], id: 'p2', autopayLockedMonthlyCents: null }] };
+    expect(parseBackup(serializeBackup(data))).toEqual({ ok: true, data });
+    expect(parseBudgetData(data)).toEqual({ ok: true, data });
+  });
+
+  it.each([-1, 1.5, '100', true])('rejects invalid contribution locks: %s', (lock) => {
+    expect(parseBudgetData({ ...sample, people: [{
+      ...sample.people[0], autopayLockedMonthlyCents: lock,
+    }] })).toMatchObject({ ok: false, error: expect.stringContaining('contribution lock') });
+  });
+
   it('preserves subscription section assignments in backups and server payloads', () => {
     const data: BudgetData = {
       ...sample,

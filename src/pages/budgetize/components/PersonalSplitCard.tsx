@@ -89,6 +89,8 @@ export function PersonalSplitCard({ data, months, allocationFor, mode }: Props) 
               What each paycheck deposits into each account using{' '}
               {mode === 'flat' ? 'flat' : 'monthly minimum'} auto-pay and essentials deposits.
               Personal is whatever is left after those two.
+              Locked monthly amounts are spread over calendar Wednesdays; the displayed split is
+              the largest payday amount and may differ by one cent on other paydays.
             </InfoTip>
           </h3>
           <DataTable

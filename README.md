@@ -24,6 +24,14 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - Spreadsheet bill imports replace Monthly bills but keep subscriptions. JSON backups preserve the section assignment and restore the entire budget.
 - Deploy the backend bill DTO's `IsSubscription` field before the frontend so saving and reloading preserves the section assignment. No database migration is needed.
 
+### Budgetize undo and contribution locks
+
+- Undo/Redo reverses committed budget edits, including table fields, imports, removals, and accepted assistant proposals. A focused text-field edit is one undo step; adding/removing a pay month is one step for everyone. History holds up to 100 steps in this workspace session, survives Save, and resets on Reload. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside fields; focused fields retain native text undo.
+- In Edit data > People, lock auto-pay and essentials separately to editable fixed monthly amounts across all entered pay months. Zero is a valid lock; unlocking returns the person to proportional funding.
+- Locked contributions are spread exactly over calendar Wednesdays (payday amounts can differ by one cent). A partial starting month includes only remaining Wednesdays. Months without that person's income entry receive no contribution.
+- Both minimum and flat deposit modes preserve locks and distribute remaining funding among unlocked people by gross income. Unlocked contributions never go below $0. All-locked shortfalls and excess funding produce warnings instead of changing locks.
+- Backups, saved budgets, and spreadsheet exports include locks; re-importing income preserves locks for matching names. Deploy the backend `BudgetPersonDto` nullable lock fields before this frontend, then regenerate API types. No database migration is needed.
+
 ## Technical Stack
 
 ### Frontend

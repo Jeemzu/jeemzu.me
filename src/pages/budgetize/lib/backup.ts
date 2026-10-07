@@ -14,7 +14,7 @@ import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { getPaydays } from './paydays';
 import { parseISODate } from './recurrence';
 
-export const BACKUP_VERSION = 6;
+export const BACKUP_VERSION = 7;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -38,6 +38,10 @@ export type ParseBackupResult = { ok: true; data: BudgetData } | { ok: false; er
 
 function isCents(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+function isOptionalCents(value: unknown): value is number | null | undefined {
+  return value === undefined || value === null || isCents(value);
 }
 
 /** Cash balances may be negative (overdraft); amounts and payments may not. */
@@ -217,11 +221,21 @@ function sanitizePerson(raw: unknown, index: number): PersonIncome | string {
   if (!isSignedCents(obj.personalBalanceCents)) return `"${name}" has an invalid personal balance.`;
   const schedule = sanitizeSchedule(obj, name);
   if (typeof schedule === 'string') return schedule;
+  if (!isOptionalCents(obj.autopayLockedMonthlyCents) ||
+      !isOptionalCents(obj.essentialsLockedMonthlyCents)) {
+    return `"${name}" has an invalid monthly contribution lock.`;
+  }
   return {
     id: readId(obj),
     name,
     schedule,
     personalBalanceCents: obj.personalBalanceCents,
+    ...(obj.autopayLockedMonthlyCents === undefined ? {} : {
+      autopayLockedMonthlyCents: obj.autopayLockedMonthlyCents,
+    }),
+    ...(obj.essentialsLockedMonthlyCents === undefined ? {} : {
+      essentialsLockedMonthlyCents: obj.essentialsLockedMonthlyCents,
+    }),
   };
 }
 

@@ -72,6 +72,8 @@ export function DebtsEditor({ debts, strategy, asOf, onAdd, onUpdate, onRemove }
           'Promotions count at their post-promo rate once expired, and increasingly so in their final 12 months.',
       },
       accessorFn: (debt) => priorities.get(debt.id)?.rank ?? Number.MAX_SAFE_INTEGER,
+      // First click shows #1 (pay first) at the top.
+      sortDescFirst: false,
       cell: ({ row: { original: debt } }) => {
         const priority = priorities.get(debt.id);
         if (!priority) return null;

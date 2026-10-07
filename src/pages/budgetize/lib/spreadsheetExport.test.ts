@@ -32,6 +32,14 @@ function sample(): BudgetData {
 }
 
 describe('buildExportSheets', () => {
+  it('exports locked monthly amounts as dollars, with null for unlocked accounts', () => {
+    const data = sample();
+    data.people[0].autopayLockedMonthlyCents = 0;
+    data.people[0].essentialsLockedMonthlyCents = 12345;
+    const accounts = buildExportSheets(data, asOf)[0].rows;
+    expect(accounts).toContainEqual(['Alex locked monthly auto-pay', 0]);
+    expect(accounts).toContainEqual(['Alex locked monthly essentials', 123.45]);
+  });
   it('exports every table with dollar amounts and resolved names', () => {
     const sheets = Object.fromEntries(buildExportSheets(sample(), asOf).map((s) => [s.name, s.rows]));
 

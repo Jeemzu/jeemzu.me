@@ -11,7 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
 import { emptyBudget, monthlyRecurrence } from "./types";
-import { budgetReducer, initialState } from "./state/budget";
+import { budgetHistoryReducer, initialHistoryState } from "./state/history";
 import { computeMonthSummary } from "./lib/schedule";
 import { addMonths, monthLabel, toISODate } from "./lib/paydays";
 import { resolveProjectionStart } from "./lib/recurrence";
@@ -93,7 +93,7 @@ export default function BudgetizePage() {
 
 function BudgetWorkspace() {
   const { isAuthenticated } = useAuthStore();
-  const [state, dispatch] = useReducer(budgetReducer, initialState);
+  const [state, dispatch] = useReducer(budgetHistoryReducer, initialHistoryState);
   const [monthRef, setMonthRef] = useState<MonthRef>(currentMonth);
   const [importOpen, setImportOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -107,6 +107,22 @@ function BudgetWorkspace() {
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || loadState !== "ready") return;
+      const target = event.target;
+      if (target instanceof HTMLElement &&
+          (target.matches("input, textarea, select") || target.isContentEditable)) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" || (key === "y" && !event.metaKey)) {
+        event.preventDefault();
+        dispatch({ type: key === "y" || event.shiftKey ? "redo" : "undo" });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [loadState]);
 
   const strategy = state.data.debtStrategy;
   const setStrategy = (next: DebtPaymentStrategy) =>
@@ -471,7 +487,15 @@ function BudgetWorkspace() {
     state.data.people.length === 0;
 
   return (
-    <div className="budgetize">
+    <div
+      className="budgetize"
+      onFocusCapture={(event) => {
+        if (event.target.matches("input, textarea, select")) dispatch({ type: "begin-edit" });
+      }}
+      onBlurCapture={(event) => {
+        if (event.target.matches("input, textarea, select")) dispatch({ type: "end-edit" });
+      }}
+    >
       <div className="app">
         <header className="topbar">
           <div className="brand">
@@ -485,6 +509,24 @@ function BudgetWorkspace() {
             </span>
           </div>
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="btn"
+              disabled={state.past.length === 0 && !state.editing}
+              title="Undo last budget edit (Ctrl/Cmd+Z outside a field)"
+              onClick={() => dispatch({ type: "undo" })}
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={state.future.length === 0}
+              title="Redo last undone edit (Ctrl/Cmd+Shift+Z outside a field)"
+              onClick={() => dispatch({ type: "redo" })}
+            >
+              Redo
+            </button>
             <button
               type="button"
               className="btn"
@@ -879,6 +921,7 @@ function BudgetWorkspace() {
                   onUpdate={(id, patch) =>
                     dispatch({ type: "update-person", id, patch })
                   }
+                  onUpdateMany={(updates) => dispatch({ type: "update-people", updates })}
                   onRemove={(id) => dispatch({ type: "remove-person", id })}
                 />
               </section>
