@@ -1432,6 +1432,7 @@ export interface components {
         BudgetBillDto: {
             id: string;
             name: string;
+            isSubscription?: boolean;
             /** Format: int32 */
             amountCents?: number;
             /** Format: int32 */

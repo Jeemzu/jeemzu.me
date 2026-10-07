@@ -343,6 +343,20 @@ function BudgetWorkspace() {
     });
   }
 
+  async function handleSpreadsheetExport() {
+    try {
+      // Dynamic import keeps the xlsx library out of the main bundle.
+      const { downloadExportWorkbook } = await import("./lib/spreadsheetExport");
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadExportWorkbook(state.data, start, `budgetize-me-${stamp}.xlsx`);
+    } catch {
+      setNotice({
+        kind: "error",
+        text: "Could not generate the spreadsheet. Please try again.",
+      });
+    }
+  }
+
   async function handleTemplateDownload() {
     try {
       // Dynamic import keeps the xlsx library out of the main bundle.
@@ -484,6 +498,14 @@ function BudgetWorkspace() {
               onClick={handleBackupDownload}
             >
               Export backup
+            </button>
+            <button
+              type="button"
+              className="btn"
+              title="Every table as a sheet in an Excel workbook, for use in other tools. Restore from the JSON backup instead."
+              onClick={() => void handleSpreadsheetExport()}
+            >
+              Export spreadsheet
             </button>
             {isAuthenticated && (
               <button
@@ -864,7 +886,7 @@ function BudgetWorkspace() {
               <section className="card">
                 <h3>Monthly bills</h3>
                 <BillsEditor
-                  bills={state.data.bills}
+                  bills={state.data.bills.filter((bill) => !bill.isSubscription)}
                   onAdd={() =>
                     dispatch({
                       type: "add-bill",
@@ -886,10 +908,43 @@ function BudgetWorkspace() {
               </section>
 
               <section className="card">
+                <h3>
+                  Subscriptions
+                  <InfoTip>
+                    Subscriptions use the same schedules, funding, and
+                    calculations as monthly bills.
+                  </InfoTip>
+                </h3>
+                <BillsEditor
+                  section="subscriptions"
+                  bills={state.data.bills.filter((bill) => bill.isSubscription)}
+                  onAdd={() =>
+                    dispatch({
+                      type: "add-bill",
+                      bill: {
+                        id: crypto.randomUUID(),
+                        name: "New subscription",
+                        isSubscription: true,
+                        amountCents: 0,
+                        dueDay: 1,
+                        paidFrom: "shared",
+                        ...monthlyRecurrence(),
+                      },
+                    })
+                  }
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-bill", id, patch })
+                  }
+                  onRemove={(id) => dispatch({ type: "remove-bill", id })}
+                />
+              </section>
+
+              <section className="card">
                 <h3>Debt accounts</h3>
                 <DebtsEditor
                   debts={state.data.debts}
                   strategy={strategy}
+                  asOf={start}
                   onAdd={() =>
                     dispatch({
                       type: "add-debt",

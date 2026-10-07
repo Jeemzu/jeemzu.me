@@ -181,7 +181,7 @@ export function ImportWizard({ dirty, hasData, onImport, onRestore, onClose }: P
     const sections: string[] = [];
     if (analysis.bills && analysis.bills.extraction.bills.length > 0) {
       payload.bills = analysis.bills.extraction.bills;
-      sections.push('bills');
+      sections.push('monthly bills (subscriptions are kept)');
     }
     if (analysis.debts && analysis.debts.extraction.debts.length > 0) {
       payload.debts = analysis.debts.extraction.debts;
@@ -208,7 +208,7 @@ export function ImportWizard({ dirty, hasData, onImport, onRestore, onClose }: P
 
   function handleManualImport() {
     if (!manualExtraction || manualExtraction.bills.length === 0) return;
-    if (!confirmReplace(['bills'])) return;
+    if (!confirmReplace(['monthly bills (subscriptions are kept)'])) return;
     onImport({ bills: manualExtraction.bills });
     onClose();
   }

@@ -17,6 +17,13 @@ Browser
 
 The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize chat is sent to the .NET API, which proxies it to the private Python service. The browser does not call the agents service directly.
 
+### Budgetize subscriptions
+
+- Edit data has separate Monthly bills and Subscriptions sections with the same payment and recurrence controls.
+- Subscriptions remain in the budget's `bills` array with `isSubscription: true`; existing bills without the flag stay in Monthly bills. Totals, projections, funding, and temporary changes treat both as bills.
+- Spreadsheet bill imports replace Monthly bills but keep subscriptions. JSON backups preserve the section assignment and restore the entire budget.
+- Deploy the backend bill DTO's `IsSubscription` field before the frontend so saving and reloading preserves the section assignment. No database migration is needed.
+
 ## Technical Stack
 
 ### Frontend

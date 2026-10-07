@@ -18,6 +18,8 @@ export interface Recurrence {
 export interface Bill extends Recurrence {
   id: string;
   name: string;
+  /** Display in the Subscriptions section; omitted on older bills. Billing behavior is unchanged. */
+  isSubscription?: boolean;
   amountCents: number;
   /** Calendar day 1-31; days beyond a month's end land on its last day. Ignored for weekly and biweekly. */
   dueDay: number;
@@ -52,7 +54,7 @@ export interface DebtAccount extends Recurrence {
   /** Promo payoff amount (balance ÷ months left); null when the sheet has none. */
   suggestedPaymentCents: number | null;
   hasPromotion: boolean;
-  /** Reference only — no interest math is done with these. */
+  /** Used only to rank payoff priority — no interest is projected. */
   interestRateBps: number | null;
   promoEndISO: string | null;
   postPromoRateBps: number | null;

@@ -14,7 +14,7 @@ import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { getPaydays } from './paydays';
 import { parseISODate } from './recurrence';
 
-export const BACKUP_VERSION = 5;
+export const BACKUP_VERSION = 6;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -104,9 +104,13 @@ function sanitizeBill(raw: unknown, index: number): Bill | string {
   }
   const recurrence = sanitizeRecurrence(obj, `Bill "${name}"`);
   if (typeof recurrence === 'string') return recurrence;
+  if (obj.isSubscription !== undefined && typeof obj.isSubscription !== 'boolean') {
+    return `Bill "${name}" has an invalid subscription flag.`;
+  }
   return {
     id: readId(obj),
     name,
+    ...(obj.isSubscription === undefined ? {} : { isSubscription: obj.isSubscription }),
     amountCents: obj.amountCents,
     dueDay,
     paidFrom: readPaidFrom(obj.paidFrom, 'shared'),

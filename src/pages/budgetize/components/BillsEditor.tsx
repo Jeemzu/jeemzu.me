@@ -8,12 +8,14 @@ import { isDayStrided, monthlyEquivalentCents } from '../lib/recurrence';
 
 interface Props {
   bills: Bill[];
+  section?: 'bills' | 'subscriptions';
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Omit<Bill, 'id'>>) => void;
   onRemove: (id: string) => void;
 }
 
-export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
+export function BillsEditor({ bills, section = 'bills', onAdd, onUpdate, onRemove }: Props) {
+  const itemLabel = section === 'subscriptions' ? 'subscription' : 'bill';
   // Non-monthly bills are normalized so the total stays comparable month to month.
   const totalCents = bills.reduce(
     (sum, bill) => sum + monthlyEquivalentCents(bill, bill.amountCents),
@@ -23,14 +25,14 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
   const columns: BudgetColumn<Bill>[] = [
     {
       id: 'name',
-      header: 'Bill',
+      header: section === 'subscriptions' ? 'Subscription' : 'Bill',
       size: 200,
       accessorFn: (bill) => bill.name,
       cell: ({ row: { original: bill } }) => (
         <input
           className="text-input"
           value={bill.name}
-          aria-label={`Name for ${bill.name || 'bill'}`}
+          aria-label={`Name for ${bill.name || itemLabel}`}
           onChange={(e) => onUpdate(bill.id, { name: e.target.value })}
         />
       ),
@@ -62,7 +64,7 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
           accessorFn: (bill) => (isDayStrided(bill.frequency) ? 0 : bill.dueDay),
           cell: ({ row: { original: bill } }) =>
             isDayStrided(bill.frequency) ? (
-              <span className="muted" title="Weekly bills count from their start date instead">
+              <span className="muted" title={`Weekly ${section} count from their start date instead`}>
                 —
               </span>
             ) : (
@@ -81,7 +83,7 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
           cell: ({ row: { original: bill } }) => (
             <FrequencyField
               item={bill}
-              label={bill.name || 'this bill'}
+              label={bill.name || `this ${itemLabel}`}
               onChange={(patch) => onUpdate(bill.id, patch)}
             />
           ),
@@ -95,7 +97,7 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
           cell: ({ row: { original: bill } }) => (
             <StartDateField
               item={bill}
-              label={bill.name || 'this bill'}
+              label={bill.name || `this ${itemLabel}`}
               onChange={(patch) => onUpdate(bill.id, patch)}
             />
           ),
@@ -109,7 +111,7 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
           cell: ({ row: { original: bill } }) => (
             <EndDateField
               item={bill}
-              label={bill.name || 'this bill'}
+              label={bill.name || `this ${itemLabel}`}
               onChange={(patch) => onUpdate(bill.id, patch)}
             />
           ),
@@ -158,12 +160,16 @@ export function BillsEditor({ bills, onAdd, onUpdate, onRemove }: Props) {
   return (
     <div className="bills-editor">
       {bills.length === 0 ? (
-        <p className="muted">No bills yet. Import your Excel workbook or add one below.</p>
+        <p className="muted">
+          {section === 'subscriptions'
+            ? 'No subscriptions yet. Add one below.'
+            : 'No bills yet. Import your Excel workbook or add one below.'}
+        </p>
       ) : (
-        <DataTable tableId="bills" data={bills} columns={columns} getRowId={(bill) => bill.id} />
+        <DataTable tableId={section} data={bills} columns={columns} getRowId={(bill) => bill.id} />
       )}
       <button type="button" className="btn" onClick={onAdd}>
-        + Add bill
+        + Add {itemLabel}
       </button>
     </div>
   );

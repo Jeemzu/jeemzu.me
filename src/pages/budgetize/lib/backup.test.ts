@@ -55,6 +55,28 @@ const sample: BudgetData = {
 };
 
 describe('backup roundtrip', () => {
+  it('preserves subscription section assignments in backups and server payloads', () => {
+    const data: BudgetData = {
+      ...sample,
+      bills: [...sample.bills, { ...sample.bills[1], id: 'subscription', isSubscription: true }],
+    };
+    expect(parseBackup(serializeBackup(data))).toEqual({ ok: true, data });
+    expect(parseBudgetData(JSON.parse(JSON.stringify(data)))).toEqual({ ok: true, data });
+  });
+
+  it('keeps older bills without a subscription flag unchanged', () => {
+    expect(parseBackup(JSON.stringify({ app: 'budgetize-me', version: 5, data: sample })))
+      .toEqual({ ok: true, data: sample });
+  });
+
+  it('rejects invalid subscription flags rather than changing the section silently', () => {
+    const data = { ...sample, bills: [{ ...sample.bills[0], isSubscription: 'yes' }] };
+    expect(parseBudgetData(data)).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('subscription flag'),
+    });
+  });
+
   it('serializes and restores identical data', () => {
     const json = serializeBackup(sample, new Date('2026-09-25T12:00:00Z'));
     const parsed = JSON.parse(json);

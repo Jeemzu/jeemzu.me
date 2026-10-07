@@ -64,6 +64,62 @@ describe('budgetReducer settings actions', () => {
     expect(cleared.data.projectionStartISO).toBeNull();
   });
 
+  describe('subscriptions as bills', () => {
+    const subscription = bill({
+      id: 's1', name: 'Streaming', amountCents: 1500, dueDay: 15, isSubscription: true,
+    });
+
+    it('adds, edits, and removes subscriptions using bill actions', () => {
+      const added = budgetReducer(initialState, { type: 'add-bill', bill: subscription });
+      expect(added.data.bills).toEqual([subscription]);
+      expect(added.dirty).toBe(true);
+
+      const updated = budgetReducer(added, {
+        type: 'update-bill',
+        id: subscription.id,
+        patch: { amountCents: 1500, paidFrom: 'autopay' },
+      });
+      expect(updated.data.bills[0]).toMatchObject({
+        isSubscription: true,
+        amountCents: 1500,
+        paidFrom: 'autopay',
+      });
+
+      const withOverride = budgetReducer(updated, {
+        type: 'add-override',
+        override: {
+          id: 'o1', targetKind: 'bill', targetId: subscription.id,
+          fromISO: '2027-01-01', toISO: '2027-01-31',
+          mode: 'skip', amountCents: null, note: '',
+        },
+      });
+      const removed = budgetReducer(withOverride, { type: 'remove-bill', id: subscription.id });
+      expect(removed.data.bills).toEqual([]);
+      expect(removed.data.overrides).toEqual([]);
+    });
+
+    it('replaces imported monthly bills without deleting subscriptions or their overrides', () => {
+      const data: BudgetData = {
+        ...sampleData(),
+        bills: [...sampleData().bills, subscription],
+        overrides: [
+          {
+            id: 'o1', targetKind: 'bill', targetId: subscription.id,
+            fromISO: '2027-01-01', toISO: '2027-01-31',
+            mode: 'skip', amountCents: null, note: '',
+          },
+        ],
+      };
+      const imported = bill({ id: 'b2', name: 'Electric', amountCents: 5000, dueDay: 1 });
+      const state = budgetReducer({ data, dirty: false }, {
+        type: 'import-data', payload: { bills: [imported] },
+      });
+      expect(state.data.bills).toEqual([imported, subscription]);
+      expect(state.data.overrides).toEqual(data.overrides);
+      expect(state.dirty).toBe(true);
+    });
+  });
+
   it('saves the debt strategy with the budget', () => {
     const state = budgetReducer(initialState, { type: 'set-debt-strategy', strategy: 'minimum' });
     expect(state.data.debtStrategy).toBe('minimum');

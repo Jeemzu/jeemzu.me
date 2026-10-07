@@ -23,6 +23,22 @@ describe('resolveDueDay', () => {
 });
 
 describe('computeMonthSummary', () => {
+  it('budgets subscriptions identically to bills for either payment account', () => {
+    for (const paidFrom of ['shared', 'autopay'] as const) {
+      const regular = budget({
+        people: [paidPerson('A', 2026, 500_00)],
+        bills: [bill({ id: 's1', name: 'Streaming', amountCents: 1500, dueDay: 15, paidFrom })],
+      });
+      const subscription = {
+        ...regular,
+        bills: regular.bills.map((entry) => ({ ...entry, isSubscription: true })),
+      };
+      expect(computeMonthSummary(subscription, 2026, 9))
+        .toEqual(computeMonthSummary(regular, 2026, 9));
+      expect(computeMonthSummary(subscription, 2026, 9).billsTotalCents).toBe(1500);
+    }
+  });
+
   const data = budget({
     people: [paidPerson('A', 2026, 2300_00)],
     bills: [

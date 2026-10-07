@@ -6,10 +6,28 @@ import { DataTable } from './DataTable';
 import { TOTAL_META, type BudgetColumn } from './tableFeatures';
 import { isDayStrided } from '../lib/recurrence';
 import { formatMoney } from '../lib/money';
+import { rankDebtPriority, type DebtPriority } from '../lib/debtPriority';
+
+function promoNote(priority: DebtPriority): string | null {
+  if (priority.promoStatus === 'expired') return 'promo expired';
+  if (priority.promoStatus === 'ending-soon') {
+    const months = priority.promoMonthsLeft ?? 0;
+    return months <= 0 ? 'promo ends now' : `promo ends ${months} mo`;
+  }
+  return null;
+}
+
+function priorityTitle(debt: DebtAccount, priority: DebtPriority): string {
+  if (debt.balanceCents <= 0) return 'Paid off';
+  const rate = (priority.effectiveRateBps / 100).toFixed(2);
+  return `${rate}% effective rate on ${formatMoney(debt.balanceCents)} → ${priority.score.toFixed(2)}% per $1k of balance`;
+}
 
 interface Props {
   debts: DebtAccount[];
   strategy: DebtPaymentStrategy;
+  /** Date promotion expiry is measured from — the plan start. */
+  asOf: Date;
   onAdd: () => void;
   onUpdate: (id: string, patch: Partial<Omit<DebtAccount, 'id'>>) => void;
   onRemove: (id: string) => void;
@@ -17,7 +35,8 @@ interface Props {
 
 const DEFAULT_HIDDEN = ['promo', 'promoEnd', 'rate', 'rateAfter', 'planned', 'frequency', 'paidFrom'];
 
-export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Props) {
+export function DebtsEditor({ debts, strategy, asOf, onAdd, onUpdate, onRemove }: Props) {
+  const priorities = rankDebtPriority(debts, asOf);
   const balanceTotal = debts.reduce((sum, d) => sum + d.balanceCents, 0);
   const minTotal = debts.reduce((sum, d) => sum + d.minPaymentCents, 0);
   const plannedTotal = debts.reduce((sum, d) => sum + plannedDebtPaymentCents(d, strategy), 0);
@@ -42,6 +61,28 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
       ),
       footer: 'Total',
       enableHiding: false,
+    },
+    {
+      id: 'priority',
+      header: 'Priority',
+      size: 130,
+      meta: {
+        headerTitle:
+          'Which debt to pay down first: high interest on a small balance ranks highest. ' +
+          'Promotions count at their post-promo rate once expired, and increasingly so in their final 12 months.',
+      },
+      accessorFn: (debt) => priorities.get(debt.id)?.rank ?? Number.MAX_SAFE_INTEGER,
+      cell: ({ row: { original: debt } }) => {
+        const priority = priorities.get(debt.id);
+        if (!priority) return null;
+        const note = promoNote(priority);
+        return (
+          <span title={priorityTitle(debt, priority)}>
+            #{priority.rank}
+            {note && <span className={`priority-note ${priority.promoStatus}`}> · {note}</span>}
+          </span>
+        );
+      },
     },
     {
       id: 'balance',
@@ -122,7 +163,7 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
           id: 'promoEnd',
           header: 'Promo ends',
           size: 150,
-          meta: { headerTitle: 'Reference only — no interest math is done with these' },
+          meta: { headerTitle: 'Used only for the priority ranking — no interest is projected' },
           accessorFn: (debt) => debt.promoEndISO ?? '',
           cell: ({ row: { original: debt } }) => (
             <input
@@ -138,7 +179,7 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
           id: 'rate',
           header: 'Rate',
           size: 100,
-          meta: { headerTitle: 'Reference only' },
+          meta: { headerTitle: 'Used only for the priority ranking' },
           accessorFn: (debt) => debt.interestRateBps ?? -1,
           cell: ({ row: { original: debt } }) => (
             <RateInput
@@ -152,7 +193,7 @@ export function DebtsEditor({ debts, strategy, onAdd, onUpdate, onRemove }: Prop
           id: 'rateAfter',
           header: 'Rate after',
           size: 100,
-          meta: { headerTitle: 'Reference only — the rate once the promotion ends' },
+          meta: { headerTitle: 'The rate once the promotion ends — used for the priority ranking' },
           accessorFn: (debt) => debt.postPromoRateBps ?? -1,
           cell: ({ row: { original: debt } }) => (
             <RateInput

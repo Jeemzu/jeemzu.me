@@ -200,7 +200,9 @@ export function budgetReducer(state: AppState, action: Action): AppState {
     case 'set-debt-strategy':
       return { data: { ...state.data, debtStrategy: action.strategy }, dirty: true };
     case 'import-data': {
-      const bills = action.payload.bills ?? state.data.bills;
+      const bills = action.payload.bills
+        ? [...action.payload.bills, ...state.data.bills.filter((bill) => bill.isSubscription)]
+        : state.data.bills;
       const debts = action.payload.debts ?? state.data.debts;
       const people = action.payload.people
         ? mergePeople(state.data.people, action.payload.people)

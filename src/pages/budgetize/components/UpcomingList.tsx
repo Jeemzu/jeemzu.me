@@ -1,4 +1,4 @@
-import type { MonthRef } from '../types';
+import type { MonthRef, OneOffAccount } from '../types';
 import type { MonthSummary } from '../lib/schedule';
 import { formatMoney } from '../lib/money';
 import { formatMonthDay } from '../lib/paydays';
@@ -21,7 +21,14 @@ type Item =
       moved: boolean;
       fromDay: number;
       adjusted: boolean;
+      paidFrom: OneOffAccount;
     };
+
+const ACCOUNT_LABELS: Record<OneOffAccount, string> = {
+  autopay: 'auto-pay',
+  shared: 'essentials',
+  personal: 'personal',
+};
 
 export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
   const now = new Date();
@@ -40,6 +47,7 @@ export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
         moved: s.moved,
         fromDay: s.dueDay,
         adjusted: s.adjusted,
+        paidFrom: s.paidFrom,
       }),
     ),
   ].sort((a, b) => a.day - b.day || (a.kind === 'payday' ? -1 : 1) - (b.kind === 'payday' ? -1 : 1));
@@ -80,6 +88,9 @@ export function UpcomingList({ monthRef, summary, paydayDepositCents }: Props) {
                       {' '}· adjusted
                     </span>
                   )}
+                  <span className="moved-note" title="Account this is paid from">
+                    {' '}· {ACCOUNT_LABELS[item.paidFrom]}
+                  </span>
                 </span>
                 <span className="upcoming-amount">−{formatMoney(item.amountCents)}</span>
               </>

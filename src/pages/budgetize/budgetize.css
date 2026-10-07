@@ -559,6 +559,15 @@
     font-size: 0.75rem;
   }
 
+  .priority-note {
+    color: var(--warn);
+    font-size: 0.75rem;
+  }
+
+  .priority-note.expired {
+    color: var(--danger);
+  }
+
   .upcoming-amount {
     font-variant-numeric: tabular-nums;
     color: var(--danger);

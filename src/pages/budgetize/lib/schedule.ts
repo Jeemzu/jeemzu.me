@@ -1,4 +1,4 @@
-import type { BudgetData, DebtPaymentStrategy } from '../types';
+import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { plannedDebtPaymentCents } from '../types';
 import { getPaydays, toISODate } from './paydays';
 import { createAllocator, type AllocationResolver } from './allocation';
@@ -27,6 +27,22 @@ export interface ScheduledItem {
   moved: boolean;
   /** True when a schedule override changed this occurrence's amount. */
   adjusted: boolean;
+  paidFrom: OneOffAccount;
+}
+
+/** One account's money in and out over a month. */
+export interface AccountMonthTotals {
+  depositsCents: number;
+  chargesCents: number;
+  /** Deposits minus charges; negative means the month draws down the existing balance. */
+  netCents: number;
+}
+
+export interface MonthAccounts {
+  autopay: AccountMonthTotals;
+  essentials: AccountMonthTotals;
+  /** Paycheck remainders after the auto-pay and essentials carve-outs. */
+  personal: AccountMonthTotals;
 }
 
 export interface CategoryTotal {
@@ -54,16 +70,16 @@ export interface MonthSummary {
   outflowTotalCents: number;
   /** Deposits carved out of gross pay into the auto-pay account this month. */
   autopayFundingCents: number;
-  /** Income left after every outflow — the household's personal spending money. */
+  /** Income left after every outflow; equals the sum of each account's net. */
   remainingCents: number;
   perPaydayCents: number;
+  accounts: MonthAccounts;
   scheduled: ScheduledItem[];
   categories: CategoryTotal[];
 }
 
 interface Occurrence extends ScheduledItem {
   category: string;
-  paidFrom: 'shared' | 'autopay' | 'personal';
 }
 
 export function computeMonthSummary(
@@ -126,11 +142,13 @@ export function computeMonthSummary(
   }
 
   let oneOffIncomeCents = 0;
+  const oneOffIncomeBy: Record<OneOffAccount, number> = { autopay: 0, shared: 0, personal: 0 };
   for (const event of data.oneOffs) {
     const date = parseMonthDate(event.dateISO, year, month);
     if (date === null) continue;
     if (event.kind === 'income') {
       oneOffIncomeCents += event.amountCents;
+      oneOffIncomeBy[event.account] += event.amountCents;
       continue;
     }
     items.push({
@@ -149,7 +167,7 @@ export function computeMonthSummary(
   }
 
   const scheduled: ScheduledItem[] = items
-    .map(({ kind, id, name, amountCents, dueDay, day, dateISO, moved, adjusted }) => ({
+    .map(({ kind, id, name, amountCents, dueDay, day, dateISO, moved, adjusted, paidFrom }) => ({
       kind,
       id,
       name,
@@ -159,6 +177,7 @@ export function computeMonthSummary(
       dateISO,
       moved,
       adjusted,
+      paidFrom,
     }))
     .sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
 
@@ -178,6 +197,23 @@ export function computeMonthSummary(
   // is whatever gross pay and one-off income the outflows did not consume.
   const remainingCents = incomeCents - outflowTotalCents;
   const perPaydayCents = paydays.length > 0 ? Math.round(remainingCents / paydays.length) : 0;
+
+  const chargesFor = (account: OneOffAccount) =>
+    items.reduce((sum, item) => (item.paidFrom === account ? sum + item.amountCents : sum), 0);
+  const totals = (depositsCents: number, chargesCents: number): AccountMonthTotals => ({
+    depositsCents,
+    chargesCents,
+    netCents: depositsCents - chargesCents,
+  });
+  const personalPayCents = allocation.people.reduce(
+    (sum, p) => sum + p.personalPerPaycheckCents * p.paycheckCount,
+    0,
+  );
+  const accounts: MonthAccounts = {
+    autopay: totals(autopayFundingCents + oneOffIncomeBy.autopay, chargesFor('autopay')),
+    essentials: totals(essentialsIncomeCents + oneOffIncomeBy.shared, chargesFor('shared')),
+    personal: totals(personalPayCents + oneOffIncomeBy.personal, chargesFor('personal')),
+  };
 
   const byCategory = new Map<string, number>();
   for (const item of items) {
@@ -204,6 +240,7 @@ export function computeMonthSummary(
     autopayFundingCents,
     remainingCents,
     perPaydayCents,
+    accounts,
     scheduled,
     categories,
   };
