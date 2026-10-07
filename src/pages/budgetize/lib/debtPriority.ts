@@ -9,10 +9,8 @@ const DAYS_PER_MONTH = 30.44;
 export type PromoStatus = 'none' | 'active' | 'ending-soon' | 'expired';
 
 export interface DebtPriority {
-  /** 1 = pay down first; ties share no rank, they fall back to the smaller balance. */
+  /** 1 = pay down first; equal rates fall back to the smaller balance. */
   rank: number;
-  /** APR percent per $1,000 of balance — higher means more interest avoided per dollar paid. */
-  score: number;
   /** Rate used for ranking, blending in the post-promo rate as a promotion nears its end. */
   effectiveRateBps: number;
   promoStatus: PromoStatus;
@@ -53,27 +51,24 @@ export function effectiveRate(
 }
 
 /**
- * Ranks debts by which to pay down first: high interest on a small balance wins
- * (most interest avoided per dollar, and the quickest to clear). Promotions count
- * at their promo rate while far off, then increasingly at their post-promo rate
- * as they near expiry; expired promotions count at the post-promo rate. Paid-off
- * debts rank last.
+ * Ranks debts by effective interest rate (the avalanche method). Equal rates
+ * fall back to the smaller balance. Promotions count at their promo rate while
+ * far off, then increasingly at their post-promo rate as they near expiry;
+ * expired promotions count at the post-promo rate. Paid-off debts rank last.
  */
 export function rankDebtPriority(debts: DebtAccount[], asOf: Date): Map<string, DebtPriority> {
   const scored = debts.map((debt) => {
     const rate = effectiveRate(debt, asOf);
-    const score =
-      debt.balanceCents > 0 ? rate.effectiveRateBps / 100 / (debt.balanceCents / 100_000) : 0;
-    return { debt, rate, score };
+    return { debt, rate };
   });
   scored.sort(
     (a, b) =>
       Number(b.debt.balanceCents > 0) - Number(a.debt.balanceCents > 0) ||
-      b.score - a.score ||
+      b.rate.effectiveRateBps - a.rate.effectiveRateBps ||
       a.debt.balanceCents - b.debt.balanceCents ||
       a.debt.name.localeCompare(b.debt.name),
   );
   return new Map(
-    scored.map(({ debt, rate, score }, i) => [debt.id, { rank: i + 1, score, ...rate }]),
+    scored.map(({ debt, rate }, i) => [debt.id, { rank: i + 1, ...rate }]),
   );
 }

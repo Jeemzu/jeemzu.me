@@ -36,6 +36,7 @@ import { OverridesEditor } from "./components/OverridesEditor";
 import { OneOffsEditor } from "./components/OneOffsEditor";
 import { ProjectionView } from "./components/ProjectionView";
 import { AccountPlanCard } from "./components/AccountPlanCard";
+import { DebtPayoffCard } from "./components/DebtPayoffCard";
 import { PersonalSplitCard } from "./components/PersonalSplitCard";
 import { InfoTip } from "./components/InfoTip";
 import { FundingWarnings } from "./components/FundingWarnings";
@@ -609,6 +610,15 @@ function BudgetWorkspace() {
 
         <main>
           {!isEmpty && <FundingWarnings warnings={fundingWarnings} />}
+          {state.data.debts.some((debt) => debt.balanceCents > 0) && (
+            <DebtPayoffCard
+              data={state.data}
+              start={start}
+              plan={fundingPlan}
+              mode={depositMode}
+              strategy={strategy}
+            />
+          )}
           {isEmpty && (
             <section className="card hero">
               <h2>Welcome!</h2>

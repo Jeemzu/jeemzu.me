@@ -20,7 +20,7 @@ function promoNote(priority: DebtPriority): string | null {
 function priorityTitle(debt: DebtAccount, priority: DebtPriority): string {
   if (debt.balanceCents <= 0) return 'Paid off';
   const rate = (priority.effectiveRateBps / 100).toFixed(2);
-  return `${rate}% effective rate on ${formatMoney(debt.balanceCents)} → ${priority.score.toFixed(2)}% per $1k of balance`;
+  return `${rate}% effective APR — highest rate first`;
 }
 
 interface Props {
@@ -68,7 +68,7 @@ export function DebtsEditor({ debts, strategy, asOf, onAdd, onUpdate, onRemove }
       size: 130,
       meta: {
         headerTitle:
-          'Which debt to pay down first: high interest on a small balance ranks highest. ' +
+          'Which debt to pay down first: highest effective interest rate ranks first. ' +
           'Promotions count at their post-promo rate once expired, and increasingly so in their final 12 months.',
       },
       accessorFn: (debt) => priorities.get(debt.id)?.rank ?? Number.MAX_SAFE_INTEGER,

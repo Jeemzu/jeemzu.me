@@ -53,7 +53,7 @@ describe('effectiveRate', () => {
 });
 
 describe('rankDebtPriority', () => {
-  it('ranks high rate on a small balance first and paid-off debts last', () => {
+  it('ranks highest interest rates first and paid-off debts last', () => {
     const debts = [
       debt({ name: 'Paid', minPaymentCents: 0, balanceCents: 0, interestRateBps: 3000 }),
       debt({ name: 'Big', minPaymentCents: 1, balanceCents: 10_000_00, interestRateBps: 2500 }),
@@ -79,6 +79,6 @@ describe('rankDebtPriority', () => {
     ];
     const ranks = rankDebtPriority(debts, asOf);
     const order = [...ranks.entries()].sort((a, b) => a[1].rank - b[1].rank).map(([id]) => id);
-    expect(order).toEqual(['Small', 'Expired', 'Big', 'Promo', 'Paid']);
+    expect(order).toEqual(['Expired', 'Big', 'Small', 'Promo', 'Paid']);
   });
 });
