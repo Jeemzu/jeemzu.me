@@ -27,10 +27,11 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 ### Budgetize undo and contribution locks
 
 - Undo/Redo reverses committed budget edits, including table fields, imports, removals, and accepted assistant proposals. A focused text-field edit is one undo step; adding/removing a pay month is one step for everyone. History holds up to 100 steps in this workspace session, survives Save, and resets on Reload. Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z work outside fields; focused fields retain native text undo.
-- In Edit data > People, lock auto-pay and essentials separately to editable fixed monthly amounts across all entered pay months. Zero is a valid lock; unlocking returns the person to proportional funding.
-- Locked contributions are spread exactly over calendar Wednesdays (payday amounts can differ by one cent). A partial starting month includes only remaining Wednesdays. Months without that person's income entry receive no contribution.
+- In Edit data > People, lock auto-pay and essentials separately to editable fixed per-paycheck amounts. The exact amount lands every paycheck, including in four- and five-payday months. Zero is a valid lock; unlocking returns the person to proportional funding.
+- A partial starting month includes only remaining paydays. Months without that person's income entry receive no contribution. Earlier monthly-named locks retain the entered number as the per-paycheck amount.
 - Both minimum and flat deposit modes preserve locks and distribute remaining funding among unlocked people by gross income. Unlocked contributions never go below $0. All-locked shortfalls and excess funding produce warnings instead of changing locks.
-- Backups, saved budgets, and spreadsheet exports include locks; re-importing income preserves locks for matching names. Deploy the backend `BudgetPersonDto` nullable lock fields before this frontend, then regenerate API types. No database migration is needed.
+- Projection account tables keep every contributor's split visible, locked or unlocked; the weekly/daily balance table also shows each person's paycheck contributions separately from one-time income.
+- Backups, saved budgets, and spreadsheet exports include per-paycheck locks; re-importing income preserves locks for matching names. Deploy the backend `BudgetPersonDto` nullable per-paycheck fields before this frontend, then regenerate API types. No database migration is needed.
 
 ## Technical Stack
 

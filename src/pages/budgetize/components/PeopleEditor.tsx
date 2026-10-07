@@ -12,7 +12,7 @@ import { scheduledMonths, type AllocationResolver, type PersonMonthAllocation } 
 import { getPaydays, monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
-import { monthlyLock } from '../lib/contributions';
+import { paycheckLock } from '../lib/contributions';
 
 interface ScheduleRow {
   ref: MonthRef;
@@ -86,21 +86,21 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onUpdateMan
 
   const lockColumns: BudgetColumn<PersonIncome>[] = (['autopay', 'shared'] as const).map((account) => {
     const label = account === 'autopay' ? 'Auto-pay' : 'Essentials';
-    const field = account === 'autopay' ? 'autopayLockedMonthlyCents' : 'essentialsLockedMonthlyCents';
+    const field = account === 'autopay' ? 'autopayLockedPerPaycheckCents' : 'essentialsLockedPerPaycheckCents';
     return {
       id: `${account}-lock`,
-      header: `${label} monthly lock`,
+      header: `${label} per-paycheck lock`,
       size: 220,
       enableSorting: false,
       cell: ({ row: { original: person } }) => {
-        const cents = monthlyLock(person, account);
+        const cents = paycheckLock(person, account);
         return (
           <div className="contribution-lock">
             <label>
               <input
                 type="checkbox"
                 checked={cents !== null}
-                aria-label={`Lock ${person.name}'s monthly ${label} contribution`}
+                aria-label={`Lock ${person.name}'s per-paycheck ${label} contribution`}
                 onChange={(event) => {
                   const ref = person.schedule.find((entry) =>
                     entry.year === now.getFullYear() && entry.month === now.getMonth())
@@ -110,7 +110,7 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onUpdateMan
                     ? share?.autopayPerPaycheckCents
                     : share?.essentialsPerPaycheckCents;
                   onUpdate(person.id, { [field]: event.target.checked
-                    ? (perPayday ?? 0) * (ref ? getPaydays(ref.year, ref.month).length : 0)
+                    ? (perPayday ?? 0)
                     : null });
                 }}
               />
@@ -119,7 +119,7 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onUpdateMan
             {cents !== null && (
               <MoneyInput
                 cents={cents}
-                ariaLabel={`${person.name} locked monthly ${label} contribution`}
+                ariaLabel={`${person.name} locked per-paycheck ${label} contribution`}
                 onCommit={(amount) => onUpdate(person.id, { [field]: amount })}
               />
             )}
@@ -304,9 +304,9 @@ export function PeopleEditor({ data, allocationFor, onAdd, onUpdate, onUpdateMan
             </button>
           </div>
           <p className="muted">
-            Lock either account to a fixed monthly amount across all pay months. Unlocked people
-            share the remaining funding by gross income. Locks apply only in months with entered pay;
-            deposits are spread over that month's Wednesdays, with at most a one-cent rounding difference.
+            Lock either account to the same amount every paycheck. Unlocked people share the
+            remaining account need in proportion to their gross income. All contributors remain
+            visible in the projection split. Locks apply only in months with entered pay.
           </p>
 
           {people.length === 0 ? (

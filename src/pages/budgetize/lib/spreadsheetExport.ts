@@ -44,8 +44,8 @@ export function buildExportSheets(data: BudgetData, asOf: Date): ExportSheet[] {
         ['Auto-pay balance', dollars(data.autopayBalanceCents)],
         ...data.people.map((p): Cell[] => [`${p.name} personal balance`, dollars(p.personalBalanceCents)]),
         ...data.people.flatMap((p): Cell[][] => [
-          [`${p.name} locked monthly auto-pay`, dollars(p.autopayLockedMonthlyCents ?? null)],
-          [`${p.name} locked monthly essentials`, dollars(p.essentialsLockedMonthlyCents ?? null)],
+          [`${p.name} locked per-paycheck auto-pay`, dollars(p.autopayLockedPerPaycheckCents ?? null)],
+          [`${p.name} locked per-paycheck essentials`, dollars(p.essentialsLockedPerPaycheckCents ?? null)],
         ]),
         ['Balances as of', data.projectionStartISO ?? 'today'],
         ['Debt payment strategy', data.debtStrategy],

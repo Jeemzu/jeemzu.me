@@ -2,7 +2,7 @@ import type { AccountSource, BudgetData, DebtPaymentStrategy, MonthRef, PersonIn
 import { findMonthlyIncome, monthlyGrossCents } from '../types';
 import { daysInMonth, getPaydays } from './paydays';
 import { entriesOn } from './ledger';
-import { lockedDeposit, monthlyLock, unlockedShares } from './contributions';
+import { paycheckLock, unlockedShares } from './contributions';
 
 export { splitProportionally } from './contributions';
 
@@ -51,8 +51,6 @@ export interface PersonMonthAllocation {
   grossMonthlyCents: number;
   autopayPerPaycheckCents: number;
   essentialsPerPaycheckCents: number;
-  autopayLockedMonthlyCents?: number | null;
-  essentialsLockedMonthlyCents?: number | null;
   /** Whatever is left of the paycheck after the auto-pay and essentials carve-outs; may go negative. */
   personalPerPaycheckCents: number;
 }
@@ -96,10 +94,11 @@ export function allocateMonth(
   const autopayNeedCents = autopayNeed.totalCents;
   const essentialsNeedCents = essentialsNeed.totalCents;
   const sharesFor = (account: AccountSource, need: number) => {
-    const locks = data.people.map((person, i) => entries[i] ? monthlyLock(person, account) : null);
-    const lockedTotal = locks.reduce<number>((sum, lock) => sum + (lock ?? 0), 0);
+    const locks = data.people.map((person, i) => entries[i] ? paycheckLock(person, account) : null);
+    const lockedTotal = locks.reduce<number>(
+      (sum, lock, i) => sum + (lock ?? 0) * (entries[i]?.paycheckCount ?? 0), 0);
     const shares = unlockedShares(need - lockedTotal, grossMonthly, entries.map(Boolean), locks);
-    return shares.map((share, i) => locks[i] ?? share);
+    return shares;
   };
   const autopayShares = sharesFor('autopay', autopayNeedCents);
   const essentialsShares = sharesFor('shared', essentialsNeedCents);
@@ -120,14 +119,10 @@ export function allocateMonth(
       };
     }
     const count = Math.max(1, entry.paycheckCount);
-    const autopayLockedMonthlyCents = monthlyLock(person, 'autopay');
-    const essentialsLockedMonthlyCents = monthlyLock(person, 'shared');
-    const autopayPerPaycheckCents = autopayLockedMonthlyCents === null
-      ? Math.ceil((autopayShares[i] ?? 0) / count)
-      : lockedDeposit(autopayLockedMonthlyCents, ref);
-    const essentialsPerPaycheckCents = essentialsLockedMonthlyCents === null
-      ? Math.ceil((essentialsShares[i] ?? 0) / count)
-      : lockedDeposit(essentialsLockedMonthlyCents, ref);
+    const autopayPerPaycheckCents = paycheckLock(person, 'autopay')
+      ?? Math.ceil((autopayShares[i] ?? 0) / count);
+    const essentialsPerPaycheckCents = paycheckLock(person, 'shared')
+      ?? Math.ceil((essentialsShares[i] ?? 0) / count);
     return {
       personId: person.id,
       name: person.name,
@@ -137,8 +132,6 @@ export function allocateMonth(
       grossMonthlyCents: grossMonthly[i],
       autopayPerPaycheckCents,
       essentialsPerPaycheckCents,
-      autopayLockedMonthlyCents,
-      essentialsLockedMonthlyCents,
       personalPerPaycheckCents:
         entry.perPaycheckCents - autopayPerPaycheckCents - essentialsPerPaycheckCents,
     };
@@ -157,25 +150,6 @@ export function allocateMonth(
 }
 
 export type AllocationResolver = (ref: MonthRef) => MonthAllocation;
-
-/** Actual cents on a Wednesday; locked monthly totals must not drift due to rounding. */
-export function allocationOnPayday(allocation: MonthAllocation, day: number): PersonMonthAllocation[] {
-  return allocation.people.map((person) => {
-    const autopayPerPaycheckCents = person.autopayLockedMonthlyCents == null
-      ? person.autopayPerPaycheckCents
-      : lockedDeposit(person.autopayLockedMonthlyCents, allocation.month, day);
-    const essentialsPerPaycheckCents = person.essentialsLockedMonthlyCents == null
-      ? person.essentialsPerPaycheckCents
-      : lockedDeposit(person.essentialsLockedMonthlyCents, allocation.month, day);
-    return {
-      ...person,
-      autopayPerPaycheckCents,
-      essentialsPerPaycheckCents,
-      personalPerPaycheckCents:
-        person.grossPerPaycheckCents - autopayPerPaycheckCents - essentialsPerPaycheckCents,
-    };
-  });
-}
 
 /** Memoized `allocateMonth` for callers that walk many dates across a few months. */
 export function createAllocator(

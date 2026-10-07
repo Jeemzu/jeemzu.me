@@ -45,8 +45,8 @@ export interface PersonIncome {
   /** Current personal checking balance — the projection starting point. */
   personalBalanceCents: number;
   /** Null/omitted means proportional funding; zero is a locked $0 contribution. */
-  autopayLockedMonthlyCents?: number | null;
-  essentialsLockedMonthlyCents?: number | null;
+  autopayLockedPerPaycheckCents?: number | null;
+  essentialsLockedPerPaycheckCents?: number | null;
 }
 
 export interface DebtAccount extends Recurrence {

@@ -2,7 +2,6 @@ import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
 import { fundedAllocator, type DepositMode } from './funding';
 import { entriesOn, type LedgerEntry } from './ledger';
-import { allocationOnPayday } from './allocation';
 
 export { toISODate } from './paydays';
 
@@ -14,12 +13,19 @@ export interface AccountWeek {
   endBalanceCents: number;
 }
 
+export interface PersonContribution {
+  autopayCents: number;
+  essentialsCents: number;
+}
+
 export interface ProjectionDay {
   dateISO: string;
   isPayday: boolean;
   incomeKnown: boolean;
   /** Parallel to Projection.people. */
   personal: AccountWeek[];
+  /** Paycheck contributions only, parallel to Projection.people. */
+  contributions: PersonContribution[];
   essentials: AccountWeek;
   autopay: AccountWeek;
   outflows: ProjectionOutflow[];
@@ -35,6 +41,8 @@ export interface ProjectionWeek {
   incomeKnown: boolean;
   /** Parallel to Projection.people. */
   personal: AccountWeek[];
+  /** Paycheck contributions only, parallel to Projection.people. */
+  contributions: PersonContribution[];
   essentials: AccountWeek;
   autopay: AccountWeek;
   outflows: ProjectionOutflow[];
@@ -133,6 +141,7 @@ export function computeProjection(
 
     for (let d = weekStart; d <= weekEnd; d = addDays(d, 1)) {
       const personal = data.people.map(emptyAccount);
+      const contributions = data.people.map(() => ({ autopayCents: 0, essentialsCents: 0 }));
       const essentials = emptyAccount();
       const autopay = emptyAccount();
       const outflows: ProjectionOutflow[] = [];
@@ -151,10 +160,12 @@ export function computeProjection(
         paydayCount++;
         const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
         if (!allocation.hasIncome) dayIncomeKnown = false;
-        allocationOnPayday(allocation, d.getDate()).forEach((share, i) => {
+        allocation.people.forEach((share, i) => {
           personal[i].depositCents += share.personalPerPaycheckCents;
           autopay.depositCents += share.autopayPerPaycheckCents;
           essentials.depositCents += share.essentialsPerPaycheckCents;
+          contributions[i].autopayCents = share.autopayPerPaycheckCents;
+          contributions[i].essentialsCents = share.essentialsPerPaycheckCents;
         });
       }
       const day = entriesOn(data, d, strategy);
@@ -186,6 +197,7 @@ export function computeProjection(
         isPayday,
         incomeKnown: dayIncomeKnown,
         personal,
+        contributions,
         essentials,
         autopay,
         outflows,
@@ -205,6 +217,10 @@ export function computeProjection(
       paydayCount,
       incomeKnown,
       personal: data.people.map((_, i) => sumAccounts((day) => day.personal[i])),
+      contributions: data.people.map((_, i) => ({
+        autopayCents: days.reduce((sum, day) => sum + day.contributions[i].autopayCents, 0),
+        essentialsCents: days.reduce((sum, day) => sum + day.contributions[i].essentialsCents, 0),
+      })),
       essentials: sumAccounts((day) => day.essentials),
       autopay: sumAccounts((day) => day.autopay),
       outflows: days.flatMap((day) => day.outflows),

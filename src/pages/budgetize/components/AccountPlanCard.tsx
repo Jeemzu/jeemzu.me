@@ -5,7 +5,7 @@ import { monthLabel } from '../lib/paydays';
 import { DataTable } from './DataTable';
 import { InfoTip } from './InfoTip';
 import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
-import { monthlyLock } from '../lib/contributions';
+import { paycheckLock } from '../lib/contributions';
 
 interface Props {
   data: BudgetData;
@@ -42,7 +42,7 @@ export function AccountPlanCard({ data, plan, account }: Props) {
   const funding: AccountFunding = account === 'autopay' ? plan.autopay : plan.essentials;
   const balanceCents = account === 'autopay' ? data.autopayBalanceCents : data.essentialsBalanceCents;
   const hasCharges = funding.months.some((m) => m.need.totalCents > 0);
-  const hasLocks = data.people.some((person) => monthlyLock(person, account) !== null);
+  const hasLocks = data.people.some((person) => paycheckLock(person, account) !== null);
 
   if (plan.months.length === 0) {
     return <p className="muted">Add pay months for each person to plan deposits.</p>;
@@ -113,7 +113,7 @@ export function AccountPlanCard({ data, plan, account }: Props) {
           meta: {
             ...TOTAL_META,
             headerTitle: hasLocks
-              ? 'Monthly minimum funding, preserving locks; locked payday amounts can differ by one cent'
+              ? 'Monthly minimum funding, preserving fixed per-paycheck contributions'
               : 'Smallest deposit each payday that keeps the balance from going negative',
           },
           cell: ({ row: { original: r } }) => incomeCell(r, r.minPerPaydayCents),
@@ -132,7 +132,7 @@ export function AccountPlanCard({ data, plan, account }: Props) {
             id: `flat-person:${person.id}`,
             header: `${person.name} (flat)`,
             size: 140,
-            meta: { ...PART_META, headerTitle: 'Flat-mode per-payday share, preserving monthly locks' },
+            meta: { ...PART_META, headerTitle: 'Flat-mode per-payday share, preserving per-paycheck locks' },
             cell: ({ row: { original: r } }) => incomeCell(r, r.flatShares[i] ?? 0),
           }),
         ) : []),
@@ -151,23 +151,22 @@ export function AccountPlanCard({ data, plan, account }: Props) {
     <div className="autopay">
       <div className="autopay-hero">
         <span className="stat-label">
-          {hasLocks ? 'Flat unlocked deposit every Wednesday' : 'Flat deposit every Wednesday'}
+          Flat deposit every Wednesday
           <InfoTip>
             {hasLocks
-              ? 'Fixed monthly contributions land first. This is the remaining flat portion, split among unlocked people by gross pay. The table shows each month\'s shares in both modes. Locks can leave a shortfall when no one is unlocked.'
+              ? 'This total includes fixed per-paycheck contributions and the remaining amount split among unlocked people by gross pay. Every contributor is shown below and in the table. Locks can leave a shortfall when no one is unlocked.'
               : `The flat amount is split by each person's share of gross pay and keeps the ${copy.name} account from going negative through ${monthLabel(plan.months[plan.months.length - 1])}.`}
             Monthly minimums also leave enough to cover the next month's charges before its first
             payday.
           </InfoTip>
         </span>
-        <span className="stat-value">{formatMoney(hasLocks
-          ? funding.flatUnlockedPerPaydayCents : funding.flatPerPaydayCents)}</span>
+        <span className="stat-value">{formatMoney(funding.flatPerPaydayCents)}</span>
       </div>
-      {data.people.length > 0 && !hasLocks && (
+      {data.people.length > 0 && (
         <ul className="autopay-lines">
           {data.people.map((person, i) => (
             <li key={person.id}>
-              <span>{person.name}</span>
+              <span>{person.name}{paycheckLock(person, account) !== null ? ' (locked)' : ''}</span>
               <span>{formatMoney(funding.flatShares[i] ?? 0)} / payday</span>
             </li>
           ))}

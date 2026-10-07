@@ -4,7 +4,7 @@ import type { FundingPlan } from './funding';
 import { formatMoney } from './money';
 import { monthLabel, parseMonthRef } from './paydays';
 import type { Projection, ProjectionWeek } from './projection';
-import { monthlyLock } from './contributions';
+import { paycheckLock } from './contributions';
 
 export interface FundingWarning {
   severity: 'error' | 'warn';
@@ -51,10 +51,10 @@ export function computeFundingWarnings(
     if (!allocation.hasIncome) continue;
     for (const person of data.people) {
       if (person.schedule.some((entry) => entry.year === ref.year && entry.month === ref.month)) continue;
-      if (monthlyLock(person, 'autopay') === null && monthlyLock(person, 'shared') === null) continue;
+      if (paycheckLock(person, 'autopay') === null && paycheckLock(person, 'shared') === null) continue;
       warnings.push({
         severity: 'warn',
-        message: `${person.name} has a monthly contribution lock but no entered pay for ${monthLabel(ref)}, so their locked contributions are not deposited that month.`,
+        message: `${person.name} has a per-paycheck contribution lock but no entered pay for ${monthLabel(ref)}, so their locked contributions are not deposited that month.`,
       });
     }
     for (const person of allocation.people) {

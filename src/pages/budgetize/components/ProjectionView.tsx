@@ -6,6 +6,7 @@ import { formatMoney } from '../lib/money';
 import { MoneyInput } from './inputs';
 import { DataTable } from './DataTable';
 import { PART_META, TOTAL_META, type BudgetColumn } from './tableFeatures';
+import { paycheckLock } from '../lib/contributions';
 
 interface Props {
   data: BudgetData;
@@ -52,7 +53,12 @@ function flowCell(cents: number, className: string) {
   return cents > 0 ? <span className={`total-cell ${className}`}>{formatMoney(cents)}</span> : '—';
 }
 
-function accountGroup(id: string, header: string, pick: (r: Row) => AccountWeek): BudgetColumn<Row> {
+function accountGroup(
+  id: 'essentials' | 'autopay',
+  header: string,
+  pick: (r: Row) => AccountWeek,
+  data: BudgetData,
+): BudgetColumn<Row> {
   return {
     id,
     header,
@@ -64,6 +70,14 @@ function accountGroup(id: string, header: string, pick: (r: Row) => AccountWeek)
         meta: { ...PART_META, headerTitle: `Paycheck share and one-time income into ${header}` },
         cell: ({ row: { original: r } }) => flowCell(pick(r).depositCents, 'pos'),
       },
+      ...data.people.map((person, i): BudgetColumn<Row> => ({
+        id: `${id}:person:${person.id}`,
+        header: `${person.name}${paycheckLock(person, id === 'autopay' ? 'autopay' : 'shared') !== null ? ' (locked)' : ''}`,
+        size: 130,
+        meta: { ...PART_META, headerTitle: `${person.name}'s paycheck contribution to ${header}; excludes one-time income` },
+        cell: ({ row: { original: r } }) => formatMoney(
+          id === 'autopay' ? r.contributions[i].autopayCents : r.contributions[i].essentialsCents),
+      })),
       {
         id: `${id}:out`,
         header: 'Out',
@@ -122,8 +136,8 @@ export function ProjectionView({ data, start, weekCount, strategy, mode, onSetEs
       },
       enableHiding: false,
     },
-    accountGroup('essentials', 'Essentials', (r) => r.essentials),
-    accountGroup('autopay', 'Auto-pay', (r) => r.autopay),
+    accountGroup('essentials', 'Essentials', (r) => r.essentials, data),
+    accountGroup('autopay', 'Auto-pay', (r) => r.autopay, data),
     {
       id: 'due',
       header: 'Payments due',

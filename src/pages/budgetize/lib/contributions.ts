@@ -1,5 +1,4 @@
-import type { AccountSource, MonthRef, PersonIncome } from '../types';
-import { getPaydays } from './paydays';
+import type { AccountSource, PersonIncome } from '../types';
 
 /** Split a total into per-person amounts proportional to weights, summing exactly. */
 export function splitProportionally(totalCents: number, weights: number[]): number[] {
@@ -19,19 +18,10 @@ export function splitProportionally(totalCents: number, weights: number[]): numb
   return shares;
 }
 
-export function monthlyLock(person: PersonIncome, account: AccountSource): number | null {
+export function paycheckLock(person: PersonIncome, account: AccountSource): number | null {
   return (account === 'autopay'
-    ? person.autopayLockedMonthlyCents
-    : person.essentialsLockedMonthlyCents) ?? null;
-}
-
-/** Spread whole cents across calendar Wednesdays, including those before a partial plan start. */
-export function lockedDeposit(monthlyCents: number, ref: MonthRef, day?: number): number {
-  const paydays = getPaydays(ref.year, ref.month);
-  if (day === undefined) return Math.ceil(monthlyCents / paydays.length);
-  const index = paydays.indexOf(day);
-  if (index === -1) return 0;
-  return Math.floor(monthlyCents / paydays.length) + Number(index < monthlyCents % paydays.length);
+    ? person.autopayLockedPerPaycheckCents
+    : person.essentialsLockedPerPaycheckCents) ?? null;
 }
 
 export function unlockedShares(

@@ -11,7 +11,7 @@ import {
 } from './allocation';
 import { entriesOn } from './ledger';
 import { addMonths, daysInMonth, PAYDAY_WEEKDAY, toISODate } from './paydays';
-import { lockedDeposit, monthlyLock, unlockedShares } from './contributions';
+import { paycheckLock, unlockedShares } from './contributions';
 
 /** Which deposit amounts drive the projection: each month's minimum, or one flat weekly amount. */
 export type DepositMode = 'minimum' | 'flat';
@@ -27,7 +27,7 @@ export interface AccountMonthPlan {
   minPerPaydayCents: number;
   /** Parallel to `data.people`. */
   minShares: number[];
-  /** Flat-mode shares for this month; locks vary per payday with the calendar. */
+  /** Flat-mode shares for this month, preserving each person's per-paycheck lock. */
   flatShares: number[];
   shortfallCents: number;
   excessCents: number;
@@ -42,8 +42,6 @@ export interface AccountFunding {
   flatPerPaydayCents: number;
   /** Parallel to `data.people`, split by share of total gross pay across the plan. */
   flatShares: number[];
-  /** Flat portion supplied by unlocked people, before fixed monthly contributions. */
-  flatUnlockedPerPaydayCents: number;
   /** Balance to add now so charges due before the first deposit don't overdraw. */
   openingFundsCents: number;
 }
@@ -84,22 +82,19 @@ function planAccount(
   strategy: DebtPaymentStrategy,
 ): AccountFunding {
   const { months, allocations, days, totalGross } = timeline;
-  const locks = data.people.map((person) => monthlyLock(person, account));
+  const locks = data.people.map((person) => paycheckLock(person, account));
   const hasLocks = locks.some((lock) => lock !== null);
   const eligible = allocations.map((allocation) => allocation.people.map((p) => p.hasIncome));
   const canAdjust = eligible.map((people) => people.some((known, i) => known && locks[i] === null));
-  const lockedByDay = days.map((day, t) => {
+  const lockedByDay = days.map((day) => {
     if (!day.deposits) return 0;
-    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + t);
     return locks.reduce<number>((sum, lock, i) =>
-      sum + (lock !== null && eligible[day.monthIndex][i]
-        ? lockedDeposit(lock, months[day.monthIndex], date.getDate())
-        : 0), 0);
+      sum + (lock !== null && eligible[day.monthIndex][i] ? lock : 0), 0);
   });
   const sharesFor = (unlocked: number, i: number, weights: number[]) => {
     const shares = unlockedShares(unlocked, weights, eligible[i], locks);
     return shares.map((share, p) =>
-      locks[p] !== null && eligible[i][p] ? lockedDeposit(locks[p], months[i]) : share);
+      locks[p] !== null && eligible[i][p] ? locks[p] : share);
   };
   const needs = months.map(() => emptyNeed());
   // Charges minus one-off deposits for this account, per day.
@@ -210,7 +205,6 @@ function planAccount(
     months: monthPlans,
     flatPerPaydayCents: flatShares.reduce((sum, share) => sum + share, 0),
     flatShares,
-    flatUnlockedPerPaydayCents: flat,
     openingFundsCents,
   };
 }

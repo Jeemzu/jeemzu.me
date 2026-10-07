@@ -92,7 +92,7 @@ export function computeMonthSummary(
   const paydays = getPaydays(year, month);
   const allocation = allocationFor({ year, month });
   const essentialsIncomeCents = allocation.people.reduce(
-    (sum, p) => sum + (p.essentialsLockedMonthlyCents ?? p.essentialsPerPaycheckCents * p.paycheckCount),
+    (sum, p) => sum + p.essentialsPerPaycheckCents * p.paycheckCount,
     0,
   );
 
@@ -190,7 +190,7 @@ export function computeMonthSummary(
   const incomeCents = allocation.grossMonthlyCents + oneOffIncomeCents;
 
   const autopayFundingCents = allocation.people.reduce(
-    (sum, p) => sum + (p.autopayLockedMonthlyCents ?? p.autopayPerPaycheckCents * p.paycheckCount),
+    (sum, p) => sum + p.autopayPerPaycheckCents * p.paycheckCount,
     0,
   );
   // Essentials and auto-pay deposits are sized to the bills, so what is left over

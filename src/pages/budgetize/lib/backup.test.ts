@@ -57,16 +57,33 @@ const sample: BudgetData = {
 describe('backup roundtrip', () => {
   it('preserves separate contribution locks including zero and null', () => {
     const data = { ...sample, people: [{
-      ...sample.people[0], autopayLockedMonthlyCents: 0, essentialsLockedMonthlyCents: 12345,
-    }, { ...sample.people[0], id: 'p2', autopayLockedMonthlyCents: null }] };
+      ...sample.people[0], autopayLockedPerPaycheckCents: 0, essentialsLockedPerPaycheckCents: 12345,
+    }, { ...sample.people[0], id: 'p2', autopayLockedPerPaycheckCents: null }] };
     expect(parseBackup(serializeBackup(data))).toEqual({ ok: true, data });
     expect(parseBudgetData(data)).toEqual({ ok: true, data });
   });
 
   it.each([-1, 1.5, '100', true])('rejects invalid contribution locks: %s', (lock) => {
     expect(parseBudgetData({ ...sample, people: [{
-      ...sample.people[0], autopayLockedMonthlyCents: lock,
+      ...sample.people[0], autopayLockedPerPaycheckCents: lock,
     }] })).toMatchObject({ ok: false, error: expect.stringContaining('contribution lock') });
+  });
+
+  it('reads earlier monthly-named locks as the entered per-paycheck amount', () => {
+    const legacy = { ...sample, people: [{
+      ...sample.people[0], autopayLockedMonthlyCents: 20000, essentialsLockedMonthlyCents: 0,
+    }] };
+    const expected = { ...sample, people: [{
+      ...sample.people[0], autopayLockedPerPaycheckCents: 20000, essentialsLockedPerPaycheckCents: 0,
+    }] };
+    expect(parseBudgetData(legacy)).toEqual({ ok: true, data: expected });
+    expect(parseBackup(JSON.stringify({ app: 'budgetize-me', version: 7, data: legacy })))
+      .toEqual({ ok: true, data: expected });
+    expect(parseBudgetData({ ...legacy, people: [{
+      ...legacy.people[0], autopayLockedPerPaycheckCents: null,
+    }] })).toEqual({ ok: true, data: { ...expected, people: [{
+      ...expected.people[0], autopayLockedPerPaycheckCents: null,
+    }] } });
   });
 
   it('preserves subscription section assignments in backups and server payloads', () => {

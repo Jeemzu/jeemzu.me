@@ -72,11 +72,11 @@ function mergePeople(current: PersonIncome[], imported: ImportedPerson[]): Perso
       name: person.name,
       schedule: [...schedule.values()].sort(compareMonthlyIncome),
       personalBalanceCents: existing?.personalBalanceCents ?? 0,
-      ...(existing?.autopayLockedMonthlyCents === undefined ? {} : {
-        autopayLockedMonthlyCents: existing.autopayLockedMonthlyCents,
+      ...(existing?.autopayLockedPerPaycheckCents === undefined ? {} : {
+        autopayLockedPerPaycheckCents: existing.autopayLockedPerPaycheckCents,
       }),
-      ...(existing?.essentialsLockedMonthlyCents === undefined ? {} : {
-        essentialsLockedMonthlyCents: existing.essentialsLockedMonthlyCents,
+      ...(existing?.essentialsLockedPerPaycheckCents === undefined ? {} : {
+        essentialsLockedPerPaycheckCents: existing.essentialsLockedPerPaycheckCents,
       }),
     };
   });

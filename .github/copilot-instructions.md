@@ -10,3 +10,4 @@ Before running tests, ask whether a test run is necessary.
 Perform regression checks only when asked and after implementation is complete.
 Validate changes with the narrowest relevant check available.
 Explain assumptions and note remaining risks or unverified checks.
+Do not add explanatory text to UI elements unless asked to specifically. Always prefer concise, contextually relevant labels or, if need be, a tooltip.

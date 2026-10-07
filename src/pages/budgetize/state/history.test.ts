@@ -72,11 +72,11 @@ describe('budget undo history', () => {
     const person = paidPerson('A', 2026, 100);
     const state = reduce(initialHistoryState, { type: 'hydrate', data: { ...data, people: [person] } });
     const locked = reduce(state, {
-      type: 'update-person', id: person.id, patch: { autopayLockedMonthlyCents: 0 },
+      type: 'update-person', id: person.id, patch: { autopayLockedPerPaycheckCents: 0 },
     });
     expect(reduce(locked, { type: 'undo' }).data.people).toEqual([person]);
     expect(reduce(reduce(locked, { type: 'undo' }), { type: 'redo' }).data.people[0])
-      .toMatchObject({ autopayLockedMonthlyCents: 0 });
+      .toMatchObject({ autopayLockedPerPaycheckCents: 0 });
   });
 
   it('restores dependent overrides when undoing a deletion', () => {

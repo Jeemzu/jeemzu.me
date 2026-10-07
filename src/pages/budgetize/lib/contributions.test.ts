@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { allocateMonth, allocationOnPayday } from './allocation';
-import { lockedDeposit, unlockedShares } from './contributions';
+import { allocateMonth } from './allocation';
+import { unlockedShares } from './contributions';
 import { computeFundingPlan, createFundedAllocator } from './funding';
 import { computeProjection } from './projection';
 import { computeMonthSummary } from './schedule';
@@ -14,15 +14,15 @@ const start = new Date(2026, 9, 1);
 const singleMonth = (name: string, gross: number, lock: number | null = null) =>
   paidPerson(name, 2026, gross, {
     schedule: [{ ...ref, paycheckCount: 4, perPaycheckCents: gross }],
-    autopayLockedMonthlyCents: lock,
+    autopayLockedPerPaycheckCents: lock,
   });
 const budget = (need = 100000) => ({
   ...emptyBudget(),
-  people: [singleMonth('A', 100000, 20000), singleMonth('B', 100000), singleMonth('C', 300000)],
+  people: [singleMonth('A', 100000, 5000), singleMonth('B', 100000), singleMonth('C', 300000)],
   bills: [bill({ name: 'Bill', amountCents: need, dueDay: 29, paidFrom: 'autopay' })],
 });
 
-describe('fixed monthly contributions', () => {
+describe('fixed per-paycheck contributions', () => {
   it('redistributes increased and decreased requirements proportionally among only unlocked people', () => {
     for (const [need, expected] of [
       [100000, [5000, 5000, 15000]],
@@ -40,17 +40,16 @@ describe('fixed monthly contributions', () => {
     }
   });
 
-  it('spreads locks exactly over four- and five-Wednesday months, including odd cents', () => {
+  it('deposits the exact held amount on every payday in four- and five-Wednesday months', () => {
     for (const month of [6, 9]) {
       const monthRef = { year: 2026, month };
       const paydays = getPaydays(2026, month);
-      expect(paydays.reduce((sum, day) => sum + lockedDeposit(20001, monthRef, day), 0)).toBe(20001);
       const data = {
         ...budget(),
         people: [paidPerson('A', 2026, 100000, {
           schedule: [{ ...monthRef, paycheckCount: paydays.length, perPaycheckCents: 100000 }],
-          autopayLockedMonthlyCents: 20001,
-          essentialsLockedMonthlyCents: 10003,
+          autopayLockedPerPaycheckCents: 20001,
+          essentialsLockedPerPaycheckCents: 10003,
         }), singleMonth('B', 100000)],
       };
       const planStart = new Date(2026, month, 1);
@@ -58,26 +57,31 @@ describe('fixed monthly contributions', () => {
         const plan = computeFundingPlan(data, planStart);
         const allocationFor = createFundedAllocator(data, plan, mode);
         const allocation = allocationFor(monthRef);
-        const deposits = paydays.map((day) => allocationOnPayday(allocation, day)[0]);
-        expect(deposits.reduce((sum, p) => sum + p.autopayPerPaycheckCents, 0)).toBe(20001);
-        expect(deposits.reduce((sum, p) => sum + p.essentialsPerPaycheckCents, 0)).toBe(10003);
+        expect(allocation.people[0].autopayPerPaycheckCents).toBe(20001);
+        expect(allocation.people[0].essentialsPerPaycheckCents).toBe(10003);
         const summary = computeMonthSummary(data, 2026, month, 'suggested', allocationFor);
         expect(summary.accounts.autopay.depositsCents).toBe(
-          deposits.reduce((sum, p) => sum + p.autopayPerPaycheckCents, 0) +
+          20001 * paydays.length +
           allocation.people[1].autopayPerPaycheckCents * allocation.people[1].paycheckCount,
         );
         const projection = computeProjection(data, planStart, 6, 'suggested', mode);
         const days = projection.weeks.flatMap((w) => w.days)
           .filter((day) => Number(day.dateISO.slice(5, 7)) === month + 1);
-        expect(days.reduce((sum, day) => sum + day.essentials.depositCents, 0)).toBe(10003);
+        expect(days.reduce((sum, day) => sum + day.essentials.depositCents, 0))
+          .toBe(10003 * paydays.length);
+        for (const day of days) {
+          expect(day.contributions[0]).toEqual(day.isPayday
+            ? { autopayCents: 20001, essentialsCents: 10003 }
+            : { autopayCents: 0, essentialsCents: 0 });
+        }
       }
     }
   });
 
-  it('preserves locks for partial starting months instead of depositing the whole monthly amount again', () => {
+  it('deposits the held amount only on remaining paydays in a partial starting month', () => {
     const data = { ...budget(0), people: [singleMonth('A', 100000, 20001)] };
     const projection = computeProjection(data, new Date(2026, 9, 15), 3);
-    expect(projection.weeks.reduce((sum, w) => sum + w.autopay.depositCents, 0)).toBe(10000);
+    expect(projection.weeks.reduce((sum, w) => sum + w.autopay.depositCents, 0)).toBe(40002);
   });
 
   it('floors unlocked contributions at zero and reports excess funding', () => {
@@ -90,7 +94,7 @@ describe('fixed monthly contributions', () => {
   });
 
   it('preserves all-locked amounts and reports the unfunded remainder', () => {
-    const data = { ...budget(), people: [singleMonth('A', 100000, 20000)] };
+    const data = { ...budget(), people: [singleMonth('A', 100000, 5000)] };
     const plan = computeFundingPlan(data, start);
     expect(plan.autopay.months[0].minShares).toEqual([5000]);
     expect(plan.autopay.months[0].shortfallCents).toBe(80000);
@@ -106,7 +110,7 @@ describe('fixed monthly contributions', () => {
     const data = { ...budget(), people: [
       singleMonth('A', 100000, 0),
       singleMonth('B', 100000),
-      paidPerson('Absent', 2027, 100000, { schedule: [], autopayLockedMonthlyCents: 99999 }),
+      paidPerson('Absent', 2027, 100000, { schedule: [], autopayLockedPerPaycheckCents: 99999 }),
     ] };
     const allocation = createFundedAllocator(data, computeFundingPlan(data, start), 'minimum')(ref);
     expect(allocation.people.map((p) => p.autopayPerPaycheckCents)).toEqual([0, 25000, 0]);
@@ -125,12 +129,12 @@ describe('fixed monthly contributions', () => {
     }
   });
 
-  it('preserves monthly locks across calendar changes, independently for each account and mode', () => {
+  it('preserves paycheck locks across calendar changes, independently for each account and mode', () => {
     const data = {
       ...emptyBudget(),
       people: [
         paidPerson('A', 2026, 100000, {
-          autopayLockedMonthlyCents: 20001, essentialsLockedMonthlyCents: 12347,
+          autopayLockedPerPaycheckCents: 5001, essentialsLockedPerPaycheckCents: 3047,
         }),
         paidPerson('B', 2026, 200000),
       ],
@@ -144,10 +148,9 @@ describe('fixed monthly contributions', () => {
     for (const mode of ['minimum', 'flat'] as const) {
       const allocationFor = createFundedAllocator(data, plan, mode);
       for (const month of plan.months) {
-        const shares = getPaydays(month.year, month.month)
-          .map((day) => allocationOnPayday(allocationFor(month), day)[0]);
-        expect(shares.reduce((sum, p) => sum + p.autopayPerPaycheckCents, 0)).toBe(20001);
-        expect(shares.reduce((sum, p) => sum + p.essentialsPerPaycheckCents, 0)).toBe(12347);
+        const share = allocationFor(month).people[0];
+        expect(share.autopayPerPaycheckCents).toBe(5001);
+        expect(share.essentialsPerPaycheckCents).toBe(3047);
       }
       const projection = computeProjection({
         ...data, autopayBalanceCents: plan.autopay.openingFundsCents,
@@ -155,6 +158,35 @@ describe('fixed monthly contributions', () => {
       }, planStart, 52, 'suggested', mode);
       expect(projection.weeks.flatMap((w) => w.days)
         .every((d) => d.autopay.endBalanceCents >= 0 && d.essentials.endBalanceCents >= 0)).toBe(true);
+    }
+  });
+
+  it('keeps every contributor in daily and weekly projection data and excludes one-time income from their split', () => {
+    const data = {
+      ...budget(),
+      oneOffs: [{
+        id: 'bonus', kind: 'income' as const, name: 'Bonus', amountCents: 123,
+        dateISO: '2026-10-07', account: 'autopay' as const, personId: null, note: '',
+      }],
+    };
+    for (const mode of ['minimum', 'flat'] as const) {
+      const projection = computeProjection(data, start, 5, 'suggested', mode);
+      expect(projection.people.map((p) => p.name)).toEqual(['A', 'B', 'C']);
+      const bonusWeek = projection.weeks.find((week) => week.days.some((day) => day.dateISO === '2026-10-07'));
+      expect(bonusWeek).toBeDefined();
+      expect(bonusWeek?.contributions).toHaveLength(3);
+      expect(bonusWeek?.contributions[0].autopayCents).toBe(5000);
+      expect(bonusWeek?.autopay.depositCents).toBe(
+        (bonusWeek?.contributions.reduce((sum, p) => sum + p.autopayCents, 0) ?? 0) + 123,
+      );
+      for (const week of projection.weeks) {
+        expect(week.contributions).toHaveLength(3);
+        week.contributions.forEach((contribution, i) => {
+          expect(contribution.autopayCents).toBe(
+            week.days.reduce((sum, day) => sum + day.contributions[i].autopayCents, 0),
+          );
+        });
+      }
     }
   });
 });

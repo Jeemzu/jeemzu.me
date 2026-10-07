@@ -14,7 +14,7 @@ import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { getPaydays } from './paydays';
 import { parseISODate } from './recurrence';
 
-export const BACKUP_VERSION = 7;
+export const BACKUP_VERSION = 8;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -221,20 +221,24 @@ function sanitizePerson(raw: unknown, index: number): PersonIncome | string {
   if (!isSignedCents(obj.personalBalanceCents)) return `"${name}" has an invalid personal balance.`;
   const schedule = sanitizeSchedule(obj, name);
   if (typeof schedule === 'string') return schedule;
-  if (!isOptionalCents(obj.autopayLockedMonthlyCents) ||
-      !isOptionalCents(obj.essentialsLockedMonthlyCents)) {
-    return `"${name}" has an invalid monthly contribution lock.`;
+  // Earlier locks used monthly field names; preserve the entered number as a paycheck amount.
+  const autopayLock = obj.autopayLockedPerPaycheckCents !== undefined
+    ? obj.autopayLockedPerPaycheckCents : obj.autopayLockedMonthlyCents;
+  const essentialsLock = obj.essentialsLockedPerPaycheckCents !== undefined
+    ? obj.essentialsLockedPerPaycheckCents : obj.essentialsLockedMonthlyCents;
+  if (!isOptionalCents(autopayLock) || !isOptionalCents(essentialsLock)) {
+    return `"${name}" has an invalid per-paycheck contribution lock.`;
   }
   return {
     id: readId(obj),
     name,
     schedule,
     personalBalanceCents: obj.personalBalanceCents,
-    ...(obj.autopayLockedMonthlyCents === undefined ? {} : {
-      autopayLockedMonthlyCents: obj.autopayLockedMonthlyCents,
+    ...(autopayLock === undefined ? {} : {
+      autopayLockedPerPaycheckCents: autopayLock,
     }),
-    ...(obj.essentialsLockedMonthlyCents === undefined ? {} : {
-      essentialsLockedMonthlyCents: obj.essentialsLockedMonthlyCents,
+    ...(essentialsLock === undefined ? {} : {
+      essentialsLockedPerPaycheckCents: essentialsLock,
     }),
   };
 }

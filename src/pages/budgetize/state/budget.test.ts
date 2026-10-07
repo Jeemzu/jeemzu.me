@@ -57,13 +57,13 @@ describe('budgetReducer persistence actions', () => {
 describe('budgetReducer settings actions', () => {
   it('preserves contribution locks when re-importing income for an existing person', () => {
     const person = paidPerson('Alex', 2026, 100, {
-      autopayLockedMonthlyCents: 0, essentialsLockedMonthlyCents: 12345,
+      autopayLockedPerPaycheckCents: 0, essentialsLockedPerPaycheckCents: 12345,
     });
     const state = budgetReducer({ data: { ...emptyBudget(), people: [person] }, dirty: false }, {
       type: 'import-data', payload: { people: [{ name: 'alex', schedule: [] }] },
     });
     expect(state.data.people[0]).toMatchObject({
-      id: person.id, autopayLockedMonthlyCents: 0, essentialsLockedMonthlyCents: 12345,
+      id: person.id, autopayLockedPerPaycheckCents: 0, essentialsLockedPerPaycheckCents: 12345,
     });
   });
   it('sets and clears the projection start date', () => {
