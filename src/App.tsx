@@ -1,7 +1,7 @@
 import { Button, Grid, Box, Typography, Container } from "@mui/material";
 import "./App.css";
 import { lazy, Suspense, useEffect, type JSX } from "react";
-import { Route, Router, Switch } from "wouter";
+import { Route, Router, Switch, useRoute } from "wouter";
 import Footer from "./components/shared/Footer";
 import Navigation from "./components/shared/Navigation";
 import PageTransition, { PageEnter } from "./components/shared/PageTransition";
@@ -144,6 +144,8 @@ export function Routes() {
 }
 
 function App() {
+  const [isGamePage] = useRoute("/games/:id");
+
   useEffect(() => {
     // Attempt a silent token refresh on load to restore any active admin session.
     void useAuthStore.getState().initialize();
@@ -207,13 +209,15 @@ function App() {
         </Box>
 
         {/* Footer area */}
-        <Box sx={{ position: "relative", zIndex: 1 }}>
-          <Grid container spacing={0}>
-            <Grid size={12}>
-              <Footer />
+        {!isGamePage && (
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Grid container spacing={0}>
+              <Grid size={12}>
+                <Footer />
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
+          </Box>
+        )}
       </Box>
     </ErrorBoundary>
   );

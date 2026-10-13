@@ -40,6 +40,7 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - React 19, TypeScript 5.8, and Vite 6, with Wouter for routing.
 - Material UI 7 for the component system and Zustand 5 for client state.
 - Phaser 3 for JavaScript games; C++20 games and the algorithm visualizer compile to WebAssembly with Emscripten.
+- Individual game routes (`/games/:id`) hide the site footer; the Games listing (`/games`) keeps it.
 - `openapi-typescript` generates API types from the .NET API's Swagger document.
 - Netlify publishes the Vite `dist/` output as a single-page application.
 
