@@ -38,6 +38,7 @@ import { ProjectionView } from "./components/ProjectionView";
 import { AccountPlanCard } from "./components/AccountPlanCard";
 import { DebtPayoffCard } from "./components/DebtPayoffCard";
 import { PersonalSplitCard } from "./components/PersonalSplitCard";
+import { PersonalExpensesEditor } from "./components/PersonalExpensesEditor";
 import { InfoTip } from "./components/InfoTip";
 import { FundingWarnings } from "./components/FundingWarnings";
 import { BudgetAssistant } from "./components/BudgetAssistant";
@@ -68,6 +69,7 @@ interface Notice {
 const VIEW_TABS = [
   { id: "month", label: "This month" },
   { id: "projections", label: "Projections" },
+  { id: "personal", label: "Personal planning" },
   { id: "data", label: "Edit data" },
   { id: "assistant", label: "Assistant" },
 ] as const;
@@ -311,6 +313,11 @@ function BudgetWorkspace() {
     if (saving) return;
     // Captured so edits made during the request stay marked as unsaved.
     const snapshot = state.data;
+    const parsed = parseBudgetData(snapshot);
+    if (!parsed.ok) {
+      setNotice({ kind: "error", text: parsed.error });
+      return;
+    }
     setSaving(true);
     const result = await saveBudget(snapshot, revision);
     setSaving(false);
@@ -882,6 +889,71 @@ function BudgetWorkspace() {
                 allocationFor={allocationFor}
                 mode={depositMode}
               />
+            </>
+          )}
+
+          {tab === "personal" && (
+            <>
+              <section className="card">
+                <h3>
+                  Combined spending plan
+                  <InfoTip>
+                    Expenses are split by each person&apos;s monthly paycheck remainder
+                    after auto-pay and essentials. Missing income uses an equal split
+                    marked with *. Negative remainders contribute no weight; if all
+                    remainders are zero or negative, the split is equal.
+                    Recurring expenses recalculate shares for each charge month.
+                  </InfoTip>
+                </h3>
+                <PersonalExpensesEditor
+                  expenses={state.data.personalExpenses ?? []}
+                  people={state.data.people}
+                  personId={null}
+                  start={start}
+                  allocationFor={allocationFor}
+                  onAdd={(expense) => dispatch({ type: "add-personal-expense", expense })}
+                  onUpdate={(id, patch) => dispatch({ type: "update-personal-expense", id, patch })}
+                  onRemove={(id) => dispatch({ type: "remove-personal-expense", id })}
+                />
+              </section>
+              <section className="card">
+                <h3>
+                  {rangeLabel} combined personal projection
+                  <InfoTip>
+                    Personal balances only. In includes paycheck remainders and personal
+                    deposits. Combined plan and own expenses both reduce the balance.
+                    Expand a week for daily balances; highlighted rows have unknown
+                    income or provisional equal splits.
+                  </InfoTip>
+                </h3>
+                <ProjectionView
+                  data={state.data} start={start} weekCount={weekCount}
+                  strategy={strategy} mode={depositMode} personalPersonId={null}
+                  onSetPersonalBalance={(id, cents) => dispatch({
+                    type: "update-person", id, patch: { personalBalanceCents: cents },
+                  })}
+                />
+              </section>
+              {state.data.people.map((person) => (
+                <section className="card" key={person.id}>
+                  <h3>{person.name} — personal plan</h3>
+                  <PersonalExpensesEditor
+                    expenses={state.data.personalExpenses ?? []}
+                    people={state.data.people} personId={person.id}
+                    start={start} allocationFor={allocationFor}
+                    onAdd={(expense) => dispatch({ type: "add-personal-expense", expense })}
+                    onUpdate={(id, patch) => dispatch({ type: "update-personal-expense", id, patch })}
+                    onRemove={(id) => dispatch({ type: "remove-personal-expense", id })}
+                  />
+                  <ProjectionView
+                    data={state.data} start={start} weekCount={weekCount}
+                    strategy={strategy} mode={depositMode} personalPersonId={person.id}
+                    onSetPersonalBalance={(id, cents) => dispatch({
+                      type: "update-person", id, patch: { personalBalanceCents: cents },
+                    })}
+                  />
+                </section>
+              ))}
             </>
           )}
 

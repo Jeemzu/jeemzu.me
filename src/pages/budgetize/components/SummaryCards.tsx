@@ -44,10 +44,12 @@ export function SummaryCards({ monthRef, summary }: Props) {
         </span>
       </div>
       <div className="card stat">
-        <span className="stat-label">Bills + debt</span>
+        <span className="stat-label">Expenses</span>
         <span className="stat-value">{formatMoney(summary.outflowTotalCents)}</span>
         <span className="stat-sub">
           {formatMoney(summary.billsTotalCents)} bills · {formatMoney(summary.debtsTotalCents)} debt
+          {summary.oneOffExpenseCents > 0 && <> · {formatMoney(summary.oneOffExpenseCents)} one-time</>}
+          {summary.personalExpenseCents > 0 && <> · {formatMoney(summary.personalExpenseCents)} personal</>}
         </span>
       </div>
       <AccountCard label="Auto-pay account" totals={autopay} />

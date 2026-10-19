@@ -43,7 +43,7 @@ describe('buildExportSheets', () => {
   it('exports every table with dollar amounts and resolved names', () => {
     const sheets = Object.fromEntries(buildExportSheets(sample(), asOf).map((s) => [s.name, s.rows]));
 
-    expect(Object.keys(sheets)).toEqual(['Accounts', 'Income', 'Bills', 'Debts', 'Schedule changes', 'One-time']);
+    expect(Object.keys(sheets)).toEqual(['Accounts', 'Income', 'Bills', 'Debts', 'Schedule changes', 'One-time', 'Personal planning']);
     expect(sheets.Income).toHaveLength(13);
     expect(sheets.Bills[1]).toEqual(['Rent', 'Bill', 1500, 1, 'monthly', null, null, null, 'Essentials']);
     expect(sheets.Debts.slice(1).map((row) => [row[0], row[1], row[2]])).toEqual([

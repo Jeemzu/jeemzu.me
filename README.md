@@ -33,6 +33,15 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - Projection account tables keep every contributor's split visible, locked or unlocked; the weekly/daily balance table also shows each person's paycheck contributions separately from one-time income.
 - Backups, saved budgets, and spreadsheet exports include per-paycheck locks; re-importing income preserves locks for matching names. Deploy the backend `BudgetPersonDto` nullable per-paycheck fields before this frontend, then regenerate API types. No database migration is needed.
 
+### Budgetize personal planning
+
+- Personal planning includes a combined expense table and separate plans and weekly/daily balance projections for each person. Income is the paycheck remainder after auto-pay and essentials, using the selected deposit mode and contribution locks.
+- Expenses default to one-time; weekly, biweekly, monthly, quarterly, and annual schedules are supported, with an optional inclusive end date. Calendar recurrences keep the first charge's day, clamping to short months.
+- Combined expenses withdraw proportionally to each person's positive monthly paycheck remainder. Shares recalculate for each occurrence month and sum to the exact expense amount. Missing income for any person uses an equal split and flags it; all-zero or negative remainders also split equally.
+- Individual expenses withdraw only from their owner's personal account. Existing personal one-time expenses/deposits also appear in personal projections. These plans affect monthly totals, calendar entries, and personal balances, never shared-account funding.
+- Plans participate in Save/Reload, JSON backups, spreadsheet exports, and Undo/Redo. Removing a person removes their individual expenses; combined plans remain.
+- Deploy the backend `BudgetPersonalExpenseDto` and `BudgetDataDto.PersonalExpenses` changes before this frontend; older servers discard unknown fields. No database migration is required. Spreadsheet exports include plans; restore them with a JSON backup.
+
 ## Technical Stack
 
 ### Frontend

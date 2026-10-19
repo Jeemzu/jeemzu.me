@@ -17,7 +17,7 @@ export function emptyNeed(): AccountNeed {
   return { billsCents: 0, debtCents: 0, oneOffCents: 0, totalCents: 0 };
 }
 
-export function addToNeed(need: AccountNeed, kind: 'bill' | 'debt' | 'one-off', cents: number): void {
+export function addToNeed(need: AccountNeed, kind: 'bill' | 'debt' | 'one-off' | 'personal-expense', cents: number): void {
   if (kind === 'bill') need.billsCents += cents;
   else if (kind === 'debt') need.debtCents += cents;
   else need.oneOffCents += cents;

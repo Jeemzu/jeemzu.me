@@ -101,12 +101,26 @@ export interface OneOffEvent {
   note: string;
 }
 
+export interface PersonalExpense {
+  id: string;
+  name: string;
+  amountCents: number;
+  /** First charge date; recurring calendar payments keep this day, clamped in short months. */
+  dateISO: string;
+  frequency: 'once' | RecurrenceFrequency;
+  endISO: string | null;
+  /** Null splits the expense proportionally across everyone's personal accounts. */
+  personId: string | null;
+}
+
 export interface BudgetData {
   people: PersonIncome[];
   bills: Bill[];
   debts: DebtAccount[];
   overrides: ScheduleOverride[];
   oneOffs: OneOffEvent[];
+  /** Absent in budgets saved before personal planning. */
+  personalExpenses?: PersonalExpense[];
   /** Current shared essentials account balance — the projection starting point. */
   essentialsBalanceCents: number;
   /** Current auto-pay account balance — the projection starting point. */
@@ -164,6 +178,7 @@ export function emptyBudget(): BudgetData {
     debts: [],
     overrides: [],
     oneOffs: [],
+    personalExpenses: [],
     essentialsBalanceCents: 0,
     autopayBalanceCents: 0,
     projectionStartISO: null,

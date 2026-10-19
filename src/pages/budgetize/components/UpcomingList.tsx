@@ -13,7 +13,7 @@ interface Props {
 type Item =
   | { kind: 'payday'; day: number; key: string }
   | {
-      kind: 'bill' | 'debt' | 'one-off';
+      kind: 'bill' | 'debt' | 'one-off' | 'personal-expense';
       day: number;
       key: string;
       name: string;

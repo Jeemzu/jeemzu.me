@@ -3,7 +3,7 @@ import { toISODate } from './paydays';
 import { billAmountOn, debtAmountOn } from './recurrence';
 
 export interface LedgerEntry {
-  kind: 'bill' | 'debt' | 'one-off';
+  kind: 'bill' | 'debt' | 'one-off' | 'personal-expense';
   name: string;
   amountCents: number;
   dateISO: string;
@@ -11,6 +11,7 @@ export interface LedgerEntry {
   source: OneOffAccount;
   /** Set only when `source` is 'personal'. */
   personId: string | null;
+  personalExpenseScope?: 'combined' | 'individual';
 }
 
 /** Every charge and one-off deposit landing on a date, after schedule overrides. */

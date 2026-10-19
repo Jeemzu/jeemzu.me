@@ -2,6 +2,7 @@ import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { PAYDAY_WEEKDAY, toISODate } from './paydays';
 import { fundedAllocator, type DepositMode } from './funding';
 import { entriesOn, type LedgerEntry } from './ledger';
+import { personalExpenseOccursOn, personalExpenseShares } from './personalPlanning';
 
 export { toISODate } from './paydays';
 
@@ -169,6 +170,20 @@ export function computeProjection(
         });
       }
       const day = entriesOn(data, d, strategy);
+      for (const expense of data.personalExpenses ?? []) {
+        if (!personalExpenseOccursOn(expense, d)) continue;
+        const allocation = allocationFor({ year: d.getFullYear(), month: d.getMonth() });
+        const shares = personalExpenseShares(expense, allocation);
+        if (!shares.incomeKnown && expense.personId === null) dayIncomeKnown = false;
+        shares.cents.forEach((amountCents, i) => {
+          if (amountCents === 0) return;
+          day.outflows.push({
+            kind: 'personal-expense', name: expense.name, amountCents,
+            dateISO: toISODate(d), source: 'personal', personId: data.people[i].id,
+            personalExpenseScope: expense.personId === null ? 'combined' : 'individual',
+          });
+        });
+      }
       for (const entry of day.outflows) {
         const target = account(entry.source, entry.personId);
         if (!target) continue;

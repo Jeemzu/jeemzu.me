@@ -167,6 +167,17 @@ export function buildExportSheets(data: BudgetData, asOf: Date): ExportSheet[] {
           ]),
       ],
     },
+    {
+      name: 'Personal planning',
+      rows: [
+        ['First date', 'Name', 'Amount', 'Repeats', 'Ends', 'Paid by'],
+        ...(data.personalExpenses ?? []).map((expense): Cell[] => [
+          expense.dateISO, expense.name, dollars(expense.amountCents), expense.frequency,
+          expense.endISO,
+          expense.personId === null ? 'Combined (proportional)' : (personName.get(expense.personId) ?? null),
+        ]),
+      ],
+    },
   ];
 }
 

@@ -5,6 +5,7 @@ import type {
   DebtPaymentStrategy,
   ImportedPerson,
   OneOffEvent,
+  PersonalExpense,
   PersonIncome,
   ScheduleOverride,
 } from '../types';
@@ -41,6 +42,9 @@ export type Action =
   | { type: 'add-one-off'; event: OneOffEvent }
   | { type: 'update-one-off'; id: string; patch: Partial<Omit<OneOffEvent, 'id'>> }
   | { type: 'remove-one-off'; id: string }
+  | { type: 'add-personal-expense'; expense: PersonalExpense }
+  | { type: 'update-personal-expense'; id: string; patch: Partial<Omit<PersonalExpense, 'id'>> }
+  | { type: 'remove-personal-expense'; id: string }
   /** Assistant-proposed changes the user reviewed and accepted. */
   | { type: 'apply-proposal'; ops: BudgetOp[] }
   | { type: 'set-essentials-balance'; cents: number }
@@ -153,6 +157,7 @@ export function budgetReducer(state: AppState, action: Action): AppState {
           ...state.data,
           people: state.data.people.filter((p) => p.id !== action.id),
           oneOffs: state.data.oneOffs.filter((e) => e.personId !== action.id),
+          personalExpenses: state.data.personalExpenses?.filter((e) => e.personId !== action.id),
         },
         dirty: true,
       };
@@ -209,6 +214,22 @@ export function budgetReducer(state: AppState, action: Action): AppState {
       };
     case 'apply-proposal':
       return { data: applyProposal(state.data, action.ops), dirty: true };
+    case 'add-personal-expense':
+      return {
+        data: { ...state.data, personalExpenses: [...(state.data.personalExpenses ?? []), action.expense] },
+        dirty: true,
+      };
+    case 'update-personal-expense':
+      return {
+        data: { ...state.data, personalExpenses: (state.data.personalExpenses ?? []).map((e) =>
+          e.id === action.id ? { ...e, ...action.patch } : e) },
+        dirty: true,
+      };
+    case 'remove-personal-expense':
+      return {
+        data: { ...state.data, personalExpenses: (state.data.personalExpenses ?? []).filter((e) => e.id !== action.id) },
+        dirty: true,
+      };
     case 'set-essentials-balance':
       return { data: { ...state.data, essentialsBalanceCents: action.cents }, dirty: true };
     case 'set-autopay-balance':
@@ -238,6 +259,7 @@ export function budgetReducer(state: AppState, action: Action): AppState {
             o.targetKind === 'bill' ? billIds.has(o.targetId) : debtIds.has(o.targetId),
           ),
           oneOffs: state.data.oneOffs.filter((e) => e.personId === null || personIds.has(e.personId)),
+          personalExpenses: state.data.personalExpenses?.filter((e) => e.personId === null || personIds.has(e.personId)),
         },
         dirty: true,
       };

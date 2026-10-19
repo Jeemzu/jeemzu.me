@@ -2,9 +2,12 @@ import type { BudgetData, DebtPaymentStrategy, OneOffAccount } from '../types';
 import { plannedDebtPaymentCents } from '../types';
 import { getPaydays, toISODate } from './paydays';
 import { createAllocator, type AllocationResolver } from './allocation';
+import { personalExpenseOccursOn } from './personalPlanning';
+import { daysInMonth } from './paydays';
 import {
   billAmountOn,
   debtAmountOn,
+  isDayStrided,
   occurrencesInMonth,
 } from './recurrence';
 
@@ -15,7 +18,7 @@ export const DEBT_CATEGORY = 'Debt';
 export const ONE_OFF_CATEGORY = 'One-time';
 
 export interface ScheduledItem {
-  kind: 'bill' | 'debt' | 'one-off';
+  kind: 'bill' | 'debt' | 'one-off' | 'personal-expense';
   id: string;
   name: string;
   amountCents: number;
@@ -67,6 +70,7 @@ export interface MonthSummary {
   oneOffExpenseCents: number;
   /** One-time deposits dated inside this month. */
   oneOffIncomeCents: number;
+  personalExpenseCents: number;
   outflowTotalCents: number;
   /** Deposits carved out of gross pay into the auto-pay account this month. */
   autopayFundingCents: number;
@@ -166,6 +170,22 @@ export function computeMonthSummary(
     });
   }
 
+  for (const expense of data.personalExpenses ?? []) {
+    for (let day = 1; day <= daysInMonth(year, month); day++) {
+      const date = new Date(year, month, day);
+      if (!personalExpenseOccursOn(expense, date)) continue;
+      const dueDay = Number(expense.dateISO.slice(8, 10));
+      items.push({
+        kind: 'personal-expense', id: expense.id, name: expense.name,
+        amountCents: expense.amountCents, dueDay,
+        day, dateISO: toISODate(date),
+        moved: expense.frequency !== 'once' && !isDayStrided(expense.frequency) && day !== dueDay,
+        adjusted: false,
+        category: 'Personal', paidFrom: 'personal',
+      });
+    }
+  }
+
   const scheduled: ScheduledItem[] = items
     .map(({ kind, id, name, amountCents, dueDay, day, dateISO, moved, adjusted, paidFrom }) => ({
       kind,
@@ -186,7 +206,8 @@ export function computeMonthSummary(
   const billsTotalCents = totalFor('bill');
   const debtsTotalCents = totalFor('debt');
   const oneOffExpenseCents = totalFor('one-off');
-  const outflowTotalCents = billsTotalCents + debtsTotalCents + oneOffExpenseCents;
+  const personalExpenseCents = totalFor('personal-expense');
+  const outflowTotalCents = billsTotalCents + debtsTotalCents + oneOffExpenseCents + personalExpenseCents;
   const incomeCents = allocation.grossMonthlyCents + oneOffIncomeCents;
 
   const autopayFundingCents = allocation.people.reduce(
@@ -236,6 +257,7 @@ export function computeMonthSummary(
     debtsTotalCents,
     oneOffExpenseCents,
     oneOffIncomeCents,
+    personalExpenseCents,
     outflowTotalCents,
     autopayFundingCents,
     remainingCents,

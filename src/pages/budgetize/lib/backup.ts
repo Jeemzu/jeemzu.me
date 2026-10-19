@@ -6,6 +6,7 @@ import type {
   MonthlyIncome,
   OneOffEvent,
   PersonIncome,
+  PersonalExpense,
   Recurrence,
   RecurrenceFrequency,
   ScheduleOverride,
@@ -14,7 +15,7 @@ import { compareMonthlyIncome, monthlyRecurrence } from '../types';
 import { getPaydays } from './paydays';
 import { parseISODate } from './recurrence';
 
-export const BACKUP_VERSION = 8;
+export const BACKUP_VERSION = 9;
 const APP_ID = 'budgetize-me';
 
 export interface BackupFile {
@@ -213,6 +214,39 @@ function sanitizeOneOff(raw: unknown, index: number): OneOffEvent | string {
   };
 }
 
+function sanitizePersonalExpense(raw: unknown, index: number): PersonalExpense | string {
+  const label = `Personal expense #${index + 1}`;
+  if (typeof raw !== 'object' || raw === null) return `${label} is not an object.`;
+  const obj = raw as Record<string, unknown>;
+  const name = typeof obj.name === 'string' ? obj.name.trim() : '';
+  if (!name) return `${label} is missing a name.`;
+  if (!isCents(obj.amountCents)) return `${label} has an invalid amount.`;
+  const validDate = (value: unknown): value is string => {
+    if (!isISODate(value)) return false;
+    const date = parseISODate(value);
+    return date !== null && date.getFullYear() === Number(value.slice(0, 4))
+      && date.getMonth() + 1 === Number(value.slice(5, 7)) && date.getDate() === Number(value.slice(8, 10));
+  };
+  if (!validDate(obj.dateISO)) return `${label} has an invalid date.`;
+  const frequency = obj.frequency;
+  if (frequency !== 'once' &&
+      (typeof frequency !== 'string' || !FREQUENCIES.includes(frequency as RecurrenceFrequency))) {
+    return `${label} has an unknown frequency.`;
+  }
+  const endISO = obj.endISO ?? null;
+  if (endISO !== null && (!validDate(endISO) || endISO < obj.dateISO)) {
+    return `${label} has an invalid end date.`;
+  }
+  const personId = obj.personId ?? null;
+  if (personId !== null && (typeof personId !== 'string' || !personId)) {
+    return `${label} has an invalid person.`;
+  }
+  return {
+    id: readId(obj), name, amountCents: obj.amountCents, dateISO: obj.dateISO,
+    frequency: frequency as PersonalExpense['frequency'], endISO, personId,
+  };
+}
+
 function sanitizePerson(raw: unknown, index: number): PersonIncome | string {
   if (typeof raw !== 'object' || raw === null) return `Person #${index + 1} is not an object.`;
   const obj = raw as Record<string, unknown>;
@@ -386,6 +420,8 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
   if (typeof overrides === 'string') return { ok: false, error: overrides };
   const oneOffs = sanitizeList(dataObj.oneOffs, 'one-time entries', sanitizeOneOff);
   if (typeof oneOffs === 'string') return { ok: false, error: oneOffs };
+  const personalExpenses = sanitizeList(dataObj.personalExpenses, 'personal expenses', sanitizePersonalExpense);
+  if (typeof personalExpenses === 'string') return { ok: false, error: personalExpenses };
 
   const billIds = new Set(bills.map((b) => b.id));
   const debtIds = new Set(debts.map((d) => d.id));
@@ -396,7 +432,7 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
     return { ok: false, error: `An override points at a ${orphan.targetKind} that no longer exists.` };
   }
   const personIds = new Set(people.map((p) => p.id));
-  const strayEvent = oneOffs.find((e) => e.personId !== null && !personIds.has(e.personId));
+  const strayEvent = [...oneOffs, ...personalExpenses].find((e) => e.personId !== null && !personIds.has(e.personId));
   if (strayEvent) {
     return { ok: false, error: `"${strayEvent.name}" points at a person who no longer exists.` };
   }
@@ -425,6 +461,7 @@ export function parseBudgetData(raw: unknown): ParseBackupResult {
       debts,
       overrides,
       oneOffs,
+      personalExpenses,
       essentialsBalanceCents,
       autopayBalanceCents,
       projectionStartISO: projectionStartISO as string | null,
