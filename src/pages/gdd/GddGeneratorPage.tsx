@@ -35,6 +35,7 @@ import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
 import GddAccountLibrary from "./GddAccountLibrary";
 import GddExampleDialog from "./GddExampleDialog";
+import DevSetupDialog from "./DevSetupDialog";
 import { createExample, EXAMPLE_MARKDOWN, loadExampleAssets } from "./example";
 import {
   defaultDraft,
@@ -67,6 +68,7 @@ export default function GddGeneratorPage() {
   );
   const [importOpen, setImportOpen] = useState(false);
   const [exampleOpen, setExampleOpen] = useState(false);
+  const [devSetupOpen, setDevSetupOpen] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -334,7 +336,13 @@ export default function GddGeneratorPage() {
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <PageHeading title="GDD Generator" />
       <Stack spacing={3}>
-        <Box sx={{ textAlign: "center" }}>
+        <Stack
+          direction="row"
+          spacing={2}
+          useFlexGap
+          flexWrap="wrap"
+          justifyContent="center"
+        >
           <Button
             sx={outlineButtonSx}
             variant="outlined"
@@ -343,7 +351,14 @@ export default function GddGeneratorPage() {
           >
             View Example GDD
           </Button>
-        </Box>
+          <Button
+            sx={outlineButtonSx}
+            variant="outlined"
+            onClick={() => setDevSetupOpen(true)}
+          >
+            Dev Setup Prompt
+          </Button>
+        </Stack>
         <Box
           sx={{
             display: "grid",
@@ -533,6 +548,10 @@ export default function GddGeneratorPage() {
           }
         />
       </Stack>
+      <DevSetupDialog
+        open={devSetupOpen}
+        onClose={() => setDevSetupOpen(false)}
+      />
       <GddExampleDialog
         open={exampleOpen}
         disabled={busy !== null || accountBusy}
