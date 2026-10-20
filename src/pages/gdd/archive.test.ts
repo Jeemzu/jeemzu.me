@@ -40,14 +40,45 @@ describe("GDD template archives", () => {
     ).toThrow("Missing image: images/missing.jpg");
   });
 
-  it("rejects a folder-wrapped template", () => {
+  it("accepts a folder-wrapped template with unchanged image references and bytes", () => {
+    const original = unzipSync(createTemplate());
+    const wrapped = zipSync(
+      Object.fromEntries(
+        Object.entries(original).map(([name, bytes]) => [
+          `my-game/${name}`,
+          bytes,
+        ]),
+      ),
+    );
+    const imported = importArchive(wrapped);
+    expect(imported.markdown).toBe(importArchive(createTemplate()).markdown);
+    expect(imported.images["images/example.png"]).toEqual(
+      original["images/example.png"],
+    );
+  });
+
+  it.each(["other/gdd.md", "other/editor.json", "gdd.md"])(
+    "rejects ambiguous document roots with %s",
+    (other) => {
+      expect(() =>
+        importArchive(
+          zipSync({
+            "my-game/gdd.md": strToU8("# Game\n\n## Design\n\nText."),
+            [other]: strToU8("# Another\n\n## Design\n\nText."),
+          }),
+        ),
+      ).toThrow("only one GDD");
+    },
+  );
+
+  it("rejects documents nested more than one parent folder deep", () => {
     expect(() =>
       importArchive(
         zipSync({
-          "my-game/gdd.md": strToU8("# Game\n\n## Design\n\nText."),
+          "outer/inner/gdd.md": strToU8("# Game\n\n## Design\n\nText."),
         }),
       ),
-    ).toThrow("at its root");
+    ).toThrow("single parent folder");
   });
 
   it("rejects invalid UTF-8 and fake image formats", () => {

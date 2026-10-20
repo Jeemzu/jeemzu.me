@@ -7,12 +7,18 @@ import {
   Container,
   Dialog,
   DialogActions,
+  DialogContent,
   DialogTitle,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
-import { FaDownload, FaFilePdf, FaUpload } from "react-icons/fa6";
+import {
+  FaArrowUpRightFromSquare,
+  FaDownload,
+  FaFilePdf,
+  FaUpload,
+} from "react-icons/fa6";
 import PageHeading from "../../components/shared/PageHeading";
 import {
   bodySx,
@@ -27,6 +33,7 @@ import { createTemplate } from "./archive";
 import { LIMITS, parseDocument } from "./document";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
+import GddAccountLibrary from "./GddAccountLibrary";
 import {
   defaultDraft,
   draftMarkdown,
@@ -34,7 +41,6 @@ import {
   openProject,
   projectAssets,
   projectPaths,
-  saveProject,
   validateAsset,
   type EditorDraft,
   type EditorProject,
@@ -47,11 +53,14 @@ export default function GddGeneratorPage() {
     assets: {},
   }));
   const [images, setImages] = useState<Record<string, PdfImage>>({});
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountResetVersion, setAccountResetVersion] = useState(0);
   const [busy, setBusy] = useState<"import" | "images" | "pdf" | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
   const [pendingImport, setPendingImport] = useState<File | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -121,6 +130,7 @@ export default function GddGeneratorPage() {
       const prepared = await prepareImages(imported.assets);
       if (operation.current === current) {
         setProject(imported);
+        setAccountResetVersion((version) => version + 1);
         setEditorVersion((version) => version + 1);
         setImages(prepared);
         setDirty(false);
@@ -218,6 +228,8 @@ export default function GddGeneratorPage() {
 
   async function generate() {
     const current = ++operation.current;
+    let preview: Window | null = null;
+    let opened = false;
     setBusy("pdf");
     setError("");
     setNotice("");
@@ -225,11 +237,20 @@ export default function GddGeneratorPage() {
     try {
       const content = parseDocument(draftMarkdown(project.draft));
       projectAssets(project);
+      preview = window.open("about:blank", "_blank");
+      if (preview) preview.opener = null;
       const { generatePdf } = await import("./generatePdf");
       const blob = await generatePdf(content, images);
       if (operation.current === current) {
         setPdfBlob(blob);
-        setPdfUrl(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+        if (preview && !preview.closed) {
+          preview.location.replace(url);
+          opened = true;
+        } else {
+          setNotice("PDF ready. Use Open PDF to view it in a new tab.");
+        }
       }
     } catch (cause) {
       if (operation.current === current)
@@ -239,25 +260,20 @@ export default function GddGeneratorPage() {
             : "PDF generation failed. Try a smaller document.",
         );
     } finally {
+      if (!opened && preview && !preview.closed) preview.close();
       if (operation.current === current) setBusy(null);
     }
   }
 
-  function downloadZip(template: boolean) {
+  function downloadTemplate() {
     setError("");
     setNotice("");
     try {
-      const bytes = template ? createTemplate() : saveProject(project);
+      const bytes = createTemplate();
       downloadBlob(
-        template
-          ? "gdd-template.zip"
-          : `${filename(project.draft.title)} - GDD Draft.zip`,
+        "gdd-template.zip",
         new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
       );
-      if (!template) {
-        setDirty(false);
-        setNotice("Draft ZIP downloaded.");
-      }
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -271,68 +287,134 @@ export default function GddGeneratorPage() {
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <PageHeading title="GDD Generator" />
       <Stack spacing={3}>
-        <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={2}
-            useFlexGap
-            flexWrap="wrap"
-          >
-            <Button
-              startIcon={<FaDownload />}
-              sx={outlineButtonSx}
-              variant="outlined"
-              disabled={busy !== null}
-              onClick={() => downloadZip(false)}
-            >
-              Save draft ZIP
-            </Button>
-            <Button
-              startIcon={<FaUpload />}
-              sx={outlineButtonSx}
-              variant="outlined"
-              disabled={busy !== null}
-              onClick={() => input.current?.click()}
-            >
-              Import ZIP
-            </Button>
-            <Button
-              startIcon={<FaDownload />}
-              sx={outlineButtonSx}
-              variant="outlined"
-              disabled={busy !== null}
-              onClick={() => downloadZip(true)}
-            >
-              Download template
-            </Button>
-            <Tooltip title="Empty sections and subsections are omitted from the PDF. Save draft ZIP keeps all form fields.">
-              <span>
-                <Button
-                  startIcon={<FaFilePdf />}
-                  sx={goldButtonSx}
-                  variant="contained"
-                  disabled={busy !== null}
-                  onClick={() => void generate()}
-                >
-                  Generate PDF
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
-          <input
-            ref={input}
-            type="file"
-            accept=".zip,application/zip"
-            aria-label="Import GDD draft or template ZIP"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (!file) return;
-              if (dirty) setPendingImport(file);
-              else void importFile(file);
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+            gap: 3,
+          }}
+        >
+          <Box
+            sx={{
+              ...panelSx,
+              p: { xs: 2, sm: 3 },
+              minWidth: 0,
+              display: "flex",
+              alignItems: "center",
             }}
-          />
+          >
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                },
+                gap: 1.5,
+                width: "100%",
+                "& .MuiButton-root": { minHeight: 44, height: "100%" },
+              }}
+            >
+              <Tooltip title="Empty sections and subsections are omitted from the PDF.">
+                <Box component="span" sx={{ gridColumn: "1 / -1" }}>
+                  <Button
+                    fullWidth
+                    startIcon={<FaFilePdf />}
+                    sx={goldButtonSx}
+                    variant="contained"
+                    disabled={busy !== null || accountBusy}
+                    onClick={() => void generate()}
+                  >
+                    Generate PDF
+                  </Button>
+                </Box>
+              </Tooltip>
+              <Tooltip title={!pdfBlob ? "Generate a PDF first." : ""}>
+                <span>
+                  <Button
+                    fullWidth
+                    startIcon={<FaDownload />}
+                    sx={outlineButtonSx}
+                    variant="outlined"
+                    disabled={!pdfBlob}
+                    onClick={() => {
+                      if (pdfBlob)
+                        downloadBlob(
+                          `${filename(project.draft.title)} - Game Design Document.pdf`,
+                          pdfBlob,
+                        );
+                    }}
+                  >
+                    Download PDF
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title={!pdfUrl ? "Generate a PDF first." : ""}>
+                <span>
+                  <Button
+                    fullWidth
+                    startIcon={<FaArrowUpRightFromSquare />}
+                    component="a"
+                    href={pdfUrl ?? undefined}
+                    disabled={!pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={outlineButtonSx}
+                    variant="outlined"
+                  >
+                    Open PDF
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+          </Box>
+          <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 }, minWidth: 0 }}>
+            <Stack spacing={2}>
+              <Typography variant="h5" sx={headingSx}>
+                Local editing
+              </Typography>
+              <Typography sx={{ ...bodySx, textAlign: "left" }}>
+                Download the template only if you want to edit your GDD locally,
+                then upload the completed ZIP here later. Otherwise, use the
+                form below.
+              </Typography>
+              <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
+                <Button
+                  startIcon={<FaDownload />}
+                  sx={outlineButtonSx}
+                  variant="outlined"
+                  disabled={busy !== null || accountBusy}
+                  onClick={downloadTemplate}
+                >
+                  Download template
+                </Button>
+                <Button
+                  startIcon={<FaUpload />}
+                  sx={outlineButtonSx}
+                  variant="outlined"
+                  disabled={busy !== null || accountBusy}
+                  onClick={() => setImportOpen(true)}
+                >
+                  Import GDD
+                </Button>
+              </Stack>
+            </Stack>
+            <input
+              ref={input}
+              type="file"
+              accept=".zip,application/zip"
+              aria-label="Import GDD draft or template ZIP"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                setImportOpen(false);
+                if (dirty) setPendingImport(file);
+                else void importFile(file);
+              }}
+            />
+          </Box>
         </Box>
         <Box ref={status}>
           {error && (
@@ -364,64 +446,83 @@ export default function GddGeneratorPage() {
             </Stack>
           )}
         </Box>
-        {pdfUrl && pdfBlob && (
-          <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ mb: 2 }}
-              useFlexGap
-              flexWrap="wrap"
-            >
-              <Button
-                startIcon={<FaDownload />}
-                sx={goldButtonSx}
-                variant="contained"
-                onClick={() =>
-                  downloadBlob(
-                    `${filename(project.draft.title)} - Game Design Document.pdf`,
-                    pdfBlob,
-                  )
-                }
-              >
-                Download PDF
-              </Button>
-              <Button
-                component="a"
-                href={pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                sx={outlineButtonSx}
-                variant="outlined"
-              >
-                Open PDF
-              </Button>
-            </Stack>
-            <Box
-              component="iframe"
-              title="Generated game design document"
-              src={pdfUrl}
-              sx={{
-                width: "100%",
-                height: { xs: "65vh", md: "80vh" },
-                border: 0,
-                backgroundColor: "white",
-                borderRadius: 1,
-              }}
-            />
-          </Box>
-        )}
+        <GddAccountLibrary
+          project={project}
+          pdf={pdfBlob}
+          dirty={dirty}
+          disabled={busy !== null}
+          resetVersion={accountResetVersion}
+          onBusyChange={setAccountBusy}
+          onSavedChange={(saved) => setDirty(!saved)}
+          onLoad={(loaded, prepared, pdf) => {
+            setProject(loaded);
+            setImages(prepared);
+            setEditorVersion((version) => version + 1);
+            setDirty(false);
+            setError("");
+            setNotice("");
+            setPdfBlob(pdf);
+            setPdfUrl(URL.createObjectURL(pdf));
+          }}
+        />
         <GddEditorForm
           key={editorVersion}
           draft={project.draft}
           images={images}
-          disabled={busy !== null}
+          disabled={busy !== null || accountBusy}
           onChange={changeDraft}
           onUpload={(sectionId, groupId, files) =>
             void uploadImages(sectionId, groupId, files)
           }
         />
       </Stack>
+      <Dialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        aria-labelledby="gdd-import-title"
+        fullWidth
+        maxWidth="sm"
+        slotProps={{ paper: { sx: dialogPaperSx } }}
+      >
+        <DialogTitle id="gdd-import-title" sx={headingSx}>
+          Import GDD
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ ...bodySx, textAlign: "left" }}>
+            ZIP the folder contents or their single parent folder. Keep images/
+            beside gdd.md.
+          </Typography>
+          <Box
+            component="pre"
+            sx={{
+              p: 2,
+              overflowX: "auto",
+              color: "parchment.main",
+              backgroundColor: "rgba(0,0,0,0.25)",
+              fontSize: "0.85rem",
+            }}
+          >
+            {`Contents ZIP              Parent folder ZIP
+game.zip                  game.zip
+|-- gdd.md                +-- my-game/
++-- images/                   |-- gdd.md
+    +-- reference.png         +-- images/
+                                  +-- reference.png`}
+          </Box>
+          <Typography sx={{ ...bodySx, textAlign: "left" }}>
+            Images are optional (PNG/JPEG). Existing editor.json drafts are also
+            supported. ZIP limit: 25 MB.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button sx={outlineButtonSx} onClick={() => setImportOpen(false)}>
+            Cancel
+          </Button>
+          <Button sx={goldButtonSx} onClick={() => input.current?.click()}>
+            Choose ZIP
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog
         open={pendingImport !== null}
         onClose={() => setPendingImport(null)}

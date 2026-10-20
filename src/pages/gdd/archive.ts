@@ -86,8 +86,8 @@ Describe target players, platforms, monetization, technology, and release plans.
 const INSTRUCTIONS = `GDD GENERATOR TEMPLATE
 
 Prefer the web form? Open https://jeemzu.me/gdd-generator to fill out sections
-and upload images directly. Save draft ZIP preserves your editable form.
-Import ZIP reopens a saved draft or this populated Markdown template.
+and upload images directly. Account saves preserve your editable form.
+Import GDD reopens a saved draft or this populated Markdown template.
 
 1. Extract this ZIP.
 2. Edit gdd.md with any plain-text or Markdown editor.
@@ -95,7 +95,7 @@ Import ZIP reopens a saved draft or this populated Markdown template.
 4. Add PNG or JPEG images to images/. Keep each under 10 MB and 24 megapixels.
 5. Insert images on their own paragraph:
    ![Caption, credit and source page](images/your-image.png)
-6. ZIP gdd.md and images/ together at the archive root (not inside another folder).
+6. ZIP gdd.md and images/ together, or ZIP their single parent folder.
 7. Import that ZIP at https://jeemzu.me/gdd-generator and download the PDF.
 
 FORMAT
@@ -120,7 +120,7 @@ LIMITS AND PRIVACY
 ZIP: 25 MB compressed, 60 MB expanded, 100 entries.
 gdd.md: 1 MB / 150,000 characters. Text fonts cover Latin, Greek and Cyrillic;
 other scripts and emoji are not guaranteed. Check the PDF before distributing it.
-All content is processed in your browser; nothing is uploaded or saved by this app.
+Imports and generation run in your browser. Only explicit account saves upload content.
 Keep the ZIP as your editable master. Re-import it after making changes.
 The PDF uses a flowing layout inspired by The Knotted Grove design document,
 not fixed page-by-page positions. Page counts change with your content.
@@ -166,16 +166,14 @@ export function extractArchive(data: Uint8Array): Record<string, Uint8Array> {
       throw new Error(`Unsafe ZIP path: ${file.name}`);
     if (file.name.endsWith("/")) return;
     const wanted =
-      file.name === "gdd.md" ||
-      file.name === "editor.json" ||
-      /^images\/[^/]+\.(png|jpe?g)$/i.test(file.name);
+      /^(?:[^/]+\/)?(?:gdd\.md|editor\.json)$/.test(file.name) ||
+      /^(?:[^/]+\/)?images\/[^/]+\.(png|jpe?g)$/i.test(file.name);
     if (!wanted) return;
-    const maximum = file.name.startsWith("images/")
-      ? LIMITS.image
-      : LIMITS.markdown;
+    const image = /(?:^|\/)images\//.test(file.name);
+    const maximum = image ? LIMITS.image : LIMITS.markdown;
     if (file.originalSize !== undefined && file.originalSize > maximum) {
       throw new Error(
-        `${file.name} exceeds its ${file.name.startsWith("images/") ? "10" : "1"} MB limit.`,
+        `${file.name} exceeds its ${image ? "10" : "1"} MB limit.`,
       );
     }
     let length = 0;
@@ -214,14 +212,36 @@ export function extractArchive(data: Uint8Array): Record<string, Uint8Array> {
     );
   }
   if (pending) throw new Error("The ZIP is incomplete or damaged.");
-  return files;
+  const roots = new Set(
+    Object.keys(files)
+      .filter((name) => /^(?:[^/]+\/)?(?:gdd\.md|editor\.json)$/.test(name))
+      .map((name) => name.slice(0, name.lastIndexOf("/") + 1)),
+  );
+  if (roots.size > 1)
+    throw new Error(
+      "Include only one GDD, either at the ZIP root or inside one parent folder.",
+    );
+  const prefix = [...roots][0] ?? "";
+  return Object.fromEntries(
+    Object.entries(files)
+      .filter(([name]) => {
+        if (!name.startsWith(prefix)) return false;
+        const relative = name.slice(prefix.length);
+        return (
+          relative === "gdd.md" ||
+          relative === "editor.json" ||
+          /^images\/[^/]+\.(png|jpe?g)$/i.test(relative)
+        );
+      })
+      .map(([name, bytes]) => [name.slice(prefix.length), bytes]),
+  );
 }
 
 export function importArchive(data: Uint8Array): ImportedGdd {
   const files = extractArchive(data);
   if (!files["gdd.md"])
     throw new Error(
-      "The ZIP must contain gdd.md at its root. ZIP the contents, not the enclosing folder.",
+      "Include gdd.md at the ZIP root or inside a single parent folder, with images/ beside it.",
     );
   let markdown: string;
   try {

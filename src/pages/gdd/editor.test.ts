@@ -28,6 +28,20 @@ function exampleProject(): EditorProject {
 }
 
 describe("GDD form model", () => {
+  it("opens a parent-folder ZIP with the same editable draft and original assets", () => {
+    const project = exampleProject();
+    const files = unzipSync(saveProject(project));
+    const wrapped = zipSync(
+      Object.fromEntries(
+        Object.entries(files).map(([name, bytes]) => [
+          `my-game/${name}`,
+          bytes,
+        ]),
+      ),
+    );
+    expect(openProject(wrapped)).toEqual(project);
+  });
+
   it("starts with blank fields, the default sections and a section-associated image category", () => {
     const draft = defaultDraft();
     expect(draft.title).toBe("");

@@ -79,7 +79,7 @@ const APPS: AppCardDef[] = [
     icon: <FaFilePdf size={34} />,
     path: "/gdd-generator",
     accent: "glassAmethyst",
-    iconAnimation: "jz-scribe 0.85s ease-in-out both",
+    iconAnimation: "jz-pdf-drop 0.65s ease-out both",
   },
   {
     title: "yt-dlp Builder",
@@ -88,7 +88,7 @@ const APPS: AppCardDef[] = [
     icon: <FaTerminal size={34} />,
     path: "/yt-dlp",
     accent: "glassRuby",
-    iconAnimation: "jz-scribe 0.85s ease-in-out both",
+    iconAnimation: "jz-terminal-slide 0.55s ease-out both",
   },
   {
     title: "Level Editor",

@@ -236,8 +236,11 @@ export default function GddEditorForm({
                     {section.title || "Untitled section"}
                   </Typography>
                 </AccordionSummary>
-                <AccordionDetails id={`details-${section.id}`}>
-                  <Stack spacing={2}>
+                <AccordionDetails
+                  id={`details-${section.id}`}
+                  sx={{ pl: { xs: 2, sm: 3 }, pr: { xs: 1.5, sm: 2 } }}
+                >
+                  <Stack spacing={2} useFlexGap>
                     <TextField
                       label="Section title"
                       value={section.title}
@@ -263,11 +266,13 @@ export default function GddEditorForm({
                           sx={{
                             border: "1px solid rgba(200,162,74,0.25)",
                             borderRadius: 1,
+                            ml: { xs: 0.5, sm: 1.5 },
+                            borderLeft: "2px solid rgba(200,162,74,0.3)",
                             p: { xs: 1.5, sm: 2 },
                             minWidth: 0,
                           }}
                         >
-                          <Stack spacing={2}>
+                          <Stack spacing={2} useFlexGap>
                             <Stack
                               direction="row"
                               justifyContent="space-between"
@@ -348,6 +353,10 @@ export default function GddEditorForm({
                                       borderTop:
                                         "1px solid rgba(200,162,74,0.2)",
                                       pt: 2,
+                                      ml: { xs: 1, sm: 2 },
+                                      pl: { xs: 1, sm: 1.5 },
+                                      borderLeft:
+                                        "1px solid rgba(200,162,74,0.18)",
                                     }}
                                   >
                                     <Stack
