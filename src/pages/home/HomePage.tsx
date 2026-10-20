@@ -14,6 +14,8 @@ import {
   FaSackDollar,
   FaPenRuler,
   FaCode,
+  FaFilePdf,
+  FaTerminal,
 } from "react-icons/fa6";
 import { Link } from "wouter";
 import { FONTS, MEDIEVAL_EFFECTS } from "../../lib/globals";
@@ -69,6 +71,24 @@ const APPS: AppCardDef[] = [
     note: "Sign in to save",
     iconAnimation: "jz-jingle 1.1s ease-in-out both",
     iconOrigin: "50% 6%",
+  },
+  {
+    title: "GDD Generator",
+    description:
+      "Turn your game design text and reference images into a formatted PDF.",
+    icon: <FaFilePdf size={34} />,
+    path: "/gdd-generator",
+    accent: "glassAmethyst",
+    iconAnimation: "jz-scribe 0.85s ease-in-out both",
+  },
+  {
+    title: "yt-dlp Builder",
+    description:
+      "Customize a YouTube download command and copy it to your terminal.",
+    icon: <FaTerminal size={34} />,
+    path: "/yt-dlp",
+    accent: "glassRuby",
+    iconAnimation: "jz-scribe 0.85s ease-in-out both",
   },
   {
     title: "Level Editor",

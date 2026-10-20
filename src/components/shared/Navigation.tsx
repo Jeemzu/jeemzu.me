@@ -28,7 +28,7 @@ import UserAuthModal from "./UserAuthModal";
 const Navigation = () => {
   const theme = useTheme();
   const [location] = useLocation();
-  const isMobile = useMediaQuery("(max-width:900px)");
+  const isMobile = useMediaQuery("(max-width:1280px)");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const { isAuthenticated, username, role, logout } = useAuthStore();
@@ -38,6 +38,8 @@ const Navigation = () => {
     { label: "Games", path: "/games" },
     { label: "Visualizer", path: "/algoviz" },
     { label: "Budgetize", path: "/budgetize" },
+    { label: "GDD Generator", path: "/gdd-generator" },
+    { label: "yt-dlp", path: "/yt-dlp" },
     { label: "Developer", path: "/developer" },
     ...(role === "Admin" ? [{ label: "Admin", path: "/admin" }] : []),
   ];

@@ -92,6 +92,8 @@ const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
+const GddGeneratorPage = LC(lazy(() => import("./pages/gdd/GddGeneratorPage")));
+const YtDlpPage = LC(lazy(() => import("./pages/ytdlp/YtDlpPage")));
 const ProfilePage = LC(lazy(() => import("./pages/account/ProfilePage")));
 const VerifyEmailPage = LC(
   lazy(() => import("./pages/account/VerifyEmailPage")),
@@ -128,6 +130,8 @@ export function Routes() {
             <Route path="/algoviz" component={AlgoVizPage} />
             <Route path="/admin" component={AdminPage} />
             <Route path="/budgetize" component={BudgetizePage} />
+            <Route path="/gdd-generator" component={GddGeneratorPage} />
+            <Route path="/yt-dlp" component={YtDlpPage} />
             <Route path="/account" component={ProfilePage} />
             <Route path="/verify-email" component={VerifyEmailPage} />
             <Route path="/reset-password" component={ResetPasswordPage} />

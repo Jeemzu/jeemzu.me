@@ -1,6 +1,6 @@
 # jeemzu.me
 
-[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, browser games, interactive programming projects, and Budgetize, a personal budgeting tool with an AI assistant. The site also includes accounts, game leaderboards, and administration features backed by a separate API repository.
+[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, browser games, interactive programming projects, Budgetize (a personal budgeting tool with an AI assistant), and a GDD Generator for formatting game design documents as PDFs. The site also includes accounts, game leaderboards, and administration features backed by a separate API repository.
 
 ## Architecture Overview
 
@@ -23,6 +23,27 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - **From Today** clears a custom plan start date and returns to the current month. The calendar's **Today** / **Start** button only changes the displayed month.
 - The bottom-right **Notifications** button opens a conversation-style feed for current funding warnings, extra debt-payment guidance, and session save/import/export notices. Its badge counts unread messages; errors are identified separately. Opening the feed marks the displayed messages read without removing active warnings. Operation notices can be dismissed, and signing out clears them.
 - Download names use `budgetize`; the internal `budgetize-me` JSON backup identifier is retained for compatibility with existing backups.
+
+### GDD Generator
+
+- Open `/gdd-generator` and fill out the web form. Game title and subheadings use single-line inputs; cover and body text use multiline fields. The eight default sections cover game direction through audience/release. Add, rename, remove, or reorder sections, text subsections, and image categories with the labeled controls. Removal requires confirmation.
+- **Add image category** creates a named image group inside that section. **Add images** accepts multiple PNG/JPEG files, previews them, and starts captions from their filenames. Edit captions/source credits and reorder or remove images independently. Groups move with their section, and PDF figure numbers follow the final document order.
+- Empty text subsections, image groups, and sections are omitted from the PDF. Body fields accept paragraphs, inline Markdown, lists, tables, blockquotes, code blocks, and HTTP(S) links; use the form controls for headings and image placement. HTML and remote images remain unsupported.
+- **Save draft ZIP** preserves every form field (including unfinished/empty categories), hierarchy/order, and original referenced image bytes in versioned `editor.json`, plus a `gdd.md` content export. **Import ZIP** restores it; importing over unsaved work requires confirmation. Incomplete Markdown exports may not yet meet PDF validation rules. Keep the draft ZIP to continue later: browser memory is not permanent storage, and a tab-close/reload warning protects unsaved edits. SPA navigation still leaves the editor without that native browser warning.
+- The original **Download template** / populated Markdown ZIP import also remains available. Legacy imports populate the form without losing supported lists, tables, inline formatting, or image order. When a ZIP contains `editor.json`, that snapshot is authoritative; edit the form rather than modifying its companion `gdd.md` externally.
+- **Generate PDF** produces a preview and an explicit download. The US Letter layout follows the final *The Knotted Grove* GDD: forest-green serif headings, a green cover rail, a gold accent, lightly shaded tables, captions, running headers, and page counts. Linked contents and PDF bookmarks follow the supplied section order; a measuring pass calculates section page numbers after text reflows.
+- Wording and image content are not rewritten or AI-generated. Editing the form invalidates the previous PDF so it cannot be downloaded as if it were current. Invalid imports/uploads leave the existing draft intact; multi-image uploads succeed or fail together.
+- All content stays in browser memory, with no account, server upload, or automatic persistence. Limits: 25 MB ZIP, 60 MB extracted content, 100 archive entries, 1 MB each for editor metadata and Markdown, 150,000 characters of PDF Markdown, 40 sections, 400 text/image subsections, up to 97 distinct images (58 MB combined), and 10 MB / 24 megapixels per image. Unsupported or missing content produces an error instead of being silently omitted.
+- PDF generation and its bundled OFL-licensed Noto fonts load on demand. Fonts cover Latin, Greek, and Cyrillic; other scripts and emoji are not guaranteed. Review the PDF before distributing it. The font license ships at `/licenses/gdd-fonts-OFL.txt`.
+
+### yt-dlp Builder
+
+- Open `/yt-dlp`, choose the Windows (PowerShell) or Linux/macOS (Bash/Zsh) tab, and paste a complete YouTube video or playlist URL. Tabs switch command syntax and setup instructions without clearing download options. Copy the generated command and paste it into that shell, not Windows Command Prompt or a batch file.
+- Controls cover single video/playlist, video/MP3, video resolution cap or MP3 quality, English subtitles (including automatic captions when available), a separate thumbnail file, and an optional output folder. Playlist mode requires a URL containing `list=`. Subtitle and thumbnail files are saved alongside the media, not embedded.
+- Each tab includes its own setup walkthrough linking yt-dlp, FFmpeg, Node.js, Python, and yt-dlp-ejs. PowerShell commands start with `.\yt-dlp.exe`: navigate to the executable's folder before pasting. Place FFmpeg/ffprobe beside the executable or on PATH. Install Node.js 22+ on PATH; generated commands explicitly enable it with `--js-runtimes node`. Bash/Zsh commands retain the PATH-based `yt-dlp` invocation, with virtual-environment instructions for Python installations and a local-binary alternative.
+- The official executable bundles Python and yt-dlp-ejs, so neither needs a separate install. For a Python-based installation instead, the walkthrough links Python and uses `py -m pip install -U "yt-dlp[default]"` to install yt-dlp with its matching EJS package. Best video formats may require merging; merged video uses MKV. Available source quality is never improved by selecting a higher bitrate or resolution.
+- Commands ignore local yt-dlp configuration, avoid overwriting existing downloads, and include video IDs in filenames. Playlist filenames also include the playlist index. An empty output folder uses the terminal's working directory; shell variables are quoted literally, so use an actual path.
+- The builder runs entirely in browser memory: no account, API request, URL upload, or persistence. Browsers cannot launch local yt-dlp processes without a separately installed companion application or extension; this app only generates commands. Download only content you have permission to save and follow the source site's terms.
 
 ### Budgetize subscriptions
 
