@@ -1,26 +1,14 @@
-import { useMemo } from 'react';
-import type { BudgetData, DebtPaymentStrategy } from '../types';
-import type { DepositMode, FundingPlan } from '../lib/funding';
-import { computeDebtPayoffRecommendation } from '../lib/debtRecommendation';
+import type { DebtPayoffRecommendation } from '../lib/debtRecommendation';
 import { formatMoney } from '../lib/money';
 import { InfoTip } from './InfoTip';
 
 interface Props {
-  data: BudgetData;
-  start: Date;
-  plan: FundingPlan;
-  mode: DepositMode;
-  strategy: DebtPaymentStrategy;
+  recommendation: DebtPayoffRecommendation;
 }
 
-export function DebtPayoffCard({ data, start, plan, mode, strategy }: Props) {
-  const recommendation = useMemo(
-    () => computeDebtPayoffRecommendation(data, start, plan, mode, strategy),
-    [data, start, plan, mode, strategy],
-  );
-
+export function DebtPayoffCard({ recommendation }: Props) {
   return (
-    <section className="card debt-recommendation" aria-live="polite">
+    <section className="debt-recommendation">
       <h3>
         Extra debt payment
         <InfoTip>

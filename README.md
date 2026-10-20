@@ -17,6 +17,13 @@ Browser
 
 The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize chat is sent to the .NET API, which proxies it to the private Python service. The browser does not call the agents service directly.
 
+### Budgetize workspace
+
+- Budgetize uses the site's dark stone and gold styling, with section navigation above a separate planning-settings row.
+- **From Today** clears a custom plan start date and returns to the current month. The calendar's **Today** / **Start** button only changes the displayed month.
+- The bottom-right **Notifications** button opens a conversation-style feed for current funding warnings, extra debt-payment guidance, and session save/import/export notices. Its badge counts unread messages; errors are identified separately. Opening the feed marks the displayed messages read without removing active warnings. Operation notices can be dismissed, and signing out clears them.
+- Download names use `budgetize`; the internal `budgetize-me` JSON backup identifier is retained for compatibility with existing backups.
+
 ### Budgetize subscriptions
 
 - Edit data has separate Monthly bills and Subscriptions sections with the same payment and recurrence controls.

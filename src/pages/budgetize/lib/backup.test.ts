@@ -181,7 +181,7 @@ describe('parseBackup validation', () => {
 
   it('rejects files from other apps', () => {
     const result = parseBackup(JSON.stringify({ app: 'other', version: 2, data: sample }));
-    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('not a Budgetize Me backup') });
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining('not a Budgetize backup') });
   });
 
   it('rejects newer backup versions', () => {

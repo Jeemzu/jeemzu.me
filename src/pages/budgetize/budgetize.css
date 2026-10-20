@@ -1,26 +1,28 @@
-/* Ported from the standalone budgetize-me app. Every rule below is nested under
-   .budgetize so this light theme never leaks into the rest of the dark site.
-   Recoloured as an aged-parchment ledger to match the site's medieval theme. */
+/* Scoped ledger styles share the site's dark stone, parchment, and gold palette. */
 .budgetize {
-  --bg: #ece3cf;
-  --card: #faf5e8;
-  --ink: #2a2118;
-  --ink-soft: #6b5c46;
-  --line: #d9cbae;
-  --accent: #8a6a24;
-  --accent-soft: #f2e7cc;
-  --danger: #a3301f;
-  --danger-soft: #f7e3dd;
-  --good: #2f6b35;
-  --warn: #9a6114;
-  --warn-soft: #f7ecd6;
-  --info-soft: #e6ecf2;
+  --bg: #0f1219;
+  --card: #1b1f28;
+  --surface-raised: #262c38;
+  --ink: #e6dcc4;
+  --ink-soft: #b8af9b;
+  --line: #665739;
+  --accent: #c8a24a;
+  --accent-hover: #e8cf8f;
+  --accent-ink: #0d0f14;
+  --accent-soft: #302b20;
+  --danger: #f29b9b;
+  --danger-soft: #382129;
+  --good: #6fbf94;
+  --warn: #f0c164;
+  --warn-soft: #352c1e;
+  --info: #9fc3ed;
+  --info-soft: #202e40;
   --radius: 6px;
-  --shadow: 0 1px 3px rgb(42 33 24 / 0.14);
+  --shadow: inset 0 1px 0 rgb(232 207 143 / 0.1), 0 4px 16px rgb(0 0 0 / 0.3);
   font-family: "Caudex", Georgia, "Times New Roman", serif;
   color: var(--ink);
-  color-scheme: light;
-  background: var(--bg);
+  color-scheme: dark;
+  background: transparent;
   min-height: 100vh;
 
   & * {
@@ -33,6 +35,24 @@
     margin: 0;
     font-family: "Cinzel", Georgia, "Times New Roman", serif;
     letter-spacing: 0.03em;
+    color: var(--accent-hover);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent-hover);
+    outline-offset: 3px;
+  }
+
+  input[type="checkbox"] {
+    accent-color: var(--accent);
   }
 
   h3 {
@@ -122,11 +142,9 @@
   }
 
   .app {
-    /* 80% of wide screens, but never narrower than the original 1280px layout. */
     max-width: max(80vw, 1280px);
     margin: 0 auto;
-    /* Top padding clears the site's sticky navbar. */
-    padding: 1.5rem 1.5rem 3rem;
+    padding: 1.5rem 1.5rem 6rem;
   }
 
   /* ---- Top bar ---- */
@@ -137,10 +155,14 @@
     gap: 1rem;
     flex-wrap: wrap;
     padding: 1rem 0;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
   }
 
   .brand h1 {
-    font-size: 1.35rem;
+    font-size: 1.8rem;
+    letter-spacing: 0.08em;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.85);
   }
 
   .save-status {
@@ -176,24 +198,33 @@
   }
 
   .btn:hover {
-    border-color: #bfae8c;
-    background: #f3ebd9;
+    border-color: var(--accent);
+    background: var(--surface-raised);
   }
 
   .btn.primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: var(--accent-ink);
   }
 
   .btn.primary:hover {
-    background: #6f541b;
+    background: var(--accent-hover);
   }
 
-  .btn.primary:disabled {
-    background: #cbb88c;
-    border-color: #cbb88c;
+  .btn:disabled {
+    opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .btn:disabled:hover {
+    background: var(--card);
+    border-color: var(--line);
+  }
+
+  .btn.primary:disabled:hover {
+    background: var(--accent);
+    border-color: var(--accent);
   }
 
   .btn.ghost {
@@ -202,7 +233,7 @@
   }
 
   .btn.ghost:hover {
-    background: #eee5d2;
+    background: var(--surface-raised);
   }
 
   .btn.danger {
@@ -228,7 +259,7 @@
   .day-input:focus,
   .select-input:focus,
   .money-input input:focus {
-    outline: 2px solid #d3b978;
+    outline: 2px solid var(--accent-hover);
     outline-offset: 0;
     border-color: var(--accent);
   }
@@ -294,7 +325,7 @@
 
   .banner.info {
     background: var(--info-soft);
-    color: #5d4a86;
+    color: var(--info);
   }
 
   .banner.error {
@@ -316,6 +347,7 @@
 
   .card {
     background: var(--card);
+    background-image: linear-gradient(170deg, rgb(38 44 56 / 0.5), transparent 55%);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
@@ -473,7 +505,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    background: #f7f1e2;
+    background: var(--bg);
   }
 
   .cal-cell.blank {
@@ -483,7 +515,7 @@
 
   .cal-cell.payday {
     background: var(--accent-soft);
-    border-color: #cdb583;
+    border-color: var(--accent);
   }
 
   .cal-cell.today {
@@ -520,7 +552,7 @@
     gap: 4px;
     font-size: 0.68rem;
     line-height: 1.25;
-    background: #fff;
+    background: var(--surface-raised);
     border: 1px solid var(--line);
     border-radius: 4px;
     padding: 1px 4px;
@@ -561,7 +593,8 @@
   }
 
   .upcoming-item.past {
-    opacity: 0.45;
+    color: var(--ink-soft);
+    border-left: 2px solid var(--line);
   }
 
   .upcoming-item.today {
@@ -636,7 +669,7 @@
   .bar-track {
     height: 8px;
     border-radius: 999px;
-    background: #e7ddc6;
+    background: var(--surface-raised);
     overflow: hidden;
   }
 
@@ -809,7 +842,7 @@
   }
 
   .th-sort:focus-visible {
-    outline: 2px solid #d3b978;
+    outline: 2px solid var(--accent-hover);
   }
 
   .sort-indicator {
@@ -957,7 +990,7 @@
   .sheet-tab.active {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: var(--accent-ink);
   }
 
   .mapping-grid {
@@ -1004,23 +1037,23 @@
   .preview-table th {
     position: sticky;
     top: 0;
-    background: #efe6d2;
+    background: var(--surface-raised);
     z-index: 1;
   }
 
   .preview-table .rownum {
     color: var(--ink-soft);
-    background: #efe6d2;
+    background: var(--surface-raised);
     font-variant-numeric: tabular-nums;
   }
 
   .preview-table tr.header-row td {
     font-weight: 700;
-    background: #f7f1e2;
+    background: var(--surface-raised);
   }
 
   .map-name {
-    background: #e4ebf2 !important;
+    background: var(--info-soft) !important;
   }
 
   .map-amount {
@@ -1028,11 +1061,11 @@
   }
 
   .map-due {
-    background: #ece3f2 !important;
+    background: #30273e !important;
   }
 
   .map-autopay {
-    background: #f2ecd9 !important;
+    background: var(--warn-soft) !important;
   }
 
   .schedule-table .negative {
@@ -1091,7 +1124,6 @@
 
   .projection-table tr.income-unknown td {
     background: var(--warn-soft);
-    opacity: 0.75;
   }
 
   /* Translucent sticky cells would show scrolled columns through them. */
@@ -1102,7 +1134,7 @@
   }
 
   .projection-table tr.projection-day td {
-    background: #f3ebd9;
+    background: var(--surface-raised);
     font-size: 0.85rem;
   }
 
@@ -1136,7 +1168,7 @@
   }
 
   .report-table th {
-    background: #efe6d2;
+    background: var(--surface-raised);
     text-align: left;
   }
 
@@ -1159,29 +1191,39 @@
     justify-content: space-between;
     gap: 0.8rem;
     flex-wrap: wrap;
-    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
   }
 
   .view-tabs {
     display: flex;
     gap: 0.4rem;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--line);
   }
 
   .view-tab {
-    border: 1px solid var(--line);
-    background: var(--card);
-    border-radius: 999px;
-    padding: 0.45rem 1rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    border-radius: 0;
+    padding: 0.75rem 1rem;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--ink-soft);
     cursor: pointer;
+    font-family: "Cinzel", Georgia, "Times New Roman", serif;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .view-tab:hover {
     border-color: var(--accent);
-    color: var(--ink);
+    color: var(--accent-hover);
+    background: var(--accent-soft);
   }
 
   .view-tab:disabled {
@@ -1192,9 +1234,9 @@
   }
 
   .view-tab.active {
-    background: var(--accent);
+    background: transparent;
     border-color: var(--accent);
-    color: #fff;
+    color: var(--accent-hover);
   }
 
   .strategy-toggle {
@@ -1203,6 +1245,16 @@
     gap: 0.5rem;
     font-size: 0.8rem;
     color: var(--ink-soft);
+    flex-wrap: wrap;
+  }
+
+  .strategy-toggle .text-input {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .strategy-toggle .btn {
+    white-space: nowrap;
   }
 
   .strategy-toggle .seg {
@@ -1229,13 +1281,13 @@
 
   .strategy-toggle .seg button.active {
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-ink);
   }
 
   /* ---- Debt chips ---- */
   .chip.debt {
     background: var(--warn-soft);
-    border-color: #ecd9b8;
+    border-color: var(--line);
   }
 
   /* ---- Funding warnings ---- */
@@ -1353,7 +1405,7 @@
 
   .autopay-lines .autopay-total {
     font-weight: 700;
-    background: #f3ebd9;
+    background: var(--surface-raised);
   }
 
   .autopay-buffer .autopay-buffer-amount {
@@ -1540,6 +1592,125 @@
     font-size: 0.8rem;
   }
 
+  /* ---- Notification conversation ---- */
+  .notification-launcher {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.1rem;
+    border-color: var(--accent);
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--accent-hover);
+    box-shadow: var(--shadow);
+  }
+
+  .notification-announcement {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  &.notification-panel {
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+  }
+
+  .notification-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+
+  .notification-heading h2 {
+    font-size: 1rem;
+  }
+
+  .notification-content {
+    padding: 1rem;
+  }
+
+  .notification-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .notification-message {
+    padding: 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 2px 14px 14px;
+    background: var(--card);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  .notification-message.warn {
+    background: var(--warn-soft);
+    border-left: 3px solid var(--warn);
+  }
+
+  .notification-message.error {
+    background: var(--danger-soft);
+    border-left: 3px solid var(--danger);
+  }
+
+  .notification-sender {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-hover);
+  }
+
+  .notification-message.warn .notification-sender {
+    color: var(--warn);
+  }
+
+  .notification-message.error .notification-sender {
+    color: var(--danger);
+  }
+
+  .notification-message p {
+    margin: 0 0 0.5rem;
+  }
+
+  .notification-message p:last-child {
+    margin-bottom: 0;
+  }
+
+  .notification-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .notification-message .info-tip-bubble {
+    left: auto;
+    right: -1rem;
+    max-width: min(300px, calc(100vw - 100px));
+    transform: none;
+  }
+
   /* ---- Responsive ---- */
   @media (max-width: 900px) {
     .columns {
@@ -1561,6 +1732,20 @@
   }
 
   @media (max-width: 560px) {
+    .app {
+      padding: 1rem 0.75rem 6rem;
+    }
+
+    .notification-launcher {
+      right: 0.75rem;
+      bottom: 0.75rem;
+    }
+
+    .view-bar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
     .topbar {
       flex-direction: column;
       align-items: stretch;

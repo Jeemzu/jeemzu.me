@@ -383,7 +383,7 @@ export function parseBackup(json: string): ParseBackupResult {
   }
   const obj = raw as Record<string, unknown>;
   if (obj.app !== APP_ID) {
-    return { ok: false, error: 'This file is not a Budgetize Me backup.' };
+    return { ok: false, error: 'This file is not a Budgetize backup.' };
   }
   if (typeof obj.version !== 'number' || obj.version < 1 || obj.version > BACKUP_VERSION) {
     return { ok: false, error: `Unsupported backup version (expected 1-${BACKUP_VERSION}).` };

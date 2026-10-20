@@ -23,6 +23,7 @@ import {
 } from "./lib/projection";
 import { computeFundingPlan, createFundedAllocator } from "./lib/funding";
 import { computeFundingWarnings } from "./lib/warnings";
+import { computeDebtPayoffRecommendation } from "./lib/debtRecommendation";
 import { parseBudgetData, serializeBackup } from "./lib/backup";
 import { downloadBlob } from "./lib/download";
 import { SummaryCards } from "./components/SummaryCards";
@@ -40,7 +41,7 @@ import { DebtPayoffCard } from "./components/DebtPayoffCard";
 import { PersonalSplitCard } from "./components/PersonalSplitCard";
 import { PersonalExpensesEditor } from "./components/PersonalExpensesEditor";
 import { InfoTip } from "./components/InfoTip";
-import { FundingWarnings } from "./components/FundingWarnings";
+import { BudgetNotifications, type BudgetNotification } from "./components/BudgetNotifications";
 import { BudgetAssistant } from "./components/BudgetAssistant";
 import { useProjectionRange } from "./components/useProjectionRange";
 import { useDepositMode } from "./components/useDepositMode";
@@ -99,7 +100,10 @@ function BudgetWorkspace() {
   const [state, dispatch] = useReducer(budgetHistoryReducer, initialHistoryState);
   const [monthRef, setMonthRef] = useState<MonthRef>(currentMonth);
   const [importOpen, setImportOpen] = useState(false);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notices, setNotices] = useState<(Notice & { id: string })[]>([]);
+  const setNotice = useCallback((notice: Notice) => {
+    setNotices((previous) => [...previous, { ...notice, id: crypto.randomUUID() }]);
+  }, []);
   const [tab, setTab] = useState<ViewTab>("month");
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
@@ -108,7 +112,7 @@ function BudgetWorkspace() {
   const [resetting, setResetting] = useState(false);
   const [revision, setRevision] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [conflict, setConflict] = useState(false);
+  const [conflictId, setConflictId] = useState<string | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
@@ -131,9 +135,10 @@ function BudgetWorkspace() {
   const setStrategy = (next: DebtPaymentStrategy) =>
     dispatch({ type: "set-debt-strategy", strategy: next });
   const customStartISO = state.data.projectionStartISO;
+  const resolvedStartISO = toISODate(resolveProjectionStart(customStartISO));
   const start = useMemo(
-    () => resolveProjectionStart(customStartISO),
-    [customStartISO],
+    () => resolveProjectionStart(resolvedStartISO),
+    [resolvedStartISO],
   );
   const startMonth = useMemo<MonthRef>(
     () => ({ year: start.getFullYear(), month: start.getMonth() }),
@@ -160,6 +165,10 @@ function BudgetWorkspace() {
   const allocationFor = useMemo(
     () => createFundedAllocator(state.data, fundingPlan, depositMode, strategy),
     [state.data, fundingPlan, depositMode, strategy],
+  );
+  const debtRecommendation = useMemo(
+    () => computeDebtPayoffRecommendation(state.data, start, fundingPlan, depositMode, strategy),
+    [state.data, start, fundingPlan, depositMode, strategy],
   );
 
   const summary = useMemo(
@@ -192,7 +201,7 @@ function BudgetWorkspace() {
 
   const load = useCallback(async () => {
     setLoadState("loading");
-    setConflict(false);
+    setConflictId(null);
     setUnreadable(null);
     const result = await loadBudget();
 
@@ -284,7 +293,7 @@ function BudgetWorkspace() {
       kind: "error",
       text: "Could not load your saved budget. Your edits are still here.",
     });
-  }, [load]);
+  }, [load, setNotice]);
 
   const wasAuthenticated = useRef(isAuthenticated);
   useEffect(() => {
@@ -297,8 +306,8 @@ function BudgetWorkspace() {
     // Signing out clears the budget so it never lingers on a shared screen.
     dispatch({ type: "hydrate", data: emptyBudget() });
     setRevision(null);
-    setConflict(false);
-    setNotice(null);
+    setConflictId(null);
+    setNotices([]);
     setLoadState("ready");
   }, [isAuthenticated, adoptSignIn]);
 
@@ -324,13 +333,13 @@ function BudgetWorkspace() {
 
     if (result.status === "ok") {
       setRevision(result.revision);
-      setConflict(false);
+      setConflictId(null);
       dispatch({ type: "mark-saved", data: snapshot });
       setNotice({ kind: "info", text: "Budget saved." });
       return;
     }
     if (result.status === "conflict") {
-      setConflict(true);
+      setConflictId(crypto.randomUUID());
       return;
     }
     setNotice({
@@ -351,14 +360,13 @@ function BudgetWorkspace() {
     ) {
       return;
     }
-    setNotice(null);
     void load();
   }
 
   function handleBackupDownload() {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadBlob(
-      `budgetize-me-backup-${stamp}.json`,
+      `budgetize-backup-${stamp}.json`,
       new Blob([serializeBackup(state.data)], { type: "application/json" }),
     );
     setNotice({
@@ -372,7 +380,7 @@ function BudgetWorkspace() {
       // Dynamic import keeps the xlsx library out of the main bundle.
       const { downloadExportWorkbook } = await import("./lib/spreadsheetExport");
       const stamp = new Date().toISOString().slice(0, 10);
-      downloadExportWorkbook(state.data, start, `budgetize-me-${stamp}.xlsx`);
+      downloadExportWorkbook(state.data, start, `budgetize-${stamp}.xlsx`);
     } catch {
       setNotice({
         kind: "error",
@@ -397,7 +405,7 @@ function BudgetWorkspace() {
   function handleUnreadableDownload() {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadBlob(
-      `budgetize-me-unreadable-${stamp}.json`,
+      `budgetize-unreadable-${stamp}.json`,
       new Blob([JSON.stringify(unreadable, null, 2)], {
         type: "application/json",
       }),
@@ -494,20 +502,90 @@ function BudgetWorkspace() {
     state.data.debts.length === 0 &&
     state.data.people.length === 0;
 
+  const notifications: BudgetNotification[] = [
+    ...(conflictId
+      ? [
+          {
+            id: `save-conflict:${conflictId}`,
+            kind: "error" as const,
+            content: (
+              <>
+                <p>
+                  This budget was saved on another device, so nothing was saved
+                  here. Download a backup of your edits, then reload the newer
+                  version.
+                </p>
+                <div className="notification-actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handleBackupDownload}
+                  >
+                    Export backup
+                  </button>
+                  <button type="button" className="btn" onClick={handleReload}>
+                    Reload
+                  </button>
+                </div>
+              </>
+            ),
+          },
+        ]
+      : []),
+    ...(!isEmpty
+      ? fundingWarnings.map((warning) => ({
+          id: `funding:${warning.severity}:${warning.message}`,
+          kind: warning.severity,
+          content: <p>{warning.message}</p>,
+        }))
+      : []),
+    ...(state.data.debts.some((debt) => debt.balanceCents > 0)
+      ? [
+          {
+            id: `debt:${JSON.stringify(debtRecommendation)}`,
+            kind: "info" as const,
+            content: <DebtPayoffCard recommendation={debtRecommendation} />,
+          },
+        ]
+      : []),
+    ...notices.map((notice) => ({
+      id: notice.id,
+      kind: notice.kind,
+      content: (
+        <>
+          <p>{notice.text}</p>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() =>
+              setNotices((previous) =>
+                previous.filter((entry) => entry.id !== notice.id),
+              )
+            }
+          >
+            Dismiss
+          </button>
+        </>
+      ),
+    })),
+  ];
+
   return (
     <div
       className="budgetize"
       onFocusCapture={(event) => {
-        if (event.target.matches("input, textarea, select")) dispatch({ type: "begin-edit" });
+        if (event.target.matches("input, textarea, select"))
+          dispatch({ type: "begin-edit" });
       }}
       onBlurCapture={(event) => {
-        if (event.target.matches("input, textarea, select")) dispatch({ type: "end-edit" });
+        if (event.target.matches("input, textarea, select"))
+          dispatch({ type: "end-edit" });
       }}
     >
       <div className="app">
         <header className="topbar">
           <div className="brand">
-            <h1>💵 Budgetize Me</h1>
+            <h1>Budgetize</h1>
             <span className={`save-status${state.dirty ? " dirty" : ""}`}>
               {!isAuthenticated
                 ? "Guest mode — sign in to save"
@@ -588,93 +666,28 @@ function BudgetWorkspace() {
           </div>
         </header>
 
-        {conflict && (
-          <div className="banner error" role="alert">
-            <span>
-              This budget was saved on another device, so nothing was saved
-              here. Download a backup of your edits, then reload the newer
-              version.
-            </span>
-            <button type="button" className="btn ghost" onClick={handleReload}>
-              Reload
-            </button>
-          </div>
-        )}
-
-        {notice && (
-          <div className={`banner ${notice.kind}`} role="status">
-            <span>{notice.text}</span>
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => setNotice(null)}
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         <main>
-          {!isEmpty && <FundingWarnings warnings={fundingWarnings} />}
-          {state.data.debts.some((debt) => debt.balanceCents > 0) && (
-            <DebtPayoffCard
-              data={state.data}
-              start={start}
-              plan={fundingPlan}
-              mode={depositMode}
-              strategy={strategy}
-            />
-          )}
-          {isEmpty && (
-            <section className="card hero">
-              <h2>Welcome!</h2>
-              <p>
-                Import your Excel budget workbook to pull in your bills, debt
-                accounts, and paycheck deposits, or restore a backup (.json).{" "}
-                {isAuthenticated
-                  ? "Choose Save to store your budget so you can pick it up on another machine."
-                  : "Sign in to save your budget so you can pick it up on another machine."}
-              </p>
+          <nav className="view-tabs" aria-label="Budgetize sections">
+            {VIEW_TABS.map((entry) => (
               <button
+                key={entry.id}
                 type="button"
-                className="btn primary"
-                onClick={() => setImportOpen(true)}
+                aria-current={tab === entry.id ? "page" : undefined}
+                // The assistant needs a signed-in session to reach the API.
+                disabled={entry.id === "assistant" && !isAuthenticated}
+                title={
+                  entry.id === "assistant" && !isAuthenticated
+                    ? "Sign in to use the assistant"
+                    : undefined
+                }
+                className={`view-tab${tab === entry.id ? " active" : ""}`}
+                onClick={() => setTab(entry.id)}
               >
-                Import workbook or backup
+                {entry.label}
               </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => void handleTemplateDownload()}
-              >
-                Download spreadsheet template
-              </button>
-            </section>
-          )}
-
-          <div className="view-bar">
-            <div className="view-tabs" role="tablist" aria-label="Sections">
-              {VIEW_TABS.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === entry.id}
-                  // The assistant needs a signed-in session to reach the API.
-                  disabled={entry.id === "assistant" && !isAuthenticated}
-                  title={
-                    entry.id === "assistant" && !isAuthenticated
-                      ? "Sign in to use the assistant"
-                      : undefined
-                  }
-                  className={`view-tab${tab === entry.id ? " active" : ""}`}
-                  onClick={() => setTab(entry.id)}
-                >
-                  {entry.label}
-                </button>
-              ))}
-            </div>
+            ))}
+          </nav>
+          <div className="view-bar" role="group" aria-label="Planning settings">
             <div className="strategy-toggle">
               <span id="strategy-label">Debt payments</span>
               <div
@@ -715,17 +728,16 @@ function BudgetWorkspace() {
                   })
                 }
               />
-              {customStartISO !== null && (
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={() =>
-                    dispatch({ type: "set-projection-start", iso: null })
-                  }
-                >
-                  Use today
-                </button>
-              )}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  dispatch({ type: "set-projection-start", iso: null });
+                  setMonthRef(currentMonth());
+                }}
+              >
+                From Today
+              </button>
             </div>
             <div className="strategy-toggle">
               <label htmlFor="projection-range">Show</label>
@@ -771,6 +783,35 @@ function BudgetWorkspace() {
               </div>
             </div>
           </div>
+
+          {isEmpty && (
+            <section className="card hero">
+              <h2>Welcome!</h2>
+              <p>
+                Import your Excel budget workbook to pull in your bills, debt
+                accounts, and paycheck deposits, or restore a backup (.json).{" "}
+                {isAuthenticated
+                  ? "Choose Save to store your budget so you can pick it up on another machine."
+                  : "Sign in to save your budget so you can pick it up on another machine."}
+              </p>
+              <div className="hero-actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setImportOpen(true)}
+                >
+                  Import workbook or backup
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => void handleTemplateDownload()}
+                >
+                  Download spreadsheet template
+                </button>
+              </div>
+            </section>
+          )}
 
           {tab === "month" && (
             <>
@@ -847,8 +888,8 @@ function BudgetWorkspace() {
                     personal remainder; every bill and debt drafts from the
                     account it&apos;s flagged “Paid from”. Highlighted rows
                     include a payday in a month with no pay schedule, so its
-                    deposits are unknown rather than zero. Hover a “Payments due” cell for
-                    the item list.
+                    deposits are unknown rather than zero. Hover a “Payments
+                    due” cell for the item list.
                   </InfoTip>
                 </h3>
                 <ProjectionView
@@ -898,11 +939,12 @@ function BudgetWorkspace() {
                 <h3>
                   Combined spending plan
                   <InfoTip>
-                    Expenses are split by each person&apos;s monthly paycheck remainder
-                    after auto-pay and essentials. Missing income uses an equal split
-                    marked with *. Negative remainders contribute no weight; if all
-                    remainders are zero or negative, the split is equal.
-                    Recurring expenses recalculate shares for each charge month.
+                    Expenses are split by each person&apos;s monthly paycheck
+                    remainder after auto-pay and essentials. Missing income uses
+                    an equal split marked with *. Negative remainders contribute
+                    no weight; if all remainders are zero or negative, the split
+                    is equal. Recurring expenses recalculate shares for each
+                    charge month.
                   </InfoTip>
                 </h3>
                 <PersonalExpensesEditor
@@ -911,27 +953,42 @@ function BudgetWorkspace() {
                   personId={null}
                   start={start}
                   allocationFor={allocationFor}
-                  onAdd={(expense) => dispatch({ type: "add-personal-expense", expense })}
-                  onUpdate={(id, patch) => dispatch({ type: "update-personal-expense", id, patch })}
-                  onRemove={(id) => dispatch({ type: "remove-personal-expense", id })}
+                  onAdd={(expense) =>
+                    dispatch({ type: "add-personal-expense", expense })
+                  }
+                  onUpdate={(id, patch) =>
+                    dispatch({ type: "update-personal-expense", id, patch })
+                  }
+                  onRemove={(id) =>
+                    dispatch({ type: "remove-personal-expense", id })
+                  }
                 />
               </section>
               <section className="card">
                 <h3>
                   {rangeLabel} combined personal projection
                   <InfoTip>
-                    Personal balances only. In includes paycheck remainders and personal
-                    deposits. Combined plan and own expenses both reduce the balance.
-                    Expand a week for daily balances; highlighted rows have unknown
-                    income or provisional equal splits.
+                    Personal balances only. In includes paycheck remainders and
+                    personal deposits. Combined plan and own expenses both
+                    reduce the balance. Expand a week for daily balances;
+                    highlighted rows have unknown income or provisional equal
+                    splits.
                   </InfoTip>
                 </h3>
                 <ProjectionView
-                  data={state.data} start={start} weekCount={weekCount}
-                  strategy={strategy} mode={depositMode} personalPersonId={null}
-                  onSetPersonalBalance={(id, cents) => dispatch({
-                    type: "update-person", id, patch: { personalBalanceCents: cents },
-                  })}
+                  data={state.data}
+                  start={start}
+                  weekCount={weekCount}
+                  strategy={strategy}
+                  mode={depositMode}
+                  personalPersonId={null}
+                  onSetPersonalBalance={(id, cents) =>
+                    dispatch({
+                      type: "update-person",
+                      id,
+                      patch: { personalBalanceCents: cents },
+                    })
+                  }
                 />
               </section>
               {state.data.people.map((person) => (
@@ -939,18 +996,34 @@ function BudgetWorkspace() {
                   <h3>{person.name} — personal plan</h3>
                   <PersonalExpensesEditor
                     expenses={state.data.personalExpenses ?? []}
-                    people={state.data.people} personId={person.id}
-                    start={start} allocationFor={allocationFor}
-                    onAdd={(expense) => dispatch({ type: "add-personal-expense", expense })}
-                    onUpdate={(id, patch) => dispatch({ type: "update-personal-expense", id, patch })}
-                    onRemove={(id) => dispatch({ type: "remove-personal-expense", id })}
+                    people={state.data.people}
+                    personId={person.id}
+                    start={start}
+                    allocationFor={allocationFor}
+                    onAdd={(expense) =>
+                      dispatch({ type: "add-personal-expense", expense })
+                    }
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-personal-expense", id, patch })
+                    }
+                    onRemove={(id) =>
+                      dispatch({ type: "remove-personal-expense", id })
+                    }
                   />
                   <ProjectionView
-                    data={state.data} start={start} weekCount={weekCount}
-                    strategy={strategy} mode={depositMode} personalPersonId={person.id}
-                    onSetPersonalBalance={(id, cents) => dispatch({
-                      type: "update-person", id, patch: { personalBalanceCents: cents },
-                    })}
+                    data={state.data}
+                    start={start}
+                    weekCount={weekCount}
+                    strategy={strategy}
+                    mode={depositMode}
+                    personalPersonId={person.id}
+                    onSetPersonalBalance={(id, cents) =>
+                      dispatch({
+                        type: "update-person",
+                        id,
+                        patch: { personalBalanceCents: cents },
+                      })
+                    }
                   />
                 </section>
               ))}
@@ -979,11 +1052,10 @@ function BudgetWorkspace() {
                 <h3>
                   Income &amp; people
                   <InfoTip>
-                    Paychecks land every Wednesday, and the count comes from
-                    the calendar. Each paycheck is carved into auto-pay
-                    funding, shared essentials, and whatever is left as
-                    personal spending. Months with no row stay blank in the
-                    projection.
+                    Paychecks land every Wednesday, and the count comes from the
+                    calendar. Each paycheck is carved into auto-pay funding,
+                    shared essentials, and whatever is left as personal
+                    spending. Months with no row stay blank in the projection.
                   </InfoTip>
                 </h3>
                 <PeopleEditor
@@ -1003,7 +1075,9 @@ function BudgetWorkspace() {
                   onUpdate={(id, patch) =>
                     dispatch({ type: "update-person", id, patch })
                   }
-                  onUpdateMany={(updates) => dispatch({ type: "update-people", updates })}
+                  onUpdateMany={(updates) =>
+                    dispatch({ type: "update-people", updates })
+                  }
                   onRemove={(id) => dispatch({ type: "remove-person", id })}
                 />
               </section>
@@ -1011,7 +1085,9 @@ function BudgetWorkspace() {
               <section className="card">
                 <h3>Monthly bills</h3>
                 <BillsEditor
-                  bills={state.data.bills.filter((bill) => !bill.isSubscription)}
+                  bills={state.data.bills.filter(
+                    (bill) => !bill.isSubscription,
+                  )}
                   onAdd={() =>
                     dispatch({
                       type: "add-bill",
@@ -1102,8 +1178,8 @@ function BudgetWorkspace() {
                     Temporary changes
                     <InfoTip>
                       Pause or re-price a bill or debt for a stretch of time.
-                      The item itself stays as it is and resumes on its own
-                      once the range ends.
+                      The item itself stays as it is and resumes on its own once
+                      the range ends.
                     </InfoTip>
                   </h3>
                   <OverridesEditor
@@ -1116,9 +1192,7 @@ function BudgetWorkspace() {
                     onUpdate={(id, patch) =>
                       dispatch({ type: "update-override", id, patch })
                     }
-                    onRemove={(id) =>
-                      dispatch({ type: "remove-override", id })
-                    }
+                    onRemove={(id) => dispatch({ type: "remove-override", id })}
                   />
                 </section>
 
@@ -1131,15 +1205,20 @@ function BudgetWorkspace() {
                     onUpdate={(id, patch) =>
                       dispatch({ type: "update-one-off", id, patch })
                     }
-                    onRemove={(id) =>
-                      dispatch({ type: "remove-one-off", id })
-                    }
+                    onRemove={(id) => dispatch({ type: "remove-one-off", id })}
                   />
                 </section>
               </div>
             </>
           )}
         </main>
+
+        {createPortal(
+          <div className="budgetize budgetize-portal">
+            <BudgetNotifications messages={notifications} />
+          </div>,
+          document.body,
+        )}
 
         {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
         {importOpen &&

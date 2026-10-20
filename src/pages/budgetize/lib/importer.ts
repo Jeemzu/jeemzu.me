@@ -715,5 +715,5 @@ export function buildTemplateWorkbook(): ArrayBuffer {
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export function downloadTemplateWorkbook(): void {
-  downloadBlob('budgetize-me-template.xlsx', new Blob([buildTemplateWorkbook()], { type: XLSX_MIME }));
+  downloadBlob('budgetize-template.xlsx', new Blob([buildTemplateWorkbook()], { type: XLSX_MIME }));
 }

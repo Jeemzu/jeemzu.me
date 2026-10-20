@@ -18,6 +18,7 @@ import {
 import { Link } from "wouter";
 import { FONTS, MEDIEVAL_EFFECTS } from "../../lib/globals";
 import PageHeading from "../../components/shared/PageHeading";
+import { useAuthStore } from "../../stores/authStore";
 
 type GlassAccent =
   | "glassRuby"
@@ -59,7 +60,7 @@ const APPS: AppCardDef[] = [
     iconOrigin: "50% 85%",
   },
   {
-    title: "Budgetize Me",
+    title: "Budgetize",
     description:
       "Plan your bills, debts, and paychecks with calendars and projections.",
     icon: <FaSackDollar size={34} />,
@@ -92,6 +93,7 @@ const AppCard = ({
   index,
 }: AppCardDef & { index: number }) => {
   const theme = useTheme();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const glass = theme.palette[accent];
 
   return (
@@ -236,7 +238,7 @@ const AppCard = ({
               mb: 1.5,
             }}
           >
-            {note && (
+            {note && !isAuthenticated && (
               <Chip
                 label={note}
                 size="small"
