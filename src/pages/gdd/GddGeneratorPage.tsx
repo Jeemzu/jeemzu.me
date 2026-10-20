@@ -245,7 +245,11 @@ export default function GddGeneratorPage() {
       projectAssets(project);
       preview = window.open("about:blank", "_blank");
       if (preview) preview.opener = null;
-      const { generatePdf } = await import("./generatePdf");
+      const { generatePdf } = await import("./generatePdf").catch(() => {
+        throw new Error(
+          "The site was updated. Reload the page to generate the PDF.",
+        );
+      });
       const blob = await generatePdf(content, images);
       if (operation.current === current) {
         setPdfBlob(blob);

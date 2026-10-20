@@ -69,6 +69,8 @@ function inline(
           : [{ ...inherited, text: token.text }];
       case "escape":
       case "codespan":
+      // Raw HTML is shown literally; the PDF never interprets markup.
+      case "html":
         return [{ ...inherited, text: token.text }];
       case "strong":
       case "em":
@@ -226,9 +228,11 @@ export function parseDocument(source: string): GddDocument {
         }
         case "hr":
           return [{ type: "rule" }];
+        case "html":
+          return [{ type: "paragraph", text: [{ text: token.text.trim() }] }];
         default:
           throw new Error(
-            `Unsupported Markdown (${token.type}). Raw HTML is not supported.`,
+            `Unsupported Markdown (${token.type}). Use the template's headings, text, lists, tables and images.`,
           );
       }
     });
@@ -252,6 +256,8 @@ export function parseDocument(source: string): GddDocument {
       section.blocks.push(...blocks([token]));
     } else if (token.type === "paragraph") {
       introduction.push(inline(token.tokens as MarkedToken[]));
+    } else if (token.type === "html") {
+      introduction.push([{ text: token.text.trim() }]);
     } else {
       throw new Error(
         "After the title, add optional cover paragraphs, then a ## Section heading.",

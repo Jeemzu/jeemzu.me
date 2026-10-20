@@ -66,13 +66,26 @@ describe("GDD Markdown", () => {
     ]);
   });
 
+  it("keeps raw HTML as literal text", () => {
+    const document = parseDocument(
+      "# Game\n\nA <b>bold</b> cover\n\n<div>Intro</div>\n\n## Rules\n\n<script>alert(1)</script>\n\nUse <x> & 5 < 6",
+    );
+    expect(document.introduction.map(plainText)).toEqual([
+      "A <b>bold</b> cover",
+      "<div>Intro</div>",
+    ]);
+    expect(
+      document.sections[0].blocks.map((block) =>
+        block.type === "paragraph" ? plainText(block.text) : block.type,
+      ),
+    ).toEqual(["<script>alert(1)</script>", "Use <x> & 5 < 6"]);
+  });
+
   it.each([
-    ["No title", /single #/],
     ["# Game\n\n## Empty", /every section/],
     ["# Game\n\n### Before", /Section heading/],
     ["# Game\n\n## Rules\n\n# Another title", /## for sections/],
     ["# Game\n\n## Rules\n\n#### Too deep", /subheadings/],
-    ["# Game\n\n## Rules\n\n<script>alert(1)</script>", /Raw HTML/],
     ["# Game\n\n## Rules\n\n[bad](javascript:alert)", /http/],
     ["# Game\n\n## Rules\n\nText ![inline](images/a.png)", /own paragraph/],
     ["# Game\n\n## Art\n\n![](images/a.png)", /caption/],
