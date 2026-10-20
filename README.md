@@ -6,6 +6,8 @@
 
 The frontend is a static single-page application. Backend services and the production database are deployed together through a Render Blueprint; only the .NET API is public. The Python agents service communicates with the API over Render's private network.
 
+Page titles and descriptions are defined in `src/lib/routeMetadata.json`. The frontend build generates an HTML entry for every registered route (including each playable game), so link-preview crawlers receive page-specific standard, Open Graph, and Twitter metadata without running JavaScript. Netlify serves those files ahead of the SPA fallback; React updates the same metadata during client-side navigation. Add metadata here when adding a route or playable game.
+
 ```text
 Browser
   └── Netlify: React application

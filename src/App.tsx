@@ -11,6 +11,7 @@ import { goldButtonSx } from "./lib/medievalStyles";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { useAuthStore } from "./stores/authStore";
 import DeveloperLayout from "./pages/developer/DeveloperLayout";
+import RouteMetadata from "./components/shared/RouteMetadata";
 
 type LazyComponentT = React.LazyExoticComponent<() => JSX.Element | null>;
 
@@ -105,6 +106,7 @@ const ResetPasswordPage = LC(
 export function Routes() {
   return (
     <Router>
+      <RouteMetadata />
       <PageTransition>
         {(location) => (
           <Switch location={location}>

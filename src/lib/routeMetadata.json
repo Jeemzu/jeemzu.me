@@ -1,0 +1,74 @@
+{
+  "/": {
+    "title": "Jeemzu",
+    "description": "Explore browser games, developer tools, Budgetize, the GDD Generator, and other interactive apps."
+  },
+  "/developer": {
+    "title": "About | James Friedenberg",
+    "description": "Meet James Friedenberg, Senior Software Developer at zuMedia, and learn about his interests, skills, and work."
+  },
+  "/developer/experience": {
+    "title": "Experience | James Friedenberg",
+    "description": "Explore James Friedenberg's professional experience and software development career."
+  },
+  "/developer/projects": {
+    "title": "Projects | James Friedenberg",
+    "description": "Browse selected software projects and products built by James Friedenberg."
+  },
+  "/games": {
+    "title": "Browser Games",
+    "description": "Play browser games including Snake, Tetris, Brick Break, and zAim, or try custom platformer levels."
+  },
+  "/games/zaim": {
+    "title": "zAim",
+    "description": "Test your aim and reaction speed by clicking targets in this browser-based aim trainer."
+  },
+  "/games/snake": {
+    "title": "Snake",
+    "description": "Play classic Snake in your browser: eat food, grow longer, and avoid crashing into yourself."
+  },
+  "/games/tetris": {
+    "title": "Tetris",
+    "description": "Play Tetris in your browser: stack falling blocks, clear lines, and compete for a high score."
+  },
+  "/games/brickbreak": {
+    "title": "Brick Break",
+    "description": "Play Brick Break in your browser: bounce the ball with your paddle and clear the bricks."
+  },
+  "/editor": {
+    "title": "Level Editor",
+    "description": "Create and play custom platformer levels with a browser-based level editor."
+  },
+  "/algoviz": {
+    "title": "Algorithm Visualizer",
+    "description": "Explore sorting, searching, pathfinding, and AVL tree algorithms with interactive, step-by-step visualizations."
+  },
+  "/admin": {
+    "title": "Administration",
+    "description": "Administration tools for authorized jeemzu.me site administrators."
+  },
+  "/budgetize": {
+    "title": "Budgetize",
+    "description": "Plan bills, debts, and paychecks with budget calendars, financial projections, and an AI budgeting assistant."
+  },
+  "/gdd-generator": {
+    "title": "GDD Generator",
+    "description": "Create a polished game design document with customizable sections, image uploads, and PDF export."
+  },
+  "/yt-dlp": {
+    "title": "yt-dlp Builder",
+    "description": "Build a yt-dlp command for downloading YouTube videos or playlists, with options for audio, quality, subtitles, and thumbnails."
+  },
+  "/account": {
+    "title": "Account Settings",
+    "description": "Manage your jeemzu.me profile, username, password, email verification, and account preferences."
+  },
+  "/verify-email": {
+    "title": "Verify Email",
+    "description": "Verify your email address to complete your jeemzu.me account setup."
+  },
+  "/reset-password": {
+    "title": "Reset Password",
+    "description": "Reset your jeemzu.me account password using your password reset link."
+  }
+}

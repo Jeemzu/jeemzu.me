@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/generate-route-pages.mjs",
     "build:cpp": "powershell -File cpp/build-all.ps1",
     "build:all": "npm run build:cpp && npm run build",
     "lint": "eslint .",
