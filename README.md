@@ -8,6 +8,8 @@ The frontend is a static single-page application. Backend services and the produ
 
 Page titles and descriptions are defined in `src/lib/routeMetadata.json`. The frontend build generates an HTML entry for every registered route (including each playable game), so link-preview crawlers receive page-specific standard, Open Graph, and Twitter metadata without running JavaScript. Netlify serves those files ahead of the SPA fallback; React updates the same metadata during client-side navigation. Add metadata here when adding a route or playable game.
 
+The favicon uses the header's gold JF monogram on a transparent background, supplied as a self-contained vector in [public/jf.svg](public/jf.svg).
+
 ```text
 Browser
   └── Netlify: React application
@@ -29,6 +31,7 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 ### GDD Generator
 
 - Open `/gdd-generator` and fill out the web form. Game title and subheadings use single-line inputs; cover and body text use multiline fields. The eight default sections cover game direction through audience/release. Add, rename, remove, or reorder sections, text subsections, and image categories with the labeled controls. Removal requires confirmation.
+- **View Example GDD** at the top opens the complete **Dino Rush** design with ten captioned visual references. **Populate form** loads it as an editable, unsaved draft, confirming before replacing unsaved work and clearing any previous PDF/account selection. References populate editable image categories and appear in generated PDFs. **Download example ZIP** includes the same document as `gdd.md`, all ten original images in `images/`, and editing/import instructions; import it directly through **Import GDD**. Image bytes load only when populating or downloading; a failed load leaves the existing draft intact. The contributor confirmed redistribution permission; original watermarks are retained. The blank template remains separate. The bundled example source is [dino-rush.md](src/pages/gdd/dino-rush.md).
 - **Add image category** creates a named image group inside that section. **Add images** accepts multiple PNG/JPEG files, previews them, and starts captions from their filenames. Edit captions/source credits and reorder or remove images independently. Indentation and subtle left borders distinguish sections, subsections/image categories, and individual images. Groups move with their section, and PDF figure numbers follow the final document order.
 - Empty text subsections, image groups, and sections are omitted from the PDF. Body fields accept paragraphs, inline Markdown, lists, tables, blockquotes, code blocks, and HTTP(S) links; use the form controls for headings and image placement. HTML and remote images remain unsupported.
 - The top toolbar groups **Generate PDF**, **Download PDF**, and **Open PDF**. Download and Open remain visible but disabled until a current PDF is available, with a tooltip indicating that generation is required. Draft ZIP export is no longer exposed; use account saves to retain web-form work. Browser memory is not permanent storage, and a tab-close/reload warning protects unsaved edits. SPA navigation still leaves the editor without that native browser warning.

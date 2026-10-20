@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>JF</title>
+  <g fill="#c8a24a">
+    <path d="M12 12h22v3h-6v28c0 9-5 13-12 13-6 0-10-4-10-9 0-3 2-5 4-5s4 2 4 4c0 2-1 3-2 4 1 2 2 3 4 3 4 0 5-4 5-10V15h-9z"/>
+    <path d="M35 12h23l1 12h-3l-2-8H45v15h6l2-5h2v14h-2l-2-5h-6v15l6 2v3H34v-3l4-2V17l-3-2z"/>
+  </g>
+</svg>

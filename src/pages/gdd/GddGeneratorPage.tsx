@@ -34,8 +34,11 @@ import { LIMITS, parseDocument } from "./document";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
 import GddAccountLibrary from "./GddAccountLibrary";
+import GddExampleDialog from "./GddExampleDialog";
+import { createExample, EXAMPLE_MARKDOWN, loadExampleAssets } from "./example";
 import {
   defaultDraft,
+  draftFromMarkdown,
   draftMarkdown,
   filename,
   openProject,
@@ -59,8 +62,11 @@ export default function GddGeneratorPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
-  const [pendingImport, setPendingImport] = useState<File | null>(null);
+  const [pendingImport, setPendingImport] = useState<File | "example" | null>(
+    null,
+  );
   const [importOpen, setImportOpen] = useState(false);
+  const [exampleOpen, setExampleOpen] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -265,21 +271,58 @@ export default function GddGeneratorPage() {
     }
   }
 
-  function downloadTemplate() {
+  async function populateExample() {
+    const current = ++operation.current;
+    setBusy("images");
     setError("");
     setNotice("");
     try {
-      const bytes = createTemplate();
+      const draft = draftFromMarkdown(EXAMPLE_MARKDOWN);
+      const assets = await loadExampleAssets();
+      const prepared = await prepareImages(assets);
+      if (operation.current !== current) return;
+      setProject({ draft, assets });
+      setImages(prepared);
+      setAccountResetVersion((version) => version + 1);
+      setEditorVersion((version) => version + 1);
+      setDirty(true);
+      invalidatePdf();
+      setNotice("Dino Rush example loaded.");
+    } catch (cause) {
+      if (operation.current === current)
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The example could not be loaded.",
+        );
+    } finally {
+      if (operation.current === current) setBusy(null);
+    }
+  }
+
+  async function downloadTemplate(example = false) {
+    const current = ++operation.current;
+    if (example) setBusy("images");
+    setError("");
+    setNotice("");
+    try {
+      const bytes = example
+        ? createExample(await loadExampleAssets())
+        : createTemplate();
+      if (operation.current !== current) return;
       downloadBlob(
-        "gdd-template.zip",
+        example ? "dino-rush-example.zip" : "gdd-template.zip",
         new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
       );
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "The ZIP could not be downloaded.",
-      );
+      if (operation.current === current)
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The ZIP could not be downloaded.",
+        );
+    } finally {
+      if (operation.current === current) setBusy(null);
     }
   }
 
@@ -287,6 +330,16 @@ export default function GddGeneratorPage() {
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <PageHeading title="GDD Generator" />
       <Stack spacing={3}>
+        <Box sx={{ textAlign: "center" }}>
+          <Button
+            sx={outlineButtonSx}
+            variant="outlined"
+            disabled={busy !== null || accountBusy}
+            onClick={() => setExampleOpen(true)}
+          >
+            View Example GDD
+          </Button>
+        </Box>
         <Box
           sx={{
             display: "grid",
@@ -384,7 +437,7 @@ export default function GddGeneratorPage() {
                   sx={outlineButtonSx}
                   variant="outlined"
                   disabled={busy !== null || accountBusy}
-                  onClick={downloadTemplate}
+                  onClick={() => void downloadTemplate()}
                 >
                   Download template
                 </Button>
@@ -476,6 +529,17 @@ export default function GddGeneratorPage() {
           }
         />
       </Stack>
+      <GddExampleDialog
+        open={exampleOpen}
+        disabled={busy !== null || accountBusy}
+        onClose={() => setExampleOpen(false)}
+        onDownload={() => void downloadTemplate(true)}
+        onPopulate={() => {
+          setExampleOpen(false);
+          if (dirty) setPendingImport("example");
+          else void populateExample();
+        }}
+      />
       <Dialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
@@ -535,8 +599,10 @@ game.zip                  game.zip
           </Button>
           <Button
             color="error"
+            disabled={busy !== null || accountBusy}
             onClick={() => {
-              if (pendingImport) void importFile(pendingImport);
+              if (pendingImport === "example") void populateExample();
+              else if (pendingImport) void importFile(pendingImport);
               setPendingImport(null);
             }}
           >
