@@ -42,7 +42,6 @@ import {
   draftFromMarkdown,
   draftMarkdown,
   filename,
-  openProject,
   projectAssets,
   projectPaths,
   validateAsset,
@@ -50,6 +49,11 @@ import {
   type EditorProject,
   type EditorImage,
 } from "./editor";
+import {
+  DOCUMENT_ACCEPT,
+  importDocument,
+  markdownArchive,
+} from "./importDocument";
 
 export default function GddGeneratorPage() {
   const [project, setProject] = useState<EditorProject>(() => ({
@@ -62,6 +66,7 @@ export default function GddGeneratorPage() {
   const [busy, setBusy] = useState<"import" | "images" | "pdf" | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [pendingImport, setPendingImport] = useState<File | "example" | null>(
     null,
@@ -121,6 +126,7 @@ export default function GddGeneratorPage() {
     setDirty(true);
     setError("");
     setNotice("");
+    setImportWarnings([]);
     invalidatePdf();
   }
 
@@ -130,20 +136,18 @@ export default function GddGeneratorPage() {
     setNotice("");
     setBusy("import");
     try {
-      if (!/\.zip$/i.test(file.name))
-        throw new Error("Select a .zip draft or template archive.");
-      if (file.size > LIMITS.archive)
-        throw new Error("The ZIP exceeds the 25 MB limit.");
-      const imported = openProject(new Uint8Array(await file.arrayBuffer()));
+      const result = await importDocument(file);
+      const imported = result.project;
       const prepared = await prepareImages(imported.assets);
       if (operation.current === current) {
         setProject(imported);
         setAccountResetVersion((version) => version + 1);
         setEditorVersion((version) => version + 1);
         setImages(prepared);
-        setDirty(false);
+        setDirty(result.converted);
         invalidatePdf();
-        setNotice("Draft imported.");
+        setImportWarnings(result.warnings);
+        setNotice(result.converted ? "Document imported." : "Draft imported.");
       }
     } catch (cause) {
       if (operation.current === current)
@@ -154,6 +158,23 @@ export default function GddGeneratorPage() {
         );
     } finally {
       if (operation.current === current) setBusy(null);
+    }
+  }
+
+  function downloadSource() {
+    setError("");
+    try {
+      const bytes = markdownArchive(project);
+      downloadBlob(
+        `${filename(project.draft.title)} - GDD.zip`,
+        new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "The source ZIP could not be created.",
+      );
     }
   }
 
@@ -293,6 +314,7 @@ export default function GddGeneratorPage() {
       setEditorVersion((version) => version + 1);
       setDirty(true);
       invalidatePdf();
+      setImportWarnings([]);
       setNotice("Dino Rush example loaded.");
     } catch (cause) {
       if (operation.current === current)
@@ -446,9 +468,8 @@ export default function GddGeneratorPage() {
                 Local editing
               </Typography>
               <Typography sx={{ ...bodySx, textAlign: "left" }}>
-                Download the template only if you want to edit your GDD locally,
-                then upload the completed ZIP here later. Otherwise, use the
-                form below.
+                Import a document or completed template, edit locally, or use
+                the form below.
               </Typography>
               <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
                 <Button
@@ -469,13 +490,26 @@ export default function GddGeneratorPage() {
                 >
                   Import GDD
                 </Button>
+                <Tooltip title="Download gdd.md and images/ for local editing or GDD import.">
+                  <span>
+                    <Button
+                      startIcon={<FaDownload />}
+                      sx={outlineButtonSx}
+                      variant="outlined"
+                      disabled={busy !== null || accountBusy}
+                      onClick={downloadSource}
+                    >
+                      Download source ZIP
+                    </Button>
+                  </span>
+                </Tooltip>
               </Stack>
             </Stack>
             <input
               ref={input}
               type="file"
-              accept=".zip,application/zip"
-              aria-label="Import GDD draft or template ZIP"
+              accept={DOCUMENT_ACCEPT}
+              aria-label="Import GDD document or ZIP"
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -497,6 +531,15 @@ export default function GddGeneratorPage() {
           {notice && (
             <Alert severity="success" onClose={() => setNotice("")}>
               {notice}
+            </Alert>
+          )}
+          {importWarnings.length > 0 && (
+            <Alert severity="warning" onClose={() => setImportWarnings([])}>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                {importWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </Box>
             </Alert>
           )}
           {busy && (
@@ -533,6 +576,7 @@ export default function GddGeneratorPage() {
             setDirty(false);
             setError("");
             setNotice("");
+            setImportWarnings([]);
             setPdfBlob(pdf);
             setPdfUrl(URL.createObjectURL(pdf));
           }}
@@ -576,8 +620,8 @@ export default function GddGeneratorPage() {
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ ...bodySx, textAlign: "left" }}>
-            ZIP the folder contents or their single parent folder. Keep images/
-            beside gdd.md.
+            Import PDF, DOCX, Markdown, text, HTML, or a GDD ZIP. For ZIP
+            imports, keep images/ beside gdd.md.
           </Typography>
           <Box
             component="pre"
@@ -606,7 +650,7 @@ game.zip                  game.zip
             Cancel
           </Button>
           <Button sx={goldButtonSx} onClick={() => input.current?.click()}>
-            Choose ZIP
+            Choose file
           </Button>
         </DialogActions>
       </Dialog>
