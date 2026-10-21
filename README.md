@@ -131,6 +131,14 @@ npm run dev
 
 Vite serves the frontend at `http://localhost:5173`. The API base URL can be set with `VITE_API_URL`; it defaults to `http://localhost:5050/api`.
 
+### Level Editor MCP
+
+The local Level Editor can pair with an agent through a stdio MCP companion.
+It shares validated editor commands, revision checks, undo/redo, and browser-local
+saves with the UI. Verified production Admins can have the agent add a finished
+level to `public/levels` for the next deploy. See [Level Editor MCP](docs/level-editor-mcp.md) for setup,
+supported actions, permissions, and the remaining preview-control phases.
+
 ### Backend
 
 Follow the setup instructions in the [`jeemzu.api` README](https://github.com/Jeemzu/jeemzu.api) to configure .NET, local PostgreSQL, the Python agents, and required secrets. The API applies database migrations when it starts.

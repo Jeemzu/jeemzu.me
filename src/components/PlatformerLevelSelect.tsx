@@ -67,13 +67,20 @@ const PlatformerLevelSelect = ({
   const [manifestError, setManifestError] = useState<string | null>(null);
   const [loadingLevel, setLoadingLevel] = useState<number | null>(null);
   const [customLevels, setCustomLevels] = useState<CustomLevel[]>([]);
+  const [customError, setCustomError] = useState<string | null>(null);
   const [, navigate] = useLocation();
 
   // Refresh unlock state + manifest every time the dialog opens
   useEffect(() => {
     if (!open) return;
     setHighestCompleted(getHighestCompleted());
-    setCustomLevels(loadCustomLevels().reverse()); // newest first
+    setCustomError(null);
+    try {
+      setCustomLevels(loadCustomLevels().reverse());
+    } catch (err) {
+      setCustomLevels([]);
+      setCustomError(`Failed to load saved levels: ${String(err)}`);
+    }
     setManifestLoading(true);
     setManifestError(null);
 
@@ -84,8 +91,12 @@ const PlatformerLevelSelect = ({
   }, [open]);
 
   const handleDeleteCustom = (id: string) => {
-    deleteCustomLevel(id);
-    setCustomLevels((prev) => prev.filter((l) => l.id !== id));
+    try {
+      deleteCustomLevel(id);
+      setCustomLevels((prev) => prev.filter((l) => l.id !== id));
+    } catch (err) {
+      setCustomError(`Failed to delete saved level: ${String(err)}`);
+    }
   };
 
   const handleLevelCreator = () => {
@@ -376,7 +387,8 @@ const PlatformerLevelSelect = ({
           </Button>
         </Box>
 
-        {customLevels.length === 0 && (
+        {customError && <Typography color="error">{customError}</Typography>}
+        {!customError && customLevels.length === 0 && (
           <Typography
             sx={{
               fontFamily: FONTS.MEDIEVAL_SERIF,

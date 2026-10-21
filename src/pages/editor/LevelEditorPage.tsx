@@ -1,4 +1,5 @@
-import { useRef, useState, useCallback, useEffect, useId } from 'react';
+import { useRef, useState, useCallback, useEffect, useId, useMemo, useSyncExternalStore } from 'react';
+import { toast } from 'sonner';
 import {
     Box, Button, Typography, TextField, Tooltip,
     ToggleButton, ToggleButtonGroup, Stack, Divider,
@@ -9,23 +10,16 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import SaveIcon from '@mui/icons-material/Save';
 import WasmGameContainer from '../../components/WasmGameContainer';
-import { type LevelFile, type LevelCell, type CellType } from '../../lib/LevelSchema';
+import {
+    TILE, SW, SH, ROWS, GROUND_ROW, MIN_COLS, MAX_COLS,
+    isValidPlacement, parseLevelFile, type LevelFile, type CellType, type EditorTool,
+} from '../../lib/LevelSchema';
+import { LevelDocument } from '../../lib/LevelDocument';
 import { FONTS } from '../../lib/globals';
 import { saveCustomLevel } from '../../utils/customLevels';
 import { RoleGuard } from '../../components/shared/RoleGuard';
-
-// --- Grid constants (must match cpp/platformer/main.cpp)
-
-const TILE = 32;
-const GROUND_Y = 640;
-const SW = 960;
-const SH = 720;
-
-const ROWS = Math.ceil(SH / TILE);   // 30  (rows 0-29)
-const GROUND_ROW = GROUND_Y / TILE;       // 20
-
-const MIN_COLS = Math.ceil(SW / TILE);   // 40
-const MAX_COLS = 400;
+import { useAuthStore } from '../../stores/authStore';
+import EditorAgentConnection from './EditorAgentConnection';
 
 // --- Tool colours
 
@@ -43,7 +37,7 @@ const TOOL_HOVER: Record<CellType, string> = {
     finish: 'rgba(255,215,64,0.45)',
 };
 
-type Tool = CellType | 'eraser';
+type Tool = EditorTool;
 
 // --- Cell map helpers
 
@@ -59,13 +53,6 @@ interface DrawParams {
     tool: Tool;
     hoverRow: number | null;
     hoverCol: number | null;
-}
-
-function isValidPlacement(tool: Tool, row: number): boolean {
-    if (tool === 'eraser') return true;
-    if (tool === 'platform') return row >= 1 && row < GROUND_ROW;
-    if (tool === 'spike') return row >= 1 && row <= GROUND_ROW;
-    return row === GROUND_ROW;
 }
 
 function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
@@ -219,29 +206,21 @@ function drawEditor(canvas: HTMLCanvasElement, p: DrawParams) {
     }
 }
 
-// --- LevelFile builder
-
-function buildLevelFile(cells: Map<CellKey, CellType>, number: number, name: string, totalCols: number): LevelFile {
-    const cellArr: LevelCell[] = [];
-    for (const [k, type] of cells) {
-        const [r, c] = k.split(',').map(Number);
-        cellArr.push({ row: r, col: c, type });
-    }
-    return { version: 1, number, name, cols: totalCols, cells: cellArr };
-}
-
 // --- Component
 
 const LevelEditorPage = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const editorRef = useRef<HTMLDivElement>(null);
     const mouseInsideRef = useRef(false);
-    const [cells, setCells] = useState<Map<CellKey, CellType>>(new Map());
+    const [levelDocument] = useState(() => new LevelDocument());
+    const snapshot = useSyncExternalStore(levelDocument.subscribe, levelDocument.getSnapshot);
+    const { level, canUndo, canRedo } = snapshot;
+    const { cols: totalCols, number: levelNumber, name: levelName } = level;
+    const cells = useMemo(() => new Map<CellKey, CellType>(
+        level.cells.map(cell => [key(cell.row, cell.col), cell.type]),
+    ), [level.cells]);
     const [tool, setTool] = useState<Tool>('platform');
     const [scrollCol, setScrollCol] = useState(0);
-    const [totalCols, setTotalCols] = useState(100);
-    const [levelNumber, setLevelNumber] = useState(1);
-    const [levelName, setLevelName] = useState('');
     const [playOpen, setPlayOpen] = useState(false);
     const [playLevelFile, setPlayLevelFile] = useState<LevelFile | null>(null);
     const [hoverPos, setHoverPos] = useState<{ row: number; col: number } | null>(null);
@@ -249,6 +228,16 @@ const LevelEditorPage = () => {
     const importId = useId();
 
     const paintingRef = useRef(false);
+    const scrollColRef = useRef(scrollCol);
+    useEffect(() => { scrollColRef.current = scrollCol; }, [scrollCol]);
+    const runAction = useCallback((action: () => void) => {
+        try { action(); }
+        catch (err) { toast.error(err instanceof Error ? err.message : String(err)); }
+    }, []);
+
+    useEffect(() => {
+        setScrollCol(previous => Math.max(0, Math.min(totalCols - MIN_COLS, previous)));
+    }, [totalCols]);
 
     // Redraw whenever state changes
     useEffect(() => {
@@ -275,27 +264,19 @@ const LevelEditorPage = () => {
     const applyTool = useCallback((row: number, col: number) => {
         if (col < 0 || col >= totalCols) return;
         if (!isValidPlacement(tool, row)) return;
-        setCells(prev => {
-            const next = new Map(prev);
-            const k = key(row, col);
-            if (tool === 'eraser') {
-                next.delete(k);
-            } else {
-                if (tool === 'finish') {
-                    for (const [ek, ev] of next) { if (ev === 'finish') { next.delete(ek); break; } }
-                }
-                next.set(k, tool as CellType);
-            }
-            return next;
-        });
-    }, [tool, totalCols]);
+        runAction(() => levelDocument.edit([tool === 'eraser'
+            ? { op: 'erase_cells', cells: [{ row, col }] }
+            : { op: 'set_cells', cells: [{ row, col, type: tool }] },
+        ]));
+    }, [tool, totalCols, levelDocument, runAction]);
 
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         if (e.button !== 0) return;
         paintingRef.current = true;
+        levelDocument.beginStroke();
         const { row, col } = canvasRowCol(e);
         applyTool(row, col);
-    }, [canvasRowCol, applyTool]);
+    }, [canvasRowCol, applyTool, levelDocument]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         const { row, col } = canvasRowCol(e);
@@ -303,8 +284,10 @@ const LevelEditorPage = () => {
         if (paintingRef.current) applyTool(row, col);
     }, [canvasRowCol, applyTool]);
 
-    const handleMouseUp = useCallback(() => { paintingRef.current = false; }, []);
-    const handleMouseLeave = useCallback(() => { paintingRef.current = false; setHoverPos(null); mouseInsideRef.current = false; }, []);
+    const handleMouseUp = useCallback(() => { paintingRef.current = false; levelDocument.endStroke(); }, [levelDocument]);
+    const handleMouseLeave = useCallback(() => {
+        handleMouseUp(); setHoverPos(null); mouseInsideRef.current = false;
+    }, [handleMouseUp]);
 
     useEffect(() => {
         const el = editorRef.current;
@@ -319,21 +302,16 @@ const LevelEditorPage = () => {
     }, [totalCols]);
 
     // Save to My Levels (localStorage)
-    const handleSave = () => {
+    const handleSave = () => runAction(() => {
         const name = levelName.trim() || `My Level ${Date.now()}`;
-        const cellArr: LevelCell[] = [];
-        for (const [k, type] of cells) {
-            const [r, c] = k.split(',').map(Number);
-            cellArr.push({ row: r, col: c, type });
-        }
-        saveCustomLevel(name, totalCols, cellArr);
+        saveCustomLevel(name, totalCols, level.cells);
         setSavedMsg(true);
         setTimeout(() => setSavedMsg(false), 2500);
-    };
+    });
 
     // Export
     const handleExport = () => {
-        const file = buildLevelFile(cells, levelNumber, levelName || `Level ${levelNumber}`, totalCols);
+        const file = { ...level, name: levelName || `Level ${levelNumber}` };
         const json = JSON.stringify(file, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -352,29 +330,30 @@ const LevelEditorPage = () => {
         const reader = new FileReader();
         reader.onload = (ev) => {
             try {
-                const lf = JSON.parse(ev.target!.result as string) as LevelFile;
-                const map = new Map<CellKey, CellType>();
-                for (const c of lf.cells) map.set(key(c.row, c.col), c.type);
-                setCells(map);
+                if (typeof ev.target?.result !== 'string') throw new Error('Could not read level JSON.');
+                const imported = parseLevelFile(JSON.parse(ev.target.result));
+                const current = levelDocument.getSnapshot().level;
+                if ((current.cells.length || current.name) && !confirm('Replace the current level?')) return;
+                levelDocument.replace(imported);
                 setScrollCol(0);
-                setTotalCols(lf.cols ?? 100);
-                setLevelNumber(lf.number ?? 1);
-                setLevelName(lf.name ?? '');
-            } catch { alert('Failed to parse level file.'); }
+            } catch (err) { toast.error(`Import failed: ${err instanceof Error ? err.message : String(err)}`); }
         };
+        reader.onerror = () => toast.error('Could not read level file.');
         reader.readAsText(file);
         e.target.value = '';
     };
 
     // Play
     const handlePlay = () => {
-        const file = buildLevelFile(cells, levelNumber, levelName || `Level ${levelNumber}`, totalCols);
+        const file = { ...level, name: levelName || `Level ${levelNumber}` };
         setPlayLevelFile(file);
         setPlayOpen(true);
     };
 
     // Clear
-    const handleClear = () => { if (confirm('Clear all tiles?')) setCells(new Map()); };
+    const handleClear = () => {
+        if (confirm('Clear all tiles?')) runAction(() => levelDocument.edit([{ op: 'clear_cells' }]));
+    };
 
     const inputSx = {
         '& .MuiInputBase-root': { fontFamily: FONTS.NECTO_MONO, fontSize: '1.35rem', color: '#fff' },
@@ -436,15 +415,15 @@ const LevelEditorPage = () => {
                             onChange={e => setLevelNumberInput(e.target.value)}
                             onBlur={() => {
                                 const clamped = Math.max(1, parseInt(levelNumberInput) || 1);
-                                setLevelNumber(clamped);
-                                setLevelNumberInput(String(clamped));
+                                runAction(() => levelDocument.edit([{ op: 'set_metadata', number: clamped }]));
+                                setLevelNumberInput(String(levelDocument.getSnapshot().level.number));
                             }}
                             sx={{ width: 150, ...inputSx }}
                             inputProps={{ min: 1 }}
                         />
                     </RoleGuard>
                     <TextField size="medium" label="Name" value={levelName}
-                        onChange={e => setLevelName(e.target.value)}
+                        onChange={e => runAction(() => levelDocument.edit([{ op: 'set_metadata', name: e.target.value }]))}
                         placeholder={`Level ${levelNumber}`}
                         sx={{ width: 300, ...inputSx }} />
                     <TextField
@@ -455,8 +434,12 @@ const LevelEditorPage = () => {
                         onChange={e => setColsInput(e.target.value)}
                         onBlur={() => {
                             const clamped = Math.max(MIN_COLS, Math.min(MAX_COLS, parseInt(colsInput) || MIN_COLS));
-                            setTotalCols(clamped);
-                            setColsInput(String(clamped));
+                            runAction(() => {
+                                const outside = level.cells.filter(cell => cell.col >= clamped).length;
+                                if (outside && !confirm(`Crop ${outside} tiles outside the new width?`)) return;
+                                levelDocument.edit([{ op: 'resize', cols: clamped, crop: outside > 0 }]);
+                            });
+                            setColsInput(String(levelDocument.getSnapshot().level.cols));
                         }}
                         sx={{ width: 150, ...inputSx }}
                         inputProps={{ min: MIN_COLS, max: MAX_COLS }}
@@ -501,6 +484,33 @@ const LevelEditorPage = () => {
                 <Box sx={{ flex: 1 }} />
 
                 <Stack direction="row" spacing={1}>
+                    <EditorAgentConnection context={{
+                        document: levelDocument,
+                        isAdmin: () => useAuthStore.getState().role === 'Admin',
+                        isPainting: () => paintingRef.current,
+                        getScrollCol: () => scrollColRef.current,
+                        setScrollCol: col => {
+                            const next = Math.max(0, Math.min(levelDocument.getSnapshot().level.cols - MIN_COLS, col));
+                            scrollColRef.current = next;
+                            setScrollCol(next);
+                        },
+                        render: col => {
+                            const current = levelDocument.getSnapshot().level;
+                            const canvas = document.createElement('canvas');
+                            canvas.width = SW;
+                            canvas.height = SH;
+                            drawEditor(canvas, {
+                                cells: new Map(current.cells.map(cell => [key(cell.row, cell.col), cell.type])),
+                                totalCols: current.cols,
+                                scrollCol: Math.max(0, Math.min(current.cols - MIN_COLS, col)),
+                                tool: 'platform', hoverRow: null, hoverCol: null,
+                            });
+                            return canvas.toDataURL('image/png').split(',')[1];
+                        },
+                        confirm: message => window.confirm(message),
+                    }} />
+                    <Button disabled={!canUndo} onClick={() => runAction(() => { levelDocument.undo(); })}>Undo</Button>
+                    <Button disabled={!canRedo} onClick={() => runAction(() => { levelDocument.redo(); })}>Redo</Button>
                     <Tooltip title="Clear all tiles" {...tooltipSx}>
                         <Button size="medium" startIcon={<DeleteOutlineIcon />} onClick={handleClear}
                             variant="outlined" sx={{ color: 'rgba(255,100,100,0.7)', borderColor: 'rgba(255,100,100,0.2)', fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem' }}>
@@ -588,6 +598,7 @@ const LevelEditorPage = () => {
                     wasmName="platformer"
                     levelFile={playLevelFile}
                     levelLabel={`Level ${levelNumber} — ${levelName || `Level ${levelNumber}`}`}
+                    completionActionLabel="Back to Editor"
                 />
             )}
         </Box>

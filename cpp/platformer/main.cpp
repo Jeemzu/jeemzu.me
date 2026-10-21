@@ -730,16 +730,19 @@ static void loop()
         }
     }
 
-    draw_score(r, get_score());
+    if (G->state != State::COMPLETED)
+        draw_score(r, get_score());
 
     if (G->state != State::PLAYING)
     {
         SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(r, 0, 0, 0, 140);
+        SDL_SetRenderDrawColor(r, 0, 0, 0, G->state == State::COMPLETED ? 200 : 140);
         SDL_Rect overlay = {0, 0, SW, SH};
         SDL_RenderFillRect(r, &overlay);
         SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-        draw_prompt(r, ticks);
+        // The completion screen is drawn by the host page.
+        if (G->state != State::COMPLETED)
+            draw_prompt(r, ticks);
     }
 
     SDL_RenderPresent(r);

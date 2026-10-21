@@ -3,16 +3,15 @@
 // Converts a LevelFile (tile-grid format) into the sequence of C++ API calls
 // expected by WasmGameContainer:
 //   level_begin()
-//   level_add_spike(worldX)
+//   level_add_spike(worldX, worldY)
 //   level_add_pit(worldX, width)
 //   level_add_platform(worldX, worldY, width, height)
 //   level_end()
 //   level_set_finish(worldX)   ← called after level_end if a finish cell exists
 
-import { type LevelFile, type CellType } from '../lib/LevelSchema';
+import { TILE, GROUND_Y, parseLevelFile, type LevelFile, type CellType } from '../lib/LevelSchema';
 
-export const TILE = 32;
-export const GROUND_Y = 640;
+export { TILE, GROUND_Y } from '../lib/LevelSchema';
 
 // worldX / worldY helpers
 
@@ -89,6 +88,7 @@ export type LevelCommand =
  * The caller (WasmGameContainer) maps each command to its cwrap call.
  */
 export function buildLevelCommands(level: LevelFile): LevelCommand[] {
+    level = parseLevelFile(level);
     const cmds: LevelCommand[] = [];
     cmds.push({ cmd: 'begin' });
 
@@ -119,7 +119,7 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
         });
     }
 
-    // ── Platforms (rows 8–9 — merge per row) 
+    // Platforms (rows 1-19, merged per row)
     const platformsByRow = colsForType(level.cells, 'platform');
     for (const [row, cols] of platformsByRow) {
         const worldY = rowToWorldY(row);     // distance from GROUND_Y to top surface
@@ -149,16 +149,16 @@ export function buildLevelCommands(level: LevelFile): LevelCommand[] {
 
 // ─── Manifest fetcher 
 
-import { type LevelManifest, type LevelFile as LF } from '../lib/LevelSchema';
+import { levelManifestSchema, type LevelManifest, type LevelFile as LF } from '../lib/LevelSchema';
 
 export async function fetchManifest(): Promise<LevelManifest> {
     const res = await fetch('/levels/manifest.json');
     if (!res.ok) throw new Error(`Failed to load manifest: ${res.status}`);
-    return res.json() as Promise<LevelManifest>;
+    return levelManifestSchema.parse(await res.json());
 }
 
 export async function fetchLevelFile(filename: string): Promise<LF> {
     const res = await fetch(`/levels/${filename}`);
     if (!res.ok) throw new Error(`Failed to load level ${filename}: ${res.status}`);
-    return res.json() as Promise<LF>;
+    return parseLevelFile(await res.json());
 }

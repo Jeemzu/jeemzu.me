@@ -46,6 +46,8 @@ interface WasmGameContainerProps {
   onLevelComplete?: () => void;
   /** Human-readable level label shown in the completion overlay, e.g. "Level 1 — First Steps" */
   levelLabel?: string;
+  /** Label for the completion overlay's close button */
+  completionActionLabel?: string;
 }
 
 // ─── State overlay label text ─────────────────────────────────────────────────
@@ -70,6 +72,7 @@ const WasmGameContainer = ({
   levelFile,
   onLevelComplete,
   levelLabel,
+  completionActionLabel = "Back to Level Select",
 }: WasmGameContainerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const moduleRef = useRef<WasmModule | null>(null);
@@ -391,61 +394,75 @@ const WasmGameContainer = ({
               position: "absolute",
               inset: 0,
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 1.5,
-              bgcolor: "rgba(0,0,0,0.55)",
+              bgcolor: "rgba(5,5,15,0.7)",
+              lineHeight: 1.5,
             }}
           >
-            <Typography
+            <Box
               sx={{
-                fontFamily: FONTS.MEDIEVAL_DISPLAY,
-                color: "#ffd740",
-                fontSize: "2rem",
-                letterSpacing: 3,
-                textTransform: "uppercase",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1.5,
+                px: { xs: 3, sm: 6 },
+                py: { xs: 2.5, sm: 4 },
+                bgcolor: "medievalStone.dark",
+                backgroundImage: MEDIEVAL_EFFECTS.PANEL_BG,
+                border: MEDIEVAL_EFFECTS.FRAME_BORDER,
+                borderRadius: "6px",
+                textAlign: "center",
               }}
             >
-              Level Complete!
-            </Typography>
-            {levelLabel && (
+              <Typography
+                sx={{
+                  fontFamily: FONTS.MEDIEVAL_DISPLAY,
+                  color: "#ffd740",
+                  fontSize: { xs: "1.4rem", sm: "2rem" },
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                }}
+              >
+                Level Complete!
+              </Typography>
+              {levelLabel && (
+                <Typography
+                  sx={{
+                    fontFamily: FONTS.MEDIEVAL_SERIF,
+                    color: "rgba(230, 220, 196, 0.7)",
+                    fontSize: "0.75rem",
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {levelLabel}
+                </Typography>
+              )}
               <Typography
                 sx={{
                   fontFamily: FONTS.MEDIEVAL_SERIF,
-                  color: "rgba(230, 220, 196, 0.5)",
-                  fontSize: "0.68rem",
+                  color: "rgba(255,215,64,0.9)",
+                  fontSize: "1.1rem",
+                  letterSpacing: 2,
+                }}
+              >
+                {score.toString().padStart(5, "0")}
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={onClose}
+                sx={{
+                  ...outlineButtonSx,
+                  mt: 1,
+                  fontSize: "0.7rem",
                   letterSpacing: 2,
                   textTransform: "uppercase",
                 }}
               >
-                {levelLabel}
-              </Typography>
-            )}
-            <Typography
-              sx={{
-                fontFamily: FONTS.MEDIEVAL_SERIF,
-                color: "rgba(255,215,64,0.85)",
-                fontSize: "1rem",
-                letterSpacing: 2,
-                mt: 0.5,
-              }}
-            >
-              {score.toString().padStart(5, "0")}
-            </Typography>
-            <Button
-              variant="outlined"
-              onClick={onClose}
-              sx={{
-                ...outlineButtonSx,
-                mt: 1,
-                fontSize: "0.7rem",
-                letterSpacing: 2,
-                textTransform: "uppercase",
-              }}
-            >
-              Back to Level Select
-            </Button>
+                {completionActionLabel}
+              </Button>
+            </Box>
           </Box>
         )}
 

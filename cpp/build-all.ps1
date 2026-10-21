@@ -37,7 +37,8 @@ foreach ($project in $projects) {
         Write-Host "  Using extra flags: $extraFlags" -ForegroundColor DarkGray
     }
 
-    & emcc $sources `
+    # em++ links the C++ standard library; plain emcc no longer does on newer emsdk.
+    & em++ $sources `
         -o $outJs `
         -s WASM=1 `
         "-s" "EXPORTED_RUNTIME_METHODS=['cwrap','ccall']" `
