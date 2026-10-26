@@ -6,6 +6,7 @@ import ComingSoonModal from '../../components/ComingSoonModal';
 import { type GameDataProps } from "../GameTypes";
 import { type LevelFile } from '../LevelSchema';
 import { markLevelCompleted } from '../../components/PlatformerLevelSelect';
+import { playPath } from '../../game-player/registry';
 
 import snakepng from '../../assets/images/snake.png';
 import snakegif from '../../assets/images/snake.gif';
@@ -23,10 +24,10 @@ export const useGameLauncher = () => {
     const [platformerOpen, setPlatformerOpen] = useState(false);
     const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
-    const launchSnake = () => navigate('/games/snake');
-    const launchZAim = () => navigate('/games/zaim');
-    const launchBrickBreak = () => navigate('/games/brickbreak');
-    const launchTetris = () => navigate('/games/tetris');
+    const launchSnake = () => navigate(playPath('snake'));
+    const launchZAim = () => navigate(playPath('zaim'));
+    const launchBrickBreak = () => navigate(playPath('brickbreak'));
+    const launchTetris = () => navigate(playPath('tetris'));
 
     const launchPlatformer = () => {
         setSelectedLevel(null);

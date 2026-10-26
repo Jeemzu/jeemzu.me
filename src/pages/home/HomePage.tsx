@@ -45,7 +45,7 @@ const APPS: AppCardDef[] = [
   {
     title: "Games",
     description:
-      "Snake, Tetris, Brick Break, Pong, and more — all playable in the browser.",
+      "Snake, Tetris, Brick Break, zAim, and more — all playable in the browser.",
     icon: <FaGamepad size={34} />,
     path: "/games",
     accent: "glassEmerald",

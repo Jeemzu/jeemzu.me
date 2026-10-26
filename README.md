@@ -24,6 +24,16 @@ Browser
 
 The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize chat is sent to the .NET API, which proxies it to the private Python service. The browser does not call the agents service directly.
 
+### Game Player
+
+- Snake, Tetris, Brick Break and zAim launch at `/play/<id>`; their `/games/<id>` URLs redirect there. The WASM platformer/editor migration is still pending.
+- Shared Player code lives in `src/game-player`; each migrated game separates its entry metadata, rules, rendering, input, sound cues, and visual style under `src/games/<id>`.
+- Player chrome uses the site theme; Snake is bioluminescent and Tetris uses neon-glass blocks. Arrow keys/WASD steer or move; Up/W rotates Tetris, Down/S soft-drops, Space hard-drops, and Esc/P pauses. Touch controls are not included.
+- Tetris uses clockwise SRS rotation, uniform piece selection, the existing 15-line level progression, and the original line/hard-drop scoring. Its next-piece preview, level, and lines are DOM HUD elements, including on narrow screens. Eleven original effects were synthesized with Audacity MCP, normalized to -12 dB peak, and exported as mono MP3/OGG pairs in `public/sounds/tetris_*`; per-cue playback gains live in `src/games/tetris/sounds.ts`.
+- Brick Break uses a synthwave field with DOM level selection and completion actions. Its 20 layouts, unlock storage, armor, weighted power-ups and cumulative score/lives are preserved. Left/Right or A/D move the paddle; Space/click serves or releases a sticky ball; Q/E or the movement keys aim a caught ball.
+- zAim uses a restrained slate field with the selected accent on targets and crosshair. Endurance, Reflex and Speed retain separate `zaim_<mode>` leaderboards; Reflex stores `10000 - roundedAverageMs` (clamped at zero) and decodes for display. Countdowns, reaction feedback, timers and rounds use DOM UI; pause excludes elapsed time.
+- `/play/sandbox` is development-only and exercises sizing, bloom, audio, and overlays (click to score, G to end a run). Canvas resolution follows viewport size and device pixel ratio; audio levels persist locally.
+
 ### Algorithm Visualizer
 
 - Setup cards, playback controls, and comparison panels share the site's gilded stone frames and sapphire glow. Sorting/search bars, the A* grid, and AVL nodes use matching state colors; green, rose, and violet still distinguish completion, movement, and pivots.

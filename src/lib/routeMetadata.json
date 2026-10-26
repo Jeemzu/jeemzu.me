@@ -23,17 +23,33 @@
     "title": "zAim",
     "description": "Test your aim and reaction speed by clicking targets in this browser-based aim trainer."
   },
+  "/play/zaim": {
+    "title": "zAim",
+    "description": "Train precision and reaction speed in Endurance, Reflex, and Speed modes."
+  },
   "/games/snake": {
     "title": "Snake",
     "description": "Play classic Snake in your browser: eat food, grow longer, and avoid crashing into yourself."
+  },
+  "/play/snake": {
+    "title": "Snake",
+    "description": "Play bioluminescent Snake: eat glowing food, grow longer, and compete for a high score."
   },
   "/games/tetris": {
     "title": "Tetris",
     "description": "Play Tetris in your browser: stack falling blocks, clear lines, and compete for a high score."
   },
+  "/play/tetris": {
+    "title": "Tetris",
+    "description": "Play neon-glass Tetris: stack blocks, clear lines, and compete for a high score."
+  },
   "/games/brickbreak": {
     "title": "Brick Break",
     "description": "Play Brick Break in your browser: bounce the ball with your paddle and clear the bricks."
+  },
+  "/play/brickbreak": {
+    "title": "Brick Break",
+    "description": "Play synthwave Brick Break: clear 20 levels, collect power-ups, and chase a high score."
   },
   "/editor": {
     "title": "Level Editor",
