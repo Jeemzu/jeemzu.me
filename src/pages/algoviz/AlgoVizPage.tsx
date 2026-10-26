@@ -14,6 +14,10 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { FONTS } from '../../lib/globals';
 import AVLVisualizer, { AVL_PRESETS } from './AVLVisualizer';
+import PageHeading from '../../components/shared/PageHeading';
+import { VIZ_COLORS, panelSx, choiceSx, ctrlBtn } from './visualStyles';
+import { FaChartSimple, FaMagnifyingGlass, FaRoute, FaNetworkWired } from 'react-icons/fa6';
+import { alpha } from '@mui/material/styles';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,17 +75,17 @@ const SPEED_STEPS = [0.25, 1, 4, 16];
 const SPEED_MARKS = SPEED_STEPS.map((v, i) => ({ value: i, label: v === 0.25 ? '¼×' : `${v}×` }));
 
 const LEGEND = [
-    { color: '#3a6ea0', label: 'Default' },
-    { color: '#ffd740', label: 'Compare' },
-    { color: '#d73737', label: 'Move' },
-    { color: '#be50dc', label: 'Pivot' },
-    { color: '#a8d67e', label: 'Sorted' },
-    { color: '#c5e8a4', label: 'Found' },
+    { color: VIZ_COLORS.blue, label: 'Default' },
+    { color: VIZ_COLORS.gold, label: 'Compare' },
+    { color: VIZ_COLORS.red, label: 'Move' },
+    { color: VIZ_COLORS.violet, label: 'Pivot' },
+    { color: VIZ_COLORS.green, label: 'Sorted' },
+    { color: VIZ_COLORS.softGreen, label: 'Found' },
 ];
 
-const GOLD = '#ffd740';
-const GREEN = '#a8d67e';
-const SOFT_GREEN = '#c5e8a4';
+const GOLD = VIZ_COLORS.gold;
+const GREEN = VIZ_COLORS.green;
+const SOFT_GREEN = VIZ_COLORS.softGreen;
 
 const RUN_LABEL: Record<number, string> = { 0: 'Ready', 1: 'Running', 2: 'Paused', 3: 'Done' };
 
@@ -388,7 +392,10 @@ export default function AlgoVizPage() {
     // ─────────────────────────────────────────────────────────────────────
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#0a0a19' }}>
+        <Box sx={{
+            minHeight: '100vh', bgcolor: VIZ_COLORS.background, color: VIZ_COLORS.text,
+            backgroundImage: `radial-gradient(ellipse at 15% 15%, ${VIZ_COLORS.blue}18, transparent 50%), radial-gradient(ellipse at 90% 75%, ${GOLD}0c, transparent 50%)`,
+        }}>
 
             {/* ═══════════════════════════════════════════════════════════
                 VIZ / LOADING PHASE
@@ -413,29 +420,28 @@ export default function AlgoVizPage() {
                         <Box sx={
                             cmpPhase === 'active'
                                 ? {
-                                    flex: 1, position: 'relative', minWidth: 0,
-                                    borderRadius: 2, overflow: 'hidden',
-                                    boxShadow: `0 0 0 1px ${GOLD}30, 0 8px 32px rgba(0,0,0,0.5)`,
+                                    ...panelSx, flex: 1, position: 'relative', minWidth: 0,
+                                    overflow: 'hidden',
                                 }
-                                : { flex: 1, position: 'relative', minWidth: 0 }
+                                : { ...panelSx, flex: 1, position: 'relative', minWidth: 0, overflow: 'hidden' }
                         }>
                             {/* Info strip */}
                             {phase === 'viz' && (
                                 <Box sx={{
                                     px: { xs: 1.5, sm: 3 }, py: 1,
                                     display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                                    bgcolor: '#0d0d20',
-                                    borderBottom: '1px solid rgba(255,255,255,0.07)',
+                                    bgcolor: VIZ_COLORS.surface,
+                                    borderBottom: `1px solid ${GOLD}30`,
                                 }}>
-                                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '0.85rem', sm: '1rem' }, color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: { xs: '0.85rem', sm: '1rem' }, color: VIZ_COLORS.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {selAlgo?.name}
                                         {cmpPhase === 'active' && <Box component="span" sx={{ color: GOLD, fontSize: '0.75rem', ml: 0.75 }}>(A)</Box>}
                                     </Typography>
-                                    <InfoChip label={selAlgo?.complexity ?? ''} color={GOLD} bg="#1e1a00" />
-                                    <InfoChip label={`Space ${selAlgo?.spaceComplexity ?? ''}`} color="#aaa" bg="#141420" />
-                                    {isSearch && !tgtMissing && <InfoChip label={`Target: ${target}`} color={GREEN} bg="#121e10" />}
-                                    {isSearch && tgtMissing && <InfoChip label={`Target: ${target} (absent)`} color="#d73737" bg="#1e1010" />}
-                                    {category === 'graph' && gridRows > 0 && <InfoChip label={`Grid: ${gridRows}×${gridCols}`} color="#8ab4e8" bg="#0e1630" />}
+                                    <InfoChip label={selAlgo?.complexity ?? ''} color={GOLD} />
+                                    <InfoChip label={`Space ${selAlgo?.spaceComplexity ?? ''}`} color={VIZ_COLORS.muted} />
+                                    {isSearch && !tgtMissing && <InfoChip label={`Target: ${target}`} color={GREEN} />}
+                                    {isSearch && tgtMissing && <InfoChip label={`Target: ${target} (absent)`} color={VIZ_COLORS.red} />}
+                                    {category === 'graph' && gridRows > 0 && <InfoChip label={`Grid: ${gridRows}×${gridCols}`} color={VIZ_COLORS.blue} />}
                                 </Box>
                             )}
 
@@ -466,10 +472,10 @@ export default function AlgoVizPage() {
                                         position: 'absolute', inset: 0,
                                         display: 'flex', flexDirection: 'column',
                                         alignItems: 'center', justifyContent: 'center',
-                                        bgcolor: 'rgba(10,10,25,0.9)',
+                                        bgcolor: alpha(VIZ_COLORS.background, 0.95),
                                     }}>
                                         <CircularProgress size={56} sx={{ color: GOLD, mb: 2 }} />
-                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#b0b0b0' }}>
+                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: VIZ_COLORS.muted }}>
                                             Generating {selAlgo?.name ?? 'algorithm'}…
                                         </Typography>
                                     </Box>
@@ -480,26 +486,25 @@ export default function AlgoVizPage() {
                         {/* ── Secondary canvas (compare) ── */}
                         {(cmpPhase === 'loading2' || cmpPhase === 'active') && (
                             <Box sx={{
-                                flex: 1, position: 'relative',
+                                ...panelSx, flex: 1, position: 'relative',
                                 minWidth: 0,
-                                borderRadius: 2, overflow: 'hidden',
-                                boxShadow: `0 0 0 1px ${GREEN}30, 0 8px 32px rgba(0,0,0,0.5)`,
+                                overflow: 'hidden',
                             }}>
                                 {cmpPhase === 'active' && (
                                     <>
                                         <Box sx={{
                                             px: { xs: 1.5, sm: 3 }, py: 1,
                                             display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                                            bgcolor: '#0d0d20',
-                                            borderBottom: '1px solid rgba(255,255,255,0.07)',
+                                            bgcolor: VIZ_COLORS.surface,
+                                            borderBottom: `1px solid ${GOLD}30`,
                                         }}>
-                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: { xs: '0.85rem', sm: '1rem' }, color: '#e8e8e8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: { xs: '0.85rem', sm: '1rem' }, color: VIZ_COLORS.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {cmpSelAlgo?.name}
                                                 <Box component="span" sx={{ color: GREEN, fontSize: '0.75rem', ml: 0.75 }}>(B)</Box>
                                             </Typography>
-                                            <InfoChip label={cmpSelAlgo?.complexity ?? ''} color={GREEN} bg="#0e1e10" />
-                                            <InfoChip label={`Space ${cmpSelAlgo?.spaceComplexity ?? ''}`} color="#aaa" bg="#141420" />
-                                            {isSearch && !tgt2Missing && <InfoChip label={`Target: ${target2}`} color={GREEN} bg="#0e1e10" />}
+                                            <InfoChip label={cmpSelAlgo?.complexity ?? ''} color={GREEN} />
+                                            <InfoChip label={`Space ${cmpSelAlgo?.spaceComplexity ?? ''}`} color={VIZ_COLORS.muted} />
+                                            {isSearch && !tgt2Missing && <InfoChip label={`Target: ${target2}`} color={GREEN} />}
                                         </Box>
                                         <LinearProgress
                                             variant="determinate"
@@ -526,10 +531,10 @@ export default function AlgoVizPage() {
                                             position: 'absolute', inset: 0,
                                             display: 'flex', flexDirection: 'column',
                                             alignItems: 'center', justifyContent: 'center',
-                                            bgcolor: 'rgba(10,10,25,0.9)',
+                                            bgcolor: alpha(VIZ_COLORS.background, 0.95),
                                         }}>
                                             <CircularProgress size={48} sx={{ color: GREEN, mb: 2 }} />
-                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: '#b0b0b0' }}>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, color: VIZ_COLORS.muted }}>
                                                 Preparing comparison…
                                             </Typography>
                                         </Box>
@@ -542,11 +547,9 @@ export default function AlgoVizPage() {
                     {/* ── Controls bar ─────────────────────────────────── */}
                     {phase === 'viz' && (
                         <Box sx={{
-                            maxWidth: cmpPhase === 'active' ? 1600 : 1100,
+                            ...panelSx, maxWidth: cmpPhase === 'active' ? 1600 : 1100,
                             mx: 'auto', px: 3, py: isMobileViz ? 1 : 2,
                             mt: 2,
-                            bgcolor: '#0e0e1e',
-                            borderTop: `1px solid ${GOLD}22`,
                             display: 'flex', flexDirection: 'column', gap: isMobileViz && !controlsExpanded ? 0 : 2,
                         }}>
 
@@ -598,7 +601,7 @@ export default function AlgoVizPage() {
                                     {cmpPhase === 'loading2' && (
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 0.5 }}>
                                             <CircularProgress size={20} sx={{ color: GREEN }} />
-                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: '#777' }}>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.9rem', color: VIZ_COLORS.muted }}>
                                                 Initializing comparison…
                                             </Typography>
                                         </Box>
@@ -679,7 +682,7 @@ export default function AlgoVizPage() {
                                             <Box sx={{ flex: 1 }} />
 
                                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mr: 2 }}>
-                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555', mb: 0.25 }}>
+                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: VIZ_COLORS.muted, mb: 0.25 }}>
                                                     Speed
                                                 </Typography>
                                                 <Box sx={{ width: 240 }}>
@@ -695,7 +698,7 @@ export default function AlgoVizPage() {
                                                         }}
                                                         sx={{
                                                             color: GOLD,
-                                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
+                                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: VIZ_COLORS.muted },
                                                             '& .MuiSlider-markLabel:first-of-type': { transform: 'translateX(0%)' },
                                                             '& .MuiSlider-markLabel:last-of-type': { transform: 'translateX(-100%)' },
                                                             '& .MuiSlider-thumb': { bgcolor: GOLD },
@@ -708,7 +711,7 @@ export default function AlgoVizPage() {
                                                 {LEGEND.map(({ color, label }) => (
                                                     <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                                                         <Box sx={{ width: 12, height: 12, bgcolor: color, borderRadius: '3px', flexShrink: 0 }} />
-                                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#666' }}>
+                                                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: VIZ_COLORS.muted }}>
                                                             {label}
                                                         </Typography>
                                                     </Box>
@@ -735,9 +738,9 @@ export default function AlgoVizPage() {
                                                     <ActionBtn
                                                         onClick={handleRemoveCompare}
                                                         label="✕ Remove Comparison"
-                                                        color="#d73737"
-                                                        borderColor="rgba(215,55,55,0.4)"
-                                                        hoverBg="rgba(215,55,55,0.08)"
+                                                        color={VIZ_COLORS.red}
+                                                        borderColor={`${VIZ_COLORS.red}66`}
+                                                        hoverBg={`${VIZ_COLORS.red}14`}
                                                     />
                                                 )
                                             )}
@@ -758,34 +761,21 @@ export default function AlgoVizPage() {
 
                     {/* Hero card — centered, inner content left-aligned */}
                     <Box sx={{
+                        ...panelSx,
                         width: '100%',
-                        maxWidth: 680,
-                        bgcolor: '#141428',
-                        borderRadius: 2,
+                        maxWidth: 760,
                         p: { xs: 3, md: 5 },
-                        boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        '& h1': { fontSize: { xs: 'clamp(1.6rem, 7.5vw, 2.6rem)', sm: '3rem', md: '3.5rem' } },
                     }}>
                         {/* Page header */}
-                        <Typography variant="h3" sx={{
-                            fontFamily: FONTS.NECTO_MONO, color: GOLD,
-                            mb: 1, textAlign: 'left',
-                        }}>
-                            Algorithm Visualizer
-                        </Typography>
-                        <Typography variant="h6" sx={{
-                            fontFamily: FONTS.NECTO_MONO, fontWeight: 400,
-                            color: '#666', mb: 4, textAlign: 'left',
-                        }}>
-                            Watch algorithms execute step by step — sorting, searching, graph pathfinding, and trees.
-                        </Typography>
-
-                        {/* Divider */}
-                        <Box sx={{ height: '1px', bgcolor: 'rgba(255,255,255,0.06)', mb: 4 }} />
+                        <PageHeading
+                            title="Algorithm Visualizer"
+                            subtitle="Watch algorithms execute step by step — sorting, searching, graph pathfinding, and trees."
+                        />
 
                         {error && (
                             <Typography sx={{
-                                color: '#d73737', mb: 3,
+                                color: VIZ_COLORS.red, mb: 3,
                                 fontSize: '0.95rem', fontFamily: FONTS.NECTO_MONO,
                                 textAlign: 'left',
                             }}>
@@ -799,22 +789,22 @@ export default function AlgoVizPage() {
                                 <WizHeader step={1} label="What do you want to visualize?" />
                                 <Box sx={{ display: 'flex', gap: 2, mt: 2.5, flexWrap: 'wrap' }}>
                                     <CategoryCard
-                                        emoji="📊" title="Sorting"
+                                        icon={<FaChartSimple />} title="Sorting"
                                         desc="Arrange elements in ascending order. Bubble, Merge, Quick, Heap, and more."
                                         onSelect={() => { setCategory('sort'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
                                     />
                                     <CategoryCard
-                                        emoji="🔍" title="Searching"
+                                        icon={<FaMagnifyingGlass />} title="Searching"
                                         desc="Locate a target value in an array. Linear, Binary, and Jump search."
                                         onSelect={() => { setCategory('search'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
                                     />
                                     <CategoryCard
-                                        emoji="🗺️" title="Graph"
+                                        icon={<FaRoute />} title="Graph"
                                         desc="Pathfinding on a 2-D grid. A* uses a heuristic to find the shortest path efficiently."
                                         onSelect={() => { setCategory('graph'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
                                     />
                                     <CategoryCard
-                                        emoji="🌳" title="Tree"
+                                        icon={<FaNetworkWired />} title="Tree"
                                         desc="Self-balancing binary search trees. Watch AVL rotations keep the tree height-optimal."
                                         onSelect={() => { setCategory('tree'); setCpxFilter(null); setSelAlgo(null); setWizStep(2); }}
                                     />
@@ -864,7 +854,7 @@ export default function AlgoVizPage() {
                             <Box>
                                 <WizHeader step={4} label={category === 'graph' ? 'Choose grid size' : 'Choose input size'} />
                                 <Typography sx={{
-                                    fontFamily: FONTS.NECTO_MONO, color: '#666',
+                                    fontFamily: FONTS.NECTO_MONO, color: VIZ_COLORS.muted,
                                     fontSize: '0.9rem', mt: 1, mb: 3.5, textAlign: 'left',
                                 }}>
                                     {category === 'graph'
@@ -878,7 +868,7 @@ export default function AlgoVizPage() {
                                         onChange={(_, v) => setSizeIdx(v as number)}
                                         sx={{
                                             color: GOLD,
-                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: '#666' },
+                                            '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: VIZ_COLORS.muted },
                                             '& .MuiSlider-thumb': { bgcolor: GOLD },
                                         }}
                                     />
@@ -891,7 +881,7 @@ export default function AlgoVizPage() {
                                         ? `${GRID_SIZES[sizeIdx][0]} × ${GRID_SIZES[sizeIdx][1]} grid`
                                         : `${SIZE_VALUES[sizeIdx]} elements`}
                                 </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pt: 3, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, pt: 3, borderTop: `1px solid ${GOLD}30` }}>
                                     <WizBack onClick={() => setWizStep(3)} />
                                     <LaunchBtn onClick={() => setPhase('loading')} />
                                 </Box>
@@ -903,7 +893,7 @@ export default function AlgoVizPage() {
                             <Box>
                                 <WizHeader step={4} label="Choose a key sequence" />
                                 <Typography sx={{
-                                    fontFamily: FONTS.NECTO_MONO, color: '#666',
+                                    fontFamily: FONTS.NECTO_MONO, color: VIZ_COLORS.muted,
                                     fontSize: '0.9rem', mt: 1, mb: 2.5, textAlign: 'left',
                                 }}>
                                     Each preset inserts a different set of values — some trigger many rotations, others stay nearly balanced.
@@ -911,34 +901,34 @@ export default function AlgoVizPage() {
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, paddingTop: 2 }}>
                                     {AVL_PRESETS.map((p, i) => (
                                         <Box
+                                            component="button"
+                                            type="button"
+                                            aria-pressed={avlPresetIdx === i}
                                             key={p.label}
                                             onClick={() => setAvlPresetIdx(i)}
                                             sx={{
-                                                p: 2.5, borderRadius: 2, cursor: 'pointer',
-                                                border: `1px solid ${avlPresetIdx === i ? GOLD : 'rgba(255,255,255,0.08)'}`,
-                                                bgcolor: avlPresetIdx === i ? `${GOLD}0d` : '#161624',
+                                                ...choiceSx, p: 2.5, cursor: 'pointer',
+                                                borderColor: avlPresetIdx === i ? GOLD : `${GOLD}40`,
                                                 display: 'flex', flexDirection: 'column', gap: 0.75,
-                                                transition: 'all 0.15s ease',
-                                                '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}08` },
                                             }}
                                         >
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8' }}>
+                                                <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: '1rem', color: VIZ_COLORS.text }}>
                                                     {p.label}
                                                 </Typography>
                                                 <Chip label={`${p.keys.length} keys`} size="small"
-                                                    sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: '#1e1a00', color: GOLD, height: 24 }} />
+                                                    sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: `${GOLD}14`, color: GOLD, height: 24 }} />
                                             </Box>
-                                            <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, textAlign: 'left' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: VIZ_COLORS.muted, lineHeight: 1.7, textAlign: 'left' }}>
                                                 {p.desc}
                                             </Typography>
-                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#555', mt: 0.25 }}>
+                                            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: VIZ_COLORS.muted, mt: 0.25 }}>
                                                 [{p.keys.join(', ')}]
                                             </Typography>
                                         </Box>
                                     ))}
                                 </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 4, pt: 3, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5, mt: 4, pt: 3, borderTop: `1px solid ${GOLD}30` }}>
                                     <WizBack onClick={() => setWizStep(3)} />
                                     <LaunchBtn onClick={() => setPhase('loading')} />
                                 </Box>
@@ -959,40 +949,46 @@ function WizHeader({ step, label }: { step: number; label: string }) {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
             <Box sx={{
                 width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                bgcolor: GOLD, color: '#0a0a0a',
+                bgcolor: `${GOLD}16`, color: GOLD, border: `1px solid ${GOLD}70`,
+                boxShadow: `inset 0 0 12px ${GOLD}20, 0 0 14px ${VIZ_COLORS.blue}30`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: FONTS.NECTO_MONO, fontSize: '0.95rem', fontWeight: 700,
             }}>
                 {step}
             </Box>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', color: '#e8e8e8' }}>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', color: VIZ_COLORS.text }}>
                 {label}
             </Typography>
         </Box>
     );
 }
 
-function CategoryCard({ emoji, title, desc, onSelect }: {
-    emoji: string; title: string; desc: string; onSelect: () => void;
+function CategoryCard({ icon, title, desc, onSelect }: {
+    icon: React.ReactNode; title: string; desc: string; onSelect: () => void;
 }) {
     return (
         <Box
+            component="button"
+            type="button"
             onClick={onSelect}
             sx={{
-                flex: '1 1 220px', p: 3.5, borderRadius: 2, cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.08)', bgcolor: '#161628',
-                // Explicit column flex so emoji + title + desc stack vertically
+                ...choiceSx, flex: '1 1 220px', p: 3, cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                 gap: 1.25,
-                transition: 'all 0.18s ease',
-                '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}08`, transform: 'translateY(-2px)' },
             }}
         >
-            <Box sx={{ fontSize: '2.5rem', lineHeight: 1 }}>{emoji}</Box>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1.1rem', color: '#e8e8e8', display: 'block', textAlign: 'left' }}>
+            <Box sx={{
+                display: 'grid', placeItems: 'center', width: 54, height: 54,
+                borderRadius: '50%', border: `1px solid ${GOLD}70`,
+                color: VIZ_COLORS.blue, fontSize: '1.6rem',
+                background: `radial-gradient(circle, ${VIZ_COLORS.blue}30, transparent)`,
+                boxShadow: `inset 0 0 16px ${VIZ_COLORS.blue}30, 0 0 16px ${VIZ_COLORS.blue}20`,
+                filter: `drop-shadow(0 0 5px ${VIZ_COLORS.blue}50)`,
+            }}>{icon}</Box>
+            <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: '1.1rem', color: GOLD, display: 'block', textAlign: 'left' }}>
                 {title}
             </Typography>
-            <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, display: 'block', textAlign: 'left' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: VIZ_COLORS.muted, lineHeight: 1.7, display: 'block', textAlign: 'left' }}>
                 {desc}
             </Typography>
         </Box>
@@ -1007,9 +1003,10 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
             sx={{
                 fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', cursor: 'pointer',
                 height: 36,
-                border: `1px solid ${active ? GOLD : 'rgba(255,255,255,0.12)'}`,
+                border: `1px solid ${active ? GOLD : `${GOLD}40`}`,
                 bgcolor: active ? `${GOLD}1a` : 'transparent',
-                color: active ? GOLD : '#999',
+                color: active ? GOLD : VIZ_COLORS.muted,
+                boxShadow: active ? `inset 0 0 12px ${GOLD}14, 0 0 12px ${VIZ_COLORS.blue}20` : 'none',
                 '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}0d` },
             }}
         />
@@ -1021,25 +1018,25 @@ function AlgoCard({ algo, selected, onSelect, compact = false }: {
 }) {
     return (
         <Box
+            component="button"
+            type="button"
+            aria-pressed={selected}
             onClick={onSelect}
             sx={{
-                p: compact ? 1.75 : 2.5, borderRadius: 2, cursor: 'pointer',
-                border: `1px solid ${selected ? GOLD : 'rgba(255,255,255,0.08)'}`,
-                bgcolor: selected ? `${GOLD}0d` : '#161624',
+                ...choiceSx, p: compact ? 1.75 : 2.5, cursor: 'pointer',
+                borderColor: selected ? GOLD : `${GOLD}40`,
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: compact ? 0.5 : 0.75,
-                transition: 'all 0.15s ease',
-                '&:hover': { borderColor: GOLD, bgcolor: `${GOLD}08` },
             }}
         >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: compact ? '0.9rem' : '1rem', color: '#e8e8e8' }}>
+                <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: compact ? '0.9rem' : '1rem', color: VIZ_COLORS.text }}>
                     {algo.name}
                 </Typography>
-                <InfoChip label={algo.complexity} color={GOLD} bg="#1e1a00" />
-                <InfoChip label={`Space: ${algo.spaceComplexity}`} color="#888" bg="#12121e" />
+                <InfoChip label={algo.complexity} color={GOLD} />
+                <InfoChip label={`Space: ${algo.spaceComplexity}`} color={VIZ_COLORS.muted} />
             </Box>
             {!compact && (
-                <Typography sx={{ fontSize: '0.85rem', color: '#888', lineHeight: 1.7, textAlign: 'left' }}>
+                <Typography sx={{ fontSize: '0.85rem', color: VIZ_COLORS.muted, lineHeight: 1.7, textAlign: 'left' }}>
                     {algo.description}
                 </Typography>
             )}
@@ -1047,12 +1044,12 @@ function AlgoCard({ algo, selected, onSelect, compact = false }: {
     );
 }
 
-function InfoChip({ label, color, bg }: { label: string; color: string; bg: string }) {
+function InfoChip({ label, color }: { label: string; color: string }) {
     return (
         <Chip
             label={label}
             size="small"
-            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: bg, color, border: 'none', height: 26 }}
+            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: alpha(color, 0.08), color, border: `1px solid ${alpha(color, 0.25)}`, height: 26 }}
         />
     );
 }
@@ -1060,17 +1057,17 @@ function InfoChip({ label, color, bg }: { label: string; color: string; bg: stri
 function StatPill({ label, value }: { label: string; value: string | number }) {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.1 }}>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.62rem', color: '#555', lineHeight: 1 }}>{label}</Typography>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#ddd', lineHeight: 1.2 }}>{value}</Typography>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.62rem', color: VIZ_COLORS.muted, lineHeight: 1 }}>{label}</Typography>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: VIZ_COLORS.text, lineHeight: 1.2 }}>{value}</Typography>
         </Box>
     );
 }
 
 function RunChip({ state }: { state: number }) {
     const colors = {
-        bg: state === 1 ? '#1a2800' : state === 2 ? '#2a1e00' : state === 3 ? '#0e1e0a' : '#141428',
-        text: state === 1 ? GREEN : state === 2 ? GOLD : state === 3 ? SOFT_GREEN : '#777',
-        bdr: state === 1 ? GREEN : state === 2 ? GOLD : state === 3 ? SOFT_GREEN : 'rgba(255,255,255,0.1)',
+        bg: state === 1 ? `${GREEN}14` : state === 2 ? `${GOLD}14` : state === 3 ? `${SOFT_GREEN}14` : VIZ_COLORS.surface,
+        text: state === 1 ? GREEN : state === 2 ? GOLD : state === 3 ? SOFT_GREEN : VIZ_COLORS.muted,
+        bdr: state === 1 ? GREEN : state === 2 ? GOLD : state === 3 ? SOFT_GREEN : VIZ_COLORS.blue,
     };
     return (
         <Chip
@@ -1089,11 +1086,11 @@ function WizBack({ onClick, sx }: { onClick: () => void; sx?: object }) {
     return (
         <Box component="button" onClick={onClick} sx={{
             px: 2.5, py: 1,
-            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 1,
-            bgcolor: 'transparent', color: '#888',
+            border: `1px solid ${GOLD}40`, borderRadius: 1,
+            bgcolor: 'transparent', color: VIZ_COLORS.muted,
             fontFamily: FONTS.NECTO_MONO, fontSize: '0.92rem', cursor: 'pointer',
             display: 'inline-block',
-            '&:hover': { borderColor: 'rgba(255,255,255,0.3)', color: '#ccc' },
+            '&:hover': { borderColor: GOLD, color: GOLD, bgcolor: `${VIZ_COLORS.blue}14` },
             ...sx,
         }}>← Back</Box>
     );
@@ -1116,17 +1113,19 @@ function LaunchBtn({ onClick }: { onClick: () => void }) {
     return (
         <Box component="button" onClick={onClick} sx={{
             px: 4, py: 1.25,
-            border: 'none', borderRadius: 1,
-            bgcolor: GOLD, color: '#0a0a0a',
+            border: `1px solid ${GOLD}`, borderRadius: 1,
+            bgcolor: GOLD, color: VIZ_COLORS.background,
+            backgroundImage: 'linear-gradient(110deg, #c8a24a, #f8ecc4, #c8a24a)',
+            boxShadow: `0 0 18px ${GOLD}25, inset 0 1px 0 #f8ecc4`,
             fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', fontWeight: 700,
             cursor: 'pointer', display: 'inline-block',
             transition: 'background-color 0.15s ease',
-            '&:hover': { bgcolor: '#ffe066' },
+            '&:hover': { boxShadow: `0 0 24px ${GOLD}45, 0 0 12px ${VIZ_COLORS.blue}30` },
         }}>▶ Visualize</Box>
     );
 }
 
-function ActionBtn({ onClick, label, color = '#666', borderColor = 'rgba(255,255,255,0.12)', hoverBg = 'rgba(255,255,255,0.04)' }: {
+function ActionBtn({ onClick, label, color = GOLD, borderColor = `${GOLD}40`, hoverBg = `${VIZ_COLORS.blue}18` }: {
     onClick: () => void; label: string;
     color?: string; borderColor?: string; hoverBg?: string;
 }) {
@@ -1162,15 +1161,14 @@ function ComparePicker({
 
     return (
         <Box sx={{
-            p: 2.5, borderRadius: 2,
-            border: `1px solid ${GREEN}30`, bgcolor: '#0c180e',
+            ...panelSx, p: 2.5,
             display: 'flex', flexDirection: 'column', gap: 2,
         }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: GREEN }}>
                     Compare against — same n = {sizeN} elements
                 </Typography>
-                <IconButton size="small" onClick={onCancel} sx={{ color: '#555', '&:hover': { color: '#aaa' } }}>
+                <IconButton size="small" onClick={onCancel} sx={{ color: VIZ_COLORS.muted, '&:hover': { color: GOLD } }}>
                     <Box component="span" sx={{ fontSize: '1.1rem', lineHeight: 1 }}>✕</Box>
                 </IconButton>
             </Box>
@@ -1187,7 +1185,7 @@ function ComparePicker({
             {/* Algorithm list — compact cards */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {filtered.length === 0 && (
-                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: '#555' }}>
+                    <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', color: VIZ_COLORS.muted }}>
                         No other algorithms match this filter.
                     </Typography>
                 )}
@@ -1208,8 +1206,8 @@ function ComparePicker({
                     onClick={() => { if (selAlgo) onConfirm(selAlgo); }}
                     sx={{
                         px: 3, py: 1, border: 'none', borderRadius: 1,
-                        bgcolor: selAlgo ? GREEN : '#1a2a1a',
-                        color: selAlgo ? '#0a0a0a' : '#3a5a3a',
+                        bgcolor: selAlgo ? GREEN : VIZ_COLORS.surface,
+                        color: selAlgo ? VIZ_COLORS.background : VIZ_COLORS.muted,
                         fontFamily: FONTS.NECTO_MONO, fontSize: '0.92rem',
                         fontWeight: selAlgo ? 700 : 400,
                         cursor: selAlgo ? 'pointer' : 'default',
@@ -1224,11 +1222,3 @@ function ComparePicker({
         </Box>
     );
 }
-
-// ─── Shared sx constants ──────────────────────────────────────────────────────
-
-const ctrlBtn = {
-    color: '#888',
-    '&:hover': { color: '#ddd', bgcolor: 'rgba(255,255,255,0.07)' },
-    '&.Mui-disabled': { color: 'rgba(255,255,255,0.18)' },
-} as const;

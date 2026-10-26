@@ -8,7 +8,12 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ReactElement } from "react";
 import { createPortal } from "react-dom";
+import { Button, Stack, Tooltip } from "@mui/material";
+import { FaDownload, FaFileExport, FaTableCells, FaUpload } from "react-icons/fa6";
+import ActionSidebar from "../../components/shared/ActionSidebar";
+import PageHeading from "../../components/shared/PageHeading";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
 import { emptyBudget, monthlyRecurrence } from "./types";
 import { budgetHistoryReducer, initialHistoryState } from "./state/history";
@@ -68,14 +73,56 @@ interface Notice {
 }
 
 const VIEW_TABS = [
-  { id: "month", label: "This month" },
-  { id: "projections", label: "Projections" },
-  { id: "personal", label: "Personal planning" },
-  { id: "data", label: "Edit data" },
-  { id: "assistant", label: "Assistant" },
+  { id: "month", label: "This month", tooltip: "View this month's calendar, upcoming payments, and budget summary." },
+  { id: "projections", label: "Projections", tooltip: "View projected balances and account funding plans." },
+  { id: "personal", label: "Personal planning", tooltip: "Plan shared and individual personal expenses and balances." },
+  { id: "data", label: "Edit data", tooltip: "Edit income, people, bills, debts, and one-time entries." },
+  { id: "assistant", label: "Assistant", tooltip: "Chat with the budget assistant and review proposed budget changes." },
 ] as const;
 
 type ViewTab = (typeof VIEW_TABS)[number]["id"];
+
+const TOOLTIP_BG = "#1f3a5f";
+const TOOLTIP_BORDER = "#c8a24a";
+
+function SidebarTooltip({ title, children }: { title: string; children: ReactElement }) {
+  return (
+    <Tooltip
+      title={title}
+      placement="right"
+      arrow
+      disableFocusListener
+      disableTouchListener
+      slotProps={{
+        tooltip: {
+          sx: {
+            bgcolor: TOOLTIP_BG,
+            color: "#f3e7c4",
+            border: `1px solid ${TOOLTIP_BORDER}`,
+            borderRadius: "6px",
+            fontSize: "0.8rem",
+            px: 1.5,
+            py: 1,
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.5)",
+          },
+        },
+        arrow: {
+          sx: {
+            color: TOOLTIP_BG,
+            "&::before": {
+              backgroundColor: TOOLTIP_BG,
+              borderLeft: `1px solid ${TOOLTIP_BORDER}`,
+              borderBottom: `1px solid ${TOOLTIP_BORDER}`,
+              boxSizing: "border-box",
+            },
+          },
+        },
+      }}
+    >
+      {children}
+    </Tooltip>
+  );
+}
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -97,12 +144,18 @@ export default function BudgetizePage() {
 
 function BudgetWorkspace() {
   const { isAuthenticated } = useAuthStore();
-  const [state, dispatch] = useReducer(budgetHistoryReducer, initialHistoryState);
+  const [state, dispatch] = useReducer(
+    budgetHistoryReducer,
+    initialHistoryState,
+  );
   const [monthRef, setMonthRef] = useState<MonthRef>(currentMonth);
   const [importOpen, setImportOpen] = useState(false);
   const [notices, setNotices] = useState<(Notice & { id: string })[]>([]);
   const setNotice = useCallback((notice: Notice) => {
-    setNotices((previous) => [...previous, { ...notice, id: crypto.randomUUID() }]);
+    setNotices((previous) => [
+      ...previous,
+      { ...notice, id: crypto.randomUUID() },
+    ]);
   }, []);
   const [tab, setTab] = useState<ViewTab>("month");
   const [loadState, setLoadState] = useState<LoadState>("loading");
@@ -117,10 +170,18 @@ function BudgetWorkspace() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || loadState !== "ready") return;
+      if (
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey ||
+        loadState !== "ready"
+      )
+        return;
       const target = event.target;
-      if (target instanceof HTMLElement &&
-          (target.matches("input, textarea, select") || target.isContentEditable)) return;
+      if (
+        target instanceof HTMLElement &&
+        (target.matches("input, textarea, select") || target.isContentEditable)
+      )
+        return;
       const key = event.key.toLowerCase();
       if (key === "z" || (key === "y" && !event.metaKey)) {
         event.preventDefault();
@@ -167,7 +228,14 @@ function BudgetWorkspace() {
     [state.data, fundingPlan, depositMode, strategy],
   );
   const debtRecommendation = useMemo(
-    () => computeDebtPayoffRecommendation(state.data, start, fundingPlan, depositMode, strategy),
+    () =>
+      computeDebtPayoffRecommendation(
+        state.data,
+        start,
+        fundingPlan,
+        depositMode,
+        strategy,
+      ),
     [state.data, start, fundingPlan, depositMode, strategy],
   );
 
@@ -197,7 +265,15 @@ function BudgetWorkspace() {
       fundingPlan,
       allocationFor,
     );
-  }, [state.data, start, weekCount, strategy, depositMode, fundingPlan, allocationFor]);
+  }, [
+    state.data,
+    start,
+    weekCount,
+    strategy,
+    depositMode,
+    fundingPlan,
+    allocationFor,
+  ]);
 
   const load = useCallback(async () => {
     setLoadState("loading");
@@ -378,7 +454,8 @@ function BudgetWorkspace() {
   async function handleSpreadsheetExport() {
     try {
       // Dynamic import keeps the xlsx library out of the main bundle.
-      const { downloadExportWorkbook } = await import("./lib/spreadsheetExport");
+      const { downloadExportWorkbook } =
+        await import("./lib/spreadsheetExport");
       const stamp = new Date().toISOString().slice(0, 10);
       downloadExportWorkbook(state.data, start, `budgetize-${stamp}.xlsx`);
     } catch {
@@ -582,422 +659,404 @@ function BudgetWorkspace() {
           dispatch({ type: "end-edit" });
       }}
     >
-      <div className="app">
-        <header className="topbar">
-          <div className="brand">
-            <h1>Budgetize</h1>
-            <span className={`save-status${state.dirty ? " dirty" : ""}`}>
-              {!isAuthenticated
-                ? "Guest mode — sign in to save"
-                : state.dirty
-                  ? "● Unsaved changes"
-                  : "✓ All changes saved"}
-            </span>
-          </div>
-          <div className="topbar-actions">
-            <button
-              type="button"
-              className="btn"
-              disabled={state.past.length === 0 && !state.editing}
-              title="Undo last budget edit (Ctrl/Cmd+Z outside a field)"
-              onClick={() => dispatch({ type: "undo" })}
-            >
-              Undo
-            </button>
-            <button
-              type="button"
-              className="btn"
-              disabled={state.future.length === 0}
-              title="Redo last undone edit (Ctrl/Cmd+Shift+Z outside a field)"
-              onClick={() => dispatch({ type: "redo" })}
-            >
-              Redo
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setImportOpen(true)}
-            >
-              Import…
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={handleBackupDownload}
-            >
-              Export backup
-            </button>
-            <button
-              type="button"
-              className="btn"
-              title="Every table as a sheet in an Excel workbook, for use in other tools. Restore from the JSON backup instead."
-              onClick={() => void handleSpreadsheetExport()}
-            >
-              Export spreadsheet
-            </button>
-            {isAuthenticated && (
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
+        <ActionSidebar
+          title="Budgetize tools"
+          sections={[
+            {
+              id: "views",
+              label: "Views",
+              icon: <FaTableCells />,
+              content: (
+                <nav aria-label="Budgetize sections">
+                  {VIEW_TABS.map((entry) => (
+                    <SidebarTooltip
+                      key={entry.id}
+                      title={
+                        entry.id === "assistant" && !isAuthenticated
+                          ? "Sign in to use the assistant."
+                          : entry.tooltip
+                      }
+                    >
+                      <span style={{ display: "block" }}>
+                        <Button
+                          variant="text"
+                          aria-current={tab === entry.id ? "page" : undefined}
+                          disabled={
+                            entry.id === "assistant" && !isAuthenticated
+                          }
+                          onClick={() => setTab(entry.id)}
+                        >
+                          {entry.label}
+                        </Button>
+                      </span>
+                    </SidebarTooltip>
+                  ))}
+                </nav>
+              ),
+            },
+            {
+              id: "transfer",
+              label: "Import / export",
+              icon: <FaFileExport />,
+              content: (
+                <>
+                  <SidebarTooltip title="Import an Excel budget workbook or restore a JSON backup.">
+                    <Button
+                      variant="text"
+                      startIcon={<FaUpload />}
+                      onClick={() => setImportOpen(true)}
+                    >
+                      Import…
+                    </Button>
+                  </SidebarTooltip>
+                  <SidebarTooltip title="Download a blank Excel workbook to fill in and import.">
+                    <Button
+                      variant="text"
+                      startIcon={<FaDownload />}
+                      onClick={() => void handleTemplateDownload()}
+                    >
+                      Download template
+                    </Button>
+                  </SidebarTooltip>
+                  <SidebarTooltip title="Download a JSON backup that can restore your budget. This does not save to your account.">
+                    <Button
+                      variant="text"
+                      startIcon={<FaDownload />}
+                      onClick={handleBackupDownload}
+                    >
+                      Export backup
+                    </Button>
+                  </SidebarTooltip>
+                  <SidebarTooltip title="Export every table as a sheet in an Excel workbook for other tools. Use a JSON backup to restore your budget.">
+                    <Button
+                      variant="text"
+                      startIcon={<FaFileExport />}
+                      onClick={() => void handleSpreadsheetExport()}
+                    >
+                      Export spreadsheet
+                    </Button>
+                  </SidebarTooltip>
+                </>
+              ),
+            },
+          ]}
+        />
+        <div className="app workspace">
+          <PageHeading title="Budgetize" />
+          <header className="topbar">
+            <div className="brand">
+              <span className={`save-status${state.dirty ? " dirty" : ""}`}>
+                {!isAuthenticated
+                  ? "Guest mode — sign in to save"
+                  : state.dirty
+                    ? "● Unsaved changes"
+                    : "✓ All changes saved"}
+              </span>
+            </div>
+            <div className="topbar-actions">
               <button
                 type="button"
                 className="btn"
-                onClick={handleReload}
-                disabled={saving}
+                disabled={state.past.length === 0 && !state.editing}
+                title="Undo last budget edit (Ctrl/Cmd+Z outside a field)"
+                onClick={() => dispatch({ type: "undo" })}
               >
-                Reload
+                Undo
               </button>
-            )}
-            {isAuthenticated ? (
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => void handleSave()}
-                disabled={saving || !state.dirty}
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => setLoginOpen(true)}
-              >
-                Sign in to save
-              </button>
-            )}
-          </div>
-        </header>
-
-        <main>
-          <nav className="view-tabs" aria-label="Budgetize sections">
-            {VIEW_TABS.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                aria-current={tab === entry.id ? "page" : undefined}
-                // The assistant needs a signed-in session to reach the API.
-                disabled={entry.id === "assistant" && !isAuthenticated}
-                title={
-                  entry.id === "assistant" && !isAuthenticated
-                    ? "Sign in to use the assistant"
-                    : undefined
-                }
-                className={`view-tab${tab === entry.id ? " active" : ""}`}
-                onClick={() => setTab(entry.id)}
-              >
-                {entry.label}
-              </button>
-            ))}
-          </nav>
-          <div className="view-bar" role="group" aria-label="Planning settings">
-            <div className="strategy-toggle">
-              <span id="strategy-label">Debt payments</span>
-              <div
-                className="seg"
-                role="group"
-                aria-labelledby="strategy-label"
-              >
-                <button
-                  type="button"
-                  className={strategy === "suggested" ? "active" : ""}
-                  title="Promo payoff amount while a promotion is active, otherwise the minimum"
-                  onClick={() => setStrategy("suggested")}
-                >
-                  Suggested
-                </button>
-                <button
-                  type="button"
-                  className={strategy === "minimum" ? "active" : ""}
-                  title="Always the minimum monthly payment"
-                  onClick={() => setStrategy("minimum")}
-                >
-                  Minimum
-                </button>
-              </div>
-            </div>
-            <div className="strategy-toggle">
-              <label htmlFor="projection-start">Plan from</label>
-              <input
-                id="projection-start"
-                type="date"
-                className="text-input"
-                value={toISODate(start)}
-                title="Starting balances are as of this date; paychecks, bills, and projections run from here"
-                onChange={(e) =>
-                  dispatch({
-                    type: "set-projection-start",
-                    iso: e.target.value || null,
-                  })
-                }
-              />
               <button
                 type="button"
                 className="btn"
-                onClick={() => {
-                  dispatch({ type: "set-projection-start", iso: null });
-                  setMonthRef(currentMonth());
-                }}
+                disabled={state.future.length === 0}
+                title="Redo last undone edit (Ctrl/Cmd+Shift+Z outside a field)"
+                onClick={() => dispatch({ type: "redo" })}
               >
-                From Today
+                Redo
               </button>
-            </div>
-            <div className="strategy-toggle">
-              <label htmlFor="projection-range">Show</label>
-              <select
-                id="projection-range"
-                className="select-input"
-                value={projectionRange}
-                title="How far ahead the projection, warnings, and assistant look"
-                onChange={(e) =>
-                  setProjectionRange(e.target.value as ProjectionRange)
-                }
-              >
-                {PROJECTION_RANGES.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="strategy-toggle">
-              <span id="deposit-mode-label">Deposits</span>
-              <div
-                className="seg"
-                role="group"
-                aria-labelledby="deposit-mode-label"
-              >
-                <button
-                  type="button"
-                  className={depositMode === "minimum" ? "active" : ""}
-                  title="Each month's smallest deposit that keeps auto-pay and essentials from going negative"
-                  onClick={() => setDepositMode("minimum")}
-                >
-                  Monthly minimum
-                </button>
-                <button
-                  type="button"
-                  className={depositMode === "flat" ? "active" : ""}
-                  title="One amount every Wednesday, sized so auto-pay and essentials never go negative"
-                  onClick={() => setDepositMode("flat")}
-                >
-                  Flat weekly
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {isEmpty && (
-            <section className="card hero">
-              <h2>Welcome!</h2>
-              <p>
-                Import your Excel budget workbook to pull in your bills, debt
-                accounts, and paycheck deposits, or restore a backup (.json).{" "}
-                {isAuthenticated
-                  ? "Choose Save to store your budget so you can pick it up on another machine."
-                  : "Sign in to save your budget so you can pick it up on another machine."}
-              </p>
-              <div className="hero-actions">
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => setImportOpen(true)}
-                >
-                  Import workbook or backup
-                </button>
+              {isAuthenticated && (
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => void handleTemplateDownload()}
+                  onClick={handleReload}
+                  disabled={saving}
                 >
-                  Download spreadsheet template
+                  Reload
                 </button>
-              </div>
-            </section>
-          )}
+              )}
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => void handleSave()}
+                  disabled={saving || !state.dirty}
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setLoginOpen(true)}
+                >
+                  Sign in to save
+                </button>
+              )}
+            </div>
+          </header>
 
-          {tab === "month" && (
-            <>
-              <section className="month-row">
-                <div className="month-nav">
+          <main>
+            <div
+              className="view-bar"
+              role="group"
+              aria-label="Planning settings"
+            >
+              <div className="strategy-toggle">
+                <span id="strategy-label">Debt payments</span>
+                <div
+                  className="seg"
+                  role="group"
+                  aria-labelledby="strategy-label"
+                >
                   <button
                     type="button"
-                    className="btn"
-                    onClick={() => setMonthRef(addMonths(monthRef, -1))}
-                    aria-label="Previous month"
+                    className={strategy === "suggested" ? "active" : ""}
+                    title="Promo payoff amount while a promotion is active, otherwise the minimum"
+                    onClick={() => setStrategy("suggested")}
                   >
-                    ‹
+                    Suggested
                   </button>
-                  <h2>{monthLabel(monthRef)}</h2>
                   <button
                     type="button"
-                    className="btn"
-                    onClick={() => setMonthRef(addMonths(monthRef, 1))}
-                    aria-label="Next month"
+                    className={strategy === "minimum" ? "active" : ""}
+                    title="Always the minimum monthly payment"
+                    onClick={() => setStrategy("minimum")}
                   >
-                    ›
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() => setMonthRef(startMonth)}
-                  >
-                    {customStartISO !== null ? "Start" : "Today"}
+                    Minimum
                   </button>
                 </div>
-                <SummaryCards monthRef={monthRef} summary={summary} />
-              </section>
-
-              <div className="columns">
-                <section className="card">
-                  <h3>Calendar</h3>
-                  <CalendarView monthRef={monthRef} summary={summary} />
-                </section>
-                <aside className="side-col">
-                  <section className="card">
-                    <h3>This month</h3>
-                    <UpcomingList
-                      monthRef={monthRef}
-                      summary={summary}
-                      paydayDepositCents={
-                        summary.paydays.length > 0
-                          ? Math.round(
-                              summary.incomeCents / summary.paydays.length,
-                            )
-                          : 0
-                      }
-                    />
-                  </section>
-                  <section className="card">
-                    <h3>By category</h3>
-                    <CategoryBreakdown categories={summary.categories} />
-                  </section>
-                </aside>
               </div>
-            </>
-          )}
-
-          {tab === "projections" && (
-            <>
-              <section className="card">
-                <h3>
-                  {rangeLabel} balance projection
-                  <InfoTip>
-                    Balances at the end of each week; click a week to see each
-                    day. Weeks start on payday Wednesdays, and the first row
-                    covers the start date (today unless “Plan from” is set)
-                    through the day before the next payday. Each paycheck is
-                    carved into auto-pay funding, shared essentials, and a
-                    personal remainder; every bill and debt drafts from the
-                    account it&apos;s flagged “Paid from”. Highlighted rows
-                    include a payday in a month with no pay schedule, so its
-                    deposits are unknown rather than zero. Hover a “Payments
-                    due” cell for the item list.
-                  </InfoTip>
-                </h3>
-                <ProjectionView
-                  data={state.data}
-                  start={start}
-                  weekCount={weekCount}
-                  strategy={strategy}
-                  mode={depositMode}
-                  onSetEssentialsBalance={(cents) =>
-                    dispatch({ type: "set-essentials-balance", cents })
-                  }
-                  onSetAutopayBalance={(cents) =>
-                    dispatch({ type: "set-autopay-balance", cents })
-                  }
-                />
-              </section>
-              <div className="card-row">
-                <section className="card">
-                  <h3>Auto-pay account plan</h3>
-                  <AccountPlanCard
-                    data={state.data}
-                    plan={fundingPlan}
-                    account="autopay"
-                  />
-                </section>
-                <section className="card">
-                  <h3>Essentials account plan</h3>
-                  <AccountPlanCard
-                    data={state.data}
-                    plan={fundingPlan}
-                    account="shared"
-                  />
-                </section>
-              </div>
-              <PersonalSplitCard
-                data={state.data}
-                months={fundingPlan.months}
-                allocationFor={allocationFor}
-                mode={depositMode}
-              />
-            </>
-          )}
-
-          {tab === "personal" && (
-            <>
-              <section className="card">
-                <h3>
-                  Combined spending plan
-                  <InfoTip>
-                    Expenses are split by each person&apos;s monthly paycheck
-                    remainder after auto-pay and essentials. Missing income uses
-                    an equal split marked with *. Negative remainders contribute
-                    no weight; if all remainders are zero or negative, the split
-                    is equal. Recurring expenses recalculate shares for each
-                    charge month.
-                  </InfoTip>
-                </h3>
-                <PersonalExpensesEditor
-                  expenses={state.data.personalExpenses ?? []}
-                  people={state.data.people}
-                  personId={null}
-                  start={start}
-                  allocationFor={allocationFor}
-                  onAdd={(expense) =>
-                    dispatch({ type: "add-personal-expense", expense })
-                  }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-personal-expense", id, patch })
-                  }
-                  onRemove={(id) =>
-                    dispatch({ type: "remove-personal-expense", id })
-                  }
-                />
-              </section>
-              <section className="card">
-                <h3>
-                  {rangeLabel} combined personal projection
-                  <InfoTip>
-                    Personal balances only. In includes paycheck remainders and
-                    personal deposits. Combined plan and own expenses both
-                    reduce the balance. Expand a week for daily balances;
-                    highlighted rows have unknown income or provisional equal
-                    splits.
-                  </InfoTip>
-                </h3>
-                <ProjectionView
-                  data={state.data}
-                  start={start}
-                  weekCount={weekCount}
-                  strategy={strategy}
-                  mode={depositMode}
-                  personalPersonId={null}
-                  onSetPersonalBalance={(id, cents) =>
+              <div className="strategy-toggle">
+                <label htmlFor="projection-start">Plan from</label>
+                <input
+                  id="projection-start"
+                  type="date"
+                  className="text-input"
+                  value={toISODate(start)}
+                  title="Starting balances are as of this date; paychecks, bills, and projections run from here"
+                  onChange={(e) =>
                     dispatch({
-                      type: "update-person",
-                      id,
-                      patch: { personalBalanceCents: cents },
+                      type: "set-projection-start",
+                      iso: e.target.value || null,
                     })
                   }
                 />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    dispatch({ type: "set-projection-start", iso: null });
+                    setMonthRef(currentMonth());
+                  }}
+                >
+                  From Today
+                </button>
+              </div>
+              <div className="strategy-toggle">
+                <label htmlFor="projection-range">Show</label>
+                <select
+                  id="projection-range"
+                  className="select-input"
+                  value={projectionRange}
+                  title="How far ahead the projection, warnings, and assistant look"
+                  onChange={(e) =>
+                    setProjectionRange(e.target.value as ProjectionRange)
+                  }
+                >
+                  {PROJECTION_RANGES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="strategy-toggle">
+                <span id="deposit-mode-label">Deposits</span>
+                <div
+                  className="seg"
+                  role="group"
+                  aria-labelledby="deposit-mode-label"
+                >
+                  <button
+                    type="button"
+                    className={depositMode === "minimum" ? "active" : ""}
+                    title="Each month's smallest deposit that keeps auto-pay and essentials from going negative"
+                    onClick={() => setDepositMode("minimum")}
+                  >
+                    Monthly minimum
+                  </button>
+                  <button
+                    type="button"
+                    className={depositMode === "flat" ? "active" : ""}
+                    title="One amount every Wednesday, sized so auto-pay and essentials never go negative"
+                    onClick={() => setDepositMode("flat")}
+                  >
+                    Flat weekly
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {isEmpty && (
+              <section className="card hero">
+                <h2>Welcome!</h2>
+                <p>
+                  Import your Excel budget workbook to pull in your bills, debt
+                  accounts, and paycheck deposits, or restore a backup (.json).{" "}
+                  {isAuthenticated
+                    ? "Choose Save to store your budget so you can pick it up on another machine."
+                    : "Sign in to save your budget so you can pick it up on another machine."}
+                </p>
               </section>
-              {state.data.people.map((person) => (
-                <section className="card" key={person.id}>
-                  <h3>{person.name} — personal plan</h3>
+            )}
+
+            {tab === "month" && (
+              <>
+                <section className="month-row">
+                  <div className="month-nav">
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setMonthRef(addMonths(monthRef, -1))}
+                      aria-label="Previous month"
+                    >
+                      ‹
+                    </button>
+                    <h2>{monthLabel(monthRef)}</h2>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setMonthRef(addMonths(monthRef, 1))}
+                      aria-label="Next month"
+                    >
+                      ›
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={() => setMonthRef(startMonth)}
+                    >
+                      {customStartISO !== null ? "Start" : "Today"}
+                    </button>
+                  </div>
+                  <SummaryCards monthRef={monthRef} summary={summary} />
+                </section>
+
+                <div className="columns">
+                  <section className="card">
+                    <h3>Calendar</h3>
+                    <CalendarView monthRef={monthRef} summary={summary} />
+                  </section>
+                  <aside className="side-col">
+                    <section className="card">
+                      <h3>This month</h3>
+                      <UpcomingList
+                        monthRef={monthRef}
+                        summary={summary}
+                        paydayDepositCents={
+                          summary.paydays.length > 0
+                            ? Math.round(
+                                summary.incomeCents / summary.paydays.length,
+                              )
+                            : 0
+                        }
+                      />
+                    </section>
+                    <section className="card">
+                      <h3>By category</h3>
+                      <CategoryBreakdown categories={summary.categories} />
+                    </section>
+                  </aside>
+                </div>
+              </>
+            )}
+
+            {tab === "projections" && (
+              <>
+                <section className="card">
+                  <h3>
+                    {rangeLabel} balance projection
+                    <InfoTip>
+                      Balances at the end of each week; click a week to see each
+                      day. Weeks start on payday Wednesdays, and the first row
+                      covers the start date (today unless “Plan from” is set)
+                      through the day before the next payday. Each paycheck is
+                      carved into auto-pay funding, shared essentials, and a
+                      personal remainder; every bill and debt drafts from the
+                      account it&apos;s flagged “Paid from”. Highlighted rows
+                      include a payday in a month with no pay schedule, so its
+                      deposits are unknown rather than zero. Hover a “Payments
+                      due” cell for the item list.
+                    </InfoTip>
+                  </h3>
+                  <ProjectionView
+                    data={state.data}
+                    start={start}
+                    weekCount={weekCount}
+                    strategy={strategy}
+                    mode={depositMode}
+                    onSetEssentialsBalance={(cents) =>
+                      dispatch({ type: "set-essentials-balance", cents })
+                    }
+                    onSetAutopayBalance={(cents) =>
+                      dispatch({ type: "set-autopay-balance", cents })
+                    }
+                  />
+                </section>
+                <div className="card-row">
+                  <section className="card">
+                    <h3>Auto-pay account plan</h3>
+                    <AccountPlanCard
+                      data={state.data}
+                      plan={fundingPlan}
+                      account="autopay"
+                    />
+                  </section>
+                  <section className="card">
+                    <h3>Essentials account plan</h3>
+                    <AccountPlanCard
+                      data={state.data}
+                      plan={fundingPlan}
+                      account="shared"
+                    />
+                  </section>
+                </div>
+                <PersonalSplitCard
+                  data={state.data}
+                  months={fundingPlan.months}
+                  allocationFor={allocationFor}
+                  mode={depositMode}
+                />
+              </>
+            )}
+
+            {tab === "personal" && (
+              <>
+                <section className="card">
+                  <h3>
+                    Combined spending plan
+                    <InfoTip>
+                      Expenses are split by each person&apos;s monthly paycheck
+                      remainder after auto-pay and essentials. Missing income
+                      uses an equal split marked with *. Negative remainders
+                      contribute no weight; if all remainders are zero or
+                      negative, the split is equal. Recurring expenses
+                      recalculate shares for each charge month.
+                    </InfoTip>
+                  </h3>
                   <PersonalExpensesEditor
                     expenses={state.data.personalExpenses ?? []}
                     people={state.data.people}
-                    personId={person.id}
+                    personId={null}
                     start={start}
                     allocationFor={allocationFor}
                     onAdd={(expense) =>
@@ -1010,13 +1069,25 @@ function BudgetWorkspace() {
                       dispatch({ type: "remove-personal-expense", id })
                     }
                   />
+                </section>
+                <section className="card">
+                  <h3>
+                    {rangeLabel} combined personal projection
+                    <InfoTip>
+                      Personal balances only. In includes paycheck remainders
+                      and personal deposits. Combined plan and own expenses both
+                      reduce the balance. Expand a week for daily balances;
+                      highlighted rows have unknown income or provisional equal
+                      splits.
+                    </InfoTip>
+                  </h3>
                   <ProjectionView
                     data={state.data}
                     start={start}
                     weekCount={weekCount}
                     strategy={strategy}
                     mode={depositMode}
-                    personalPersonId={person.id}
+                    personalPersonId={null}
                     onSetPersonalBalance={(id, cents) =>
                       dispatch({
                         type: "update-person",
@@ -1026,246 +1097,293 @@ function BudgetWorkspace() {
                     }
                   />
                 </section>
-              ))}
-            </>
-          )}
+                {state.data.people.map((person) => (
+                  <section className="card" key={person.id}>
+                    <h3>{person.name} — personal plan</h3>
+                    <PersonalExpensesEditor
+                      expenses={state.data.personalExpenses ?? []}
+                      people={state.data.people}
+                      personId={person.id}
+                      start={start}
+                      allocationFor={allocationFor}
+                      onAdd={(expense) =>
+                        dispatch({ type: "add-personal-expense", expense })
+                      }
+                      onUpdate={(id, patch) =>
+                        dispatch({ type: "update-personal-expense", id, patch })
+                      }
+                      onRemove={(id) =>
+                        dispatch({ type: "remove-personal-expense", id })
+                      }
+                    />
+                    <ProjectionView
+                      data={state.data}
+                      start={start}
+                      weekCount={weekCount}
+                      strategy={strategy}
+                      mode={depositMode}
+                      personalPersonId={person.id}
+                      onSetPersonalBalance={(id, cents) =>
+                        dispatch({
+                          type: "update-person",
+                          id,
+                          patch: { personalBalanceCents: cents },
+                        })
+                      }
+                    />
+                  </section>
+                ))}
+              </>
+            )}
 
-          {tab === "assistant" && (
-            <section className="card">
-              <h3>Budget assistant</h3>
-              <BudgetAssistant
-                data={state.data}
-                start={start}
-                weekCount={weekCount}
-                strategy={strategy}
-                mode={depositMode}
-                onApplyProposal={(ops) =>
-                  dispatch({ type: "apply-proposal", ops })
-                }
-              />
-            </section>
-          )}
-
-          {tab === "data" && (
-            <>
+            {tab === "assistant" && (
               <section className="card">
-                <h3>
-                  Income &amp; people
-                  <InfoTip>
-                    Paychecks land every Wednesday, and the count comes from the
-                    calendar. Each paycheck is carved into auto-pay funding,
-                    shared essentials, and whatever is left as personal
-                    spending. Months with no row stay blank in the projection.
-                  </InfoTip>
-                </h3>
-                <PeopleEditor
+                <h3>Budget assistant</h3>
+                <BudgetAssistant
                   data={state.data}
-                  allocationFor={allocationFor}
-                  onAdd={() =>
-                    dispatch({
-                      type: "add-person",
-                      person: {
-                        id: crypto.randomUUID(),
-                        name: "New person",
-                        schedule: [],
-                        personalBalanceCents: 0,
-                      },
-                    })
-                  }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-person", id, patch })
-                  }
-                  onUpdateMany={(updates) =>
-                    dispatch({ type: "update-people", updates })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-person", id })}
-                />
-              </section>
-
-              <section className="card">
-                <h3>Monthly bills</h3>
-                <BillsEditor
-                  bills={state.data.bills.filter(
-                    (bill) => !bill.isSubscription,
-                  )}
-                  onAdd={() =>
-                    dispatch({
-                      type: "add-bill",
-                      bill: {
-                        id: crypto.randomUUID(),
-                        name: "New bill",
-                        amountCents: 0,
-                        dueDay: 1,
-                        paidFrom: "shared",
-                        ...monthlyRecurrence(),
-                      },
-                    })
-                  }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-bill", id, patch })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-bill", id })}
-                />
-              </section>
-
-              <section className="card">
-                <h3>
-                  Subscriptions
-                  <InfoTip>
-                    Subscriptions use the same schedules, funding, and
-                    calculations as monthly bills.
-                  </InfoTip>
-                </h3>
-                <BillsEditor
-                  section="subscriptions"
-                  bills={state.data.bills.filter((bill) => bill.isSubscription)}
-                  onAdd={() =>
-                    dispatch({
-                      type: "add-bill",
-                      bill: {
-                        id: crypto.randomUUID(),
-                        name: "New subscription",
-                        isSubscription: true,
-                        amountCents: 0,
-                        dueDay: 1,
-                        paidFrom: "shared",
-                        ...monthlyRecurrence(),
-                      },
-                    })
-                  }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-bill", id, patch })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-bill", id })}
-                />
-              </section>
-
-              <section className="card">
-                <h3>Debt accounts</h3>
-                <DebtsEditor
-                  debts={state.data.debts}
+                  start={start}
+                  weekCount={weekCount}
                   strategy={strategy}
-                  asOf={start}
-                  onAdd={() =>
-                    dispatch({
-                      type: "add-debt",
-                      debt: {
-                        id: crypto.randomUUID(),
-                        name: "New debt",
-                        balanceCents: 0,
-                        minPaymentCents: 0,
-                        suggestedPaymentCents: null,
-                        hasPromotion: false,
-                        interestRateBps: null,
-                        promoEndISO: null,
-                        postPromoRateBps: null,
-                        dueDay: 1,
-                        paidFrom: "autopay",
-                        ...monthlyRecurrence(),
-                      },
-                    })
+                  mode={depositMode}
+                  onApplyProposal={(ops) =>
+                    dispatch({ type: "apply-proposal", ops })
                   }
-                  onUpdate={(id, patch) =>
-                    dispatch({ type: "update-debt", id, patch })
-                  }
-                  onRemove={(id) => dispatch({ type: "remove-debt", id })}
                 />
               </section>
+            )}
 
-              <div className="card-row">
+            {tab === "data" && (
+              <>
                 <section className="card">
                   <h3>
-                    Temporary changes
+                    Income &amp; people
                     <InfoTip>
-                      Pause or re-price a bill or debt for a stretch of time.
-                      The item itself stays as it is and resumes on its own once
-                      the range ends.
+                      Paychecks land every Wednesday, and the count comes from
+                      the calendar. Each paycheck is carved into auto-pay
+                      funding, shared essentials, and whatever is left as
+                      personal spending. Months with no row stay blank in the
+                      projection.
                     </InfoTip>
                   </h3>
-                  <OverridesEditor
-                    overrides={state.data.overrides}
-                    bills={state.data.bills}
-                    debts={state.data.debts}
-                    onAdd={(override) =>
-                      dispatch({ type: "add-override", override })
+                  <PeopleEditor
+                    data={state.data}
+                    allocationFor={allocationFor}
+                    onAdd={() =>
+                      dispatch({
+                        type: "add-person",
+                        person: {
+                          id: crypto.randomUUID(),
+                          name: "New person",
+                          schedule: [],
+                          personalBalanceCents: 0,
+                        },
+                      })
                     }
                     onUpdate={(id, patch) =>
-                      dispatch({ type: "update-override", id, patch })
+                      dispatch({ type: "update-person", id, patch })
                     }
-                    onRemove={(id) => dispatch({ type: "remove-override", id })}
+                    onUpdateMany={(updates) =>
+                      dispatch({ type: "update-people", updates })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-person", id })}
                   />
                 </section>
 
                 <section className="card">
-                  <h3>One-time entries</h3>
-                  <OneOffsEditor
-                    oneOffs={state.data.oneOffs}
-                    people={state.data.people}
-                    onAdd={(event) => dispatch({ type: "add-one-off", event })}
-                    onUpdate={(id, patch) =>
-                      dispatch({ type: "update-one-off", id, patch })
+                  <h3>Monthly bills</h3>
+                  <BillsEditor
+                    bills={state.data.bills.filter(
+                      (bill) => !bill.isSubscription,
+                    )}
+                    onAdd={() =>
+                      dispatch({
+                        type: "add-bill",
+                        bill: {
+                          id: crypto.randomUUID(),
+                          name: "New bill",
+                          amountCents: 0,
+                          dueDay: 1,
+                          paidFrom: "shared",
+                          ...monthlyRecurrence(),
+                        },
+                      })
                     }
-                    onRemove={(id) => dispatch({ type: "remove-one-off", id })}
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-bill", id, patch })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-bill", id })}
                   />
                 </section>
-              </div>
-            </>
-          )}
-        </main>
 
-        {createPortal(
-          <div className="budgetize budgetize-portal">
-            <BudgetNotifications messages={notifications} />
-          </div>,
-          document.body,
-        )}
+                <section className="card">
+                  <h3>
+                    Subscriptions
+                    <InfoTip>
+                      Subscriptions use the same schedules, funding, and
+                      calculations as monthly bills.
+                    </InfoTip>
+                  </h3>
+                  <BillsEditor
+                    section="subscriptions"
+                    bills={state.data.bills.filter(
+                      (bill) => bill.isSubscription,
+                    )}
+                    onAdd={() =>
+                      dispatch({
+                        type: "add-bill",
+                        bill: {
+                          id: crypto.randomUUID(),
+                          name: "New subscription",
+                          isSubscription: true,
+                          amountCents: 0,
+                          dueDay: 1,
+                          paidFrom: "shared",
+                          ...monthlyRecurrence(),
+                        },
+                      })
+                    }
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-bill", id, patch })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-bill", id })}
+                  />
+                </section>
 
-        {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
-        {importOpen &&
-          createPortal(
+                <section className="card">
+                  <h3>Debt accounts</h3>
+                  <DebtsEditor
+                    debts={state.data.debts}
+                    strategy={strategy}
+                    asOf={start}
+                    onAdd={() =>
+                      dispatch({
+                        type: "add-debt",
+                        debt: {
+                          id: crypto.randomUUID(),
+                          name: "New debt",
+                          balanceCents: 0,
+                          minPaymentCents: 0,
+                          suggestedPaymentCents: null,
+                          hasPromotion: false,
+                          interestRateBps: null,
+                          promoEndISO: null,
+                          postPromoRateBps: null,
+                          dueDay: 1,
+                          paidFrom: "autopay",
+                          ...monthlyRecurrence(),
+                        },
+                      })
+                    }
+                    onUpdate={(id, patch) =>
+                      dispatch({ type: "update-debt", id, patch })
+                    }
+                    onRemove={(id) => dispatch({ type: "remove-debt", id })}
+                  />
+                </section>
+
+                <div className="card-row">
+                  <section className="card">
+                    <h3>
+                      Temporary changes
+                      <InfoTip>
+                        Pause or re-price a bill or debt for a stretch of time.
+                        The item itself stays as it is and resumes on its own
+                        once the range ends.
+                      </InfoTip>
+                    </h3>
+                    <OverridesEditor
+                      overrides={state.data.overrides}
+                      bills={state.data.bills}
+                      debts={state.data.debts}
+                      onAdd={(override) =>
+                        dispatch({ type: "add-override", override })
+                      }
+                      onUpdate={(id, patch) =>
+                        dispatch({ type: "update-override", id, patch })
+                      }
+                      onRemove={(id) =>
+                        dispatch({ type: "remove-override", id })
+                      }
+                    />
+                  </section>
+
+                  <section className="card">
+                    <h3>One-time entries</h3>
+                    <OneOffsEditor
+                      oneOffs={state.data.oneOffs}
+                      people={state.data.people}
+                      onAdd={(event) =>
+                        dispatch({ type: "add-one-off", event })
+                      }
+                      onUpdate={(id, patch) =>
+                        dispatch({ type: "update-one-off", id, patch })
+                      }
+                      onRemove={(id) =>
+                        dispatch({ type: "remove-one-off", id })
+                      }
+                    />
+                  </section>
+                </div>
+              </>
+            )}
+          </main>
+
+          {createPortal(
             <div className="budgetize budgetize-portal">
-              <Suspense
-                fallback={
-                  <div className="overlay">
-                    <div className="modal modal-loading">Loading importer…</div>
-                  </div>
-                }
-              >
-                <ImportWizard
-                  dirty={state.dirty}
-                  hasData={!isEmpty}
-                  onImport={(payload) => {
-                    dispatch({ type: "import-data", payload });
-                    const parts = [
-                      payload.bills && `${payload.bills.length} bills`,
-                      payload.debts && `${payload.debts.length} debts`,
-                      payload.people && `${payload.people.length} people`,
-                    ].filter(Boolean);
-                    setNotice({
-                      kind: "info",
-                      text: `Imported ${parts.join(", ")} from spreadsheet. Choose Save to store it.`,
-                    });
-                  }}
-                  onRestore={(data) => {
-                    dispatch({ type: "restore", data });
-                    setNotice({
-                      kind: "info",
-                      text: `Backup loaded: ${data.bills.length} bills, ${data.debts.length} debts, ${data.people.length} people. Choose Save to store it.`,
-                    });
-                  }}
-                  onClose={() => setImportOpen(false)}
-                />
-              </Suspense>
+              <BudgetNotifications messages={notifications} />
             </div>,
             document.body,
           )}
 
-        <UserAuthModal
-          open={loginOpen}
-          onClose={() => setLoginOpen(false)}
-          defaultTab="login"
-        />
-      </div>
+          {/* Portaled out of the app's zIndex:1 content box so it can sit above the sticky nav. */}
+          {importOpen &&
+            createPortal(
+              <div className="budgetize budgetize-portal">
+                <Suspense
+                  fallback={
+                    <div className="overlay">
+                      <div className="modal modal-loading">
+                        Loading importer…
+                      </div>
+                    </div>
+                  }
+                >
+                  <ImportWizard
+                    dirty={state.dirty}
+                    hasData={!isEmpty}
+                    onImport={(payload) => {
+                      dispatch({ type: "import-data", payload });
+                      const parts = [
+                        payload.bills && `${payload.bills.length} bills`,
+                        payload.debts && `${payload.debts.length} debts`,
+                        payload.people && `${payload.people.length} people`,
+                      ].filter(Boolean);
+                      setNotice({
+                        kind: "info",
+                        text: `Imported ${parts.join(", ")} from spreadsheet. Choose Save to store it.`,
+                      });
+                    }}
+                    onRestore={(data) => {
+                      dispatch({ type: "restore", data });
+                      setNotice({
+                        kind: "info",
+                        text: `Backup loaded: ${data.bills.length} bills, ${data.debts.length} debts, ${data.people.length} people. Choose Save to store it.`,
+                      });
+                    }}
+                    onClose={() => setImportOpen(false)}
+                  />
+                </Suspense>
+              </div>,
+              document.body,
+            )}
+
+          <UserAuthModal
+            open={loginOpen}
+            onClose={() => setLoginOpen(false)}
+            defaultTab="login"
+          />
+        </div>
+      </Stack>
     </div>
   );
 }

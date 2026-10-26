@@ -16,7 +16,9 @@ import {
 import {
   FaArrowUpRightFromSquare,
   FaDownload,
+  FaFileLines,
   FaFilePdf,
+  FaScrewdriverWrench,
   FaUpload,
 } from "react-icons/fa6";
 import PageHeading from "../../components/shared/PageHeading";
@@ -26,13 +28,13 @@ import {
   goldButtonSx,
   headingSx,
   outlineButtonSx,
-  panelSx,
 } from "../../lib/medievalStyles";
 import { downloadBlob } from "../budgetize/lib/download";
 import { createTemplate } from "./archive";
 import { LIMITS, parseDocument } from "./document";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
+import ActionSidebar from "../../components/shared/ActionSidebar";
 import GddAccountLibrary from "./GddAccountLibrary";
 import GddExampleDialog from "./GddExampleDialog";
 import DevSetupDialog from "./DevSetupDialog";
@@ -355,243 +357,262 @@ export default function GddGeneratorPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-      <PageHeading title="GDD Generator" />
-      <Stack spacing={3}>
-        <Stack
-          direction="row"
-          spacing={2}
-          useFlexGap
-          flexWrap="wrap"
-          justifyContent="center"
-        >
-          <Button
-            sx={outlineButtonSx}
-            variant="outlined"
-            disabled={busy !== null || accountBusy}
-            onClick={() => setExampleOpen(true)}
-          >
-            View Example GDD
-          </Button>
-          <Button
-            sx={outlineButtonSx}
-            variant="outlined"
-            onClick={() => setDevSetupOpen(true)}
-          >
-            Dev Setup Prompt
-          </Button>
-        </Stack>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-            gap: 3,
-          }}
-        >
-          <Box
-            sx={{
-              ...panelSx,
-              p: { xs: 2, sm: 3 },
-              minWidth: 0,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "repeat(2, minmax(0, 1fr))",
-                },
-                gap: 1.5,
-                width: "100%",
-                "& .MuiButton-root": { minHeight: 44, height: "100%" },
-              }}
-            >
-              <Tooltip title="Empty sections and subsections are omitted from the PDF.">
-                <Box component="span" sx={{ gridColumn: "1 / -1" }}>
-                  <Button
-                    fullWidth
-                    startIcon={<FaFilePdf />}
-                    sx={goldButtonSx}
-                    variant="contained"
-                    disabled={busy !== null || accountBusy}
-                    onClick={() => void generate()}
-                  >
-                    Generate PDF
-                  </Button>
-                </Box>
-              </Tooltip>
-              <Tooltip title={!pdfBlob ? "Generate a PDF first." : ""}>
-                <span>
-                  <Button
-                    fullWidth
-                    startIcon={<FaDownload />}
-                    sx={outlineButtonSx}
-                    variant="outlined"
-                    disabled={!pdfBlob}
-                    onClick={() => {
-                      if (pdfBlob)
-                        downloadBlob(
-                          `${filename(project.draft.title)} - Game Design Document.pdf`,
-                          pdfBlob,
-                        );
-                    }}
-                  >
-                    Download PDF
-                  </Button>
-                </span>
-              </Tooltip>
-              <Tooltip title={!pdfUrl ? "Generate a PDF first." : ""}>
-                <span>
-                  <Button
-                    fullWidth
-                    startIcon={<FaArrowUpRightFromSquare />}
-                    component="a"
-                    href={pdfUrl ?? undefined}
-                    disabled={!pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={outlineButtonSx}
-                    variant="outlined"
-                  >
-                    Open PDF
-                  </Button>
-                </span>
-              </Tooltip>
-            </Box>
-          </Box>
-          <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 }, minWidth: 0 }}>
-            <Stack spacing={2}>
-              <Typography variant="h5" sx={headingSx}>
-                Local editing
-              </Typography>
-              <Typography sx={{ ...bodySx, textAlign: "left" }}>
-                Import a document or completed template, edit locally, or use
-                the form below.
-              </Typography>
-              <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap">
-                <Button
-                  startIcon={<FaDownload />}
-                  sx={outlineButtonSx}
-                  variant="outlined"
-                  disabled={busy !== null || accountBusy}
-                  onClick={() => void downloadTemplate()}
-                >
-                  Download template
-                </Button>
-                <Button
-                  startIcon={<FaUpload />}
-                  sx={outlineButtonSx}
-                  variant="outlined"
-                  disabled={busy !== null || accountBusy}
-                  onClick={() => setImportOpen(true)}
-                >
-                  Import GDD
-                </Button>
-                <Tooltip title="Download gdd.md and images/ for local editing or GDD import.">
+    <Container maxWidth={false} disableGutters>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
+        <ActionSidebar
+          title="GDD tools"
+          sections={[
+            {
+              id: "example",
+              label: "Example GDD",
+              icon: <FaFileLines />,
+              content: (
+                <Tooltip title="Preview the Dino Rush example GDD, load it into the editor, or download its source ZIP.">
                   <span>
                     <Button
-                      startIcon={<FaDownload />}
-                      sx={outlineButtonSx}
-                      variant="outlined"
+                      variant="text"
                       disabled={busy !== null || accountBusy}
-                      onClick={downloadSource}
+                      onClick={() => setExampleOpen(true)}
                     >
-                      Download source ZIP
+                      View Example GDD
                     </Button>
                   </span>
                 </Tooltip>
-              </Stack>
-            </Stack>
-            <input
-              ref={input}
-              type="file"
-              accept={DOCUMENT_ACCEPT}
-              aria-label="Import GDD document or ZIP"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (!file) return;
-                setImportOpen(false);
-                if (dirty) setPendingImport(file);
-                else void importFile(file);
-              }}
-            />
-          </Box>
-        </Box>
-        <Box ref={status}>
-          {error && (
-            <Alert severity="error" onClose={() => setError("")}>
-              {error}
-            </Alert>
-          )}
-          {notice && (
-            <Alert severity="success" onClose={() => setNotice("")}>
-              {notice}
-            </Alert>
-          )}
-          {importWarnings.length > 0 && (
-            <Alert severity="warning" onClose={() => setImportWarnings([])}>
-              <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                {importWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </Box>
-            </Alert>
-          )}
-          {busy && (
-            <Stack
-              direction="row"
-              spacing={2}
-              alignItems="center"
-              role="status"
-              aria-live="polite"
-            >
-              <CircularProgress size={22} />
-              <Typography sx={bodySx}>
-                {busy === "import"
-                  ? "Reading draft..."
-                  : busy === "images"
-                    ? "Reading images..."
-                    : "Formatting PDF..."}
-              </Typography>
-            </Stack>
-          )}
-        </Box>
-        <GddAccountLibrary
-          project={project}
-          pdf={pdfBlob}
-          dirty={dirty}
-          disabled={busy !== null}
-          resetVersion={accountResetVersion}
-          onBusyChange={setAccountBusy}
-          onSavedChange={(saved) => setDirty(!saved)}
-          onLoad={(loaded, prepared, pdf) => {
-            setProject(loaded);
-            setImages(prepared);
-            setEditorVersion((version) => version + 1);
-            setDirty(false);
-            setError("");
-            setNotice("");
-            setImportWarnings([]);
-            setPdfBlob(pdf);
-            setPdfUrl(URL.createObjectURL(pdf));
+              ),
+            },
+            {
+              id: "setup",
+              label: "Setup prompt",
+              icon: <FaScrewdriverWrench />,
+              content: (
+                <Tooltip title="Create a personalized Windows setup prompt for Unity, Blender, Audacity, and MCP tools.">
+                  <Button
+                    variant="text"
+                    onClick={() => setDevSetupOpen(true)}
+                  >
+                    Dev Setup Prompt
+                  </Button>
+                </Tooltip>
+              ),
+            },
+            {
+              id: "pdf",
+              label: "PDF actions",
+              icon: <FaFilePdf />,
+              content: (
+                <>
+                  <Tooltip title="Empty sections and subsections are omitted from the PDF.">
+                    <Box component="span">
+                      <Button
+                        fullWidth
+                        startIcon={<FaFilePdf />}
+                        variant="text"
+                        disabled={busy !== null || accountBusy}
+                        onClick={() => void generate()}
+                      >
+                        Generate PDF
+                      </Button>
+                    </Box>
+                  </Tooltip>
+                  <Tooltip
+                    title={
+                      !pdfBlob
+                        ? "Generate a PDF first."
+                        : "Download the current GDD as a PDF file."
+                    }
+                  >
+                    <span>
+                      <Button
+                        fullWidth
+                        startIcon={<FaDownload />}
+                        variant="text"
+                        disabled={!pdfBlob}
+                        onClick={() => {
+                          if (pdfBlob)
+                            downloadBlob(
+                              `${filename(project.draft.title)} - Game Design Document.pdf`,
+                              pdfBlob,
+                            );
+                        }}
+                      >
+                        Download PDF
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip
+                    title={
+                      !pdfUrl
+                        ? "Generate a PDF first."
+                        : "Open the current GDD PDF in a new browser tab."
+                    }
+                  >
+                    <span>
+                      <Button
+                        fullWidth
+                        startIcon={<FaArrowUpRightFromSquare />}
+                        component="a"
+                        href={pdfUrl ?? undefined}
+                        disabled={!pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="text"
+                      >
+                        Open PDF
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </>
+              ),
+            },
+            {
+              id: "local",
+              label: "Local editing",
+              icon: <FaUpload />,
+              content: (
+                <>
+                  <Tooltip title="Download a blank GDD template ZIP for local editing and later import.">
+                    <span>
+                      <Button
+                        startIcon={<FaDownload />}
+                        variant="text"
+                        disabled={busy !== null || accountBusy}
+                        onClick={() => void downloadTemplate()}
+                      >
+                        Download template
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Load a GDD from ZIP, PDF, DOCX, Markdown, text, or HTML into the editor.">
+                    <span>
+                      <Button
+                        startIcon={<FaUpload />}
+                        variant="text"
+                        disabled={busy !== null || accountBusy}
+                        onClick={() => setImportOpen(true)}
+                      >
+                        Import GDD
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Download gdd.md and images/ for local editing or GDD import.">
+                    <span>
+                      <Button
+                        startIcon={<FaDownload />}
+                        variant="text"
+                        disabled={busy !== null || accountBusy}
+                        onClick={downloadSource}
+                      >
+                        Download source ZIP
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </>
+              ),
+            },
+          ]}
+        />
+        <Stack
+          spacing={3}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            px: { xs: 2, sm: 3, md: 0 },
+            pr: { md: 3 },
+            py: { xs: 4, md: 6 },
           }}
-        />
-        <GddEditorForm
-          key={editorVersion}
-          draft={project.draft}
-          images={images}
-          disabled={busy !== null || accountBusy}
-          onChange={changeDraft}
-          onUpload={(sectionId, groupId, files) =>
-            void uploadImages(sectionId, groupId, files)
-          }
-        />
+        >
+          <Box>
+            <PageHeading title="GDD Generator" />
+          </Box>
+          <Box
+            ref={status}
+            hidden={!error && !notice && !importWarnings.length && !busy}
+          >
+            {error && (
+              <Alert severity="error" onClose={() => setError("")}>
+                {error}
+              </Alert>
+            )}
+            {notice && (
+              <Alert severity="success" onClose={() => setNotice("")}>
+                {notice}
+              </Alert>
+            )}
+            {importWarnings.length > 0 && (
+              <Alert severity="warning" onClose={() => setImportWarnings([])}>
+                <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                  {importWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </Box>
+              </Alert>
+            )}
+            {busy && (
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                role="status"
+                aria-live="polite"
+              >
+                <CircularProgress size={22} />
+                <Typography sx={bodySx}>
+                  {busy === "import"
+                    ? "Reading draft..."
+                    : busy === "images"
+                      ? "Reading images..."
+                      : "Formatting PDF..."}
+                </Typography>
+              </Stack>
+            )}
+          </Box>
+          <GddAccountLibrary
+            project={project}
+            pdf={pdfBlob}
+            dirty={dirty}
+            disabled={busy !== null}
+            resetVersion={accountResetVersion}
+            onBusyChange={setAccountBusy}
+            onSavedChange={(saved) => setDirty(!saved)}
+            onLoad={(loaded, prepared, pdf) => {
+              setProject(loaded);
+              setImages(prepared);
+              setEditorVersion((version) => version + 1);
+              setDirty(false);
+              setError("");
+              setNotice("");
+              setImportWarnings([]);
+              setPdfBlob(pdf);
+              setPdfUrl(URL.createObjectURL(pdf));
+            }}
+          />
+          <GddEditorForm
+            key={editorVersion}
+            draft={project.draft}
+            images={images}
+            disabled={busy !== null || accountBusy}
+            onChange={changeDraft}
+            onUpload={(sectionId, groupId, files) =>
+              void uploadImages(sectionId, groupId, files)
+            }
+          />
+        </Stack>
       </Stack>
+      <input
+        ref={input}
+        type="file"
+        accept={DOCUMENT_ACCEPT}
+        aria-label="Import GDD document or ZIP"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (!file) return;
+          setImportOpen(false);
+          if (dirty) setPendingImport(file);
+          else void importFile(file);
+        }}
+      />
       <DevSetupDialog
         open={devSetupOpen}
         onClose={() => setDevSetupOpen(false)}

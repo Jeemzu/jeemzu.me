@@ -6,6 +6,7 @@ import {
   IconButton,
   Fade,
   Stack,
+  Portal,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -45,7 +46,7 @@ const AuthPromptToast = () => {
   const visible = !isAuthenticated && !dismissed;
 
   return (
-    <>
+    <Portal>
       <Fade in={visible} timeout={600}>
         <Box
           sx={{
@@ -141,7 +142,7 @@ const AuthPromptToast = () => {
         onClose={() => setAuthModalOpen(false)}
         defaultTab={authTab}
       />
-    </>
+    </Portal>
   );
 };
 

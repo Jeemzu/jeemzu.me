@@ -65,9 +65,47 @@ button:hover {
   border-color: #646cff;
 }
 
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+:is(button, [role="button"], .MuiButtonBase-root) {
+  position: relative;
+}
+
+:is(button, [role="button"], .MuiButtonBase-root):focus {
+  outline: none;
+}
+
+/* An inset overlay keeps keyboard focus visible even inside clipped panels. */
+:is(button, [role="button"], .MuiButtonBase-root):focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    110deg,
+    rgba(200, 162, 74, 0.08) 0%,
+    rgba(232, 207, 143, 0.2) 26%,
+    rgba(248, 236, 196, 0.32) 46%,
+    rgba(111, 159, 212, 0.2) 66%,
+    rgba(200, 162, 74, 0.08) 100%
+  );
+  background-size: 260% 100%;
+  background-position: -70% 0;
+  box-shadow:
+    inset 0 0 0 2px rgba(232, 207, 143, 0.8),
+    inset 0 0 14px rgba(111, 159, 212, 0.3),
+    0 0 12px rgba(232, 207, 143, 0.25);
+  animation: jz-gleam 7s ease-in-out infinite;
+}
+
+@media (forced-colors: active) {
+  :is(button, [role="button"], .MuiButtonBase-root):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  :is(button, [role="button"], .MuiButtonBase-root):focus-visible::after {
+    content: none;
+  }
 }
 
 /* Prevent horizontal overflow */

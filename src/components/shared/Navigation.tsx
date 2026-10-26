@@ -58,39 +58,40 @@ const Navigation = () => {
       location === path || (path !== "/" && location.startsWith(`${path}/`));
 
     return (
-      <Link href={path}>
-        <Button
-          sx={{
-            color: isActive
-              ? theme.palette.medievalGold.light
-              : theme.palette.parchment.dark,
-            fontFamily: FONTS.MEDIEVAL_DISPLAY,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            fontSize: mobile ? "1.5rem" : "1rem",
-            px: 2,
-            borderBottom: isActive
-              ? `2px solid ${theme.palette.medievalGold.main}`
-              : "2px solid transparent",
-            borderRadius: 0,
-            textShadow: isActive ? MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW : "none",
-            transition: MEDIEVAL_EFFECTS.TRANSITION,
-            "&:hover": {
-              color: theme.palette.medievalGold.light,
-              backgroundColor: "rgba(200, 162, 74, 0.10)",
-              borderBottomColor: "rgba(200, 162, 74, 0.45)",
-            },
-            ...(mobile && {
-              width: "100%",
-              justifyContent: "flex-start",
-              py: 2,
-            }),
-          }}
-          onClick={() => mobile && setDrawerOpen(false)}
-        >
-          {label}
-        </Button>
-      </Link>
+      <Button
+        component={Link}
+        href={path}
+        aria-current={isActive ? "page" : undefined}
+        sx={{
+          color: isActive
+            ? theme.palette.medievalGold.light
+            : theme.palette.parchment.dark,
+          fontFamily: FONTS.MEDIEVAL_DISPLAY,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          fontSize: mobile ? "1.5rem" : "1rem",
+          px: 2,
+          borderBottom: isActive
+            ? `2px solid ${theme.palette.medievalGold.main}`
+            : "2px solid transparent",
+          borderRadius: 0,
+          textShadow: isActive ? MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW : "none",
+          transition: MEDIEVAL_EFFECTS.TRANSITION,
+          "&:hover": {
+            color: theme.palette.medievalGold.light,
+            backgroundColor: "rgba(200, 162, 74, 0.10)",
+            borderBottomColor: "rgba(200, 162, 74, 0.45)",
+          },
+          ...(mobile && {
+            width: "100%",
+            justifyContent: "flex-start",
+            py: 2,
+          }),
+        }}
+        onClick={() => mobile && setDrawerOpen(false)}
+      >
+        {label}
+      </Button>
     );
   };
 
@@ -176,25 +177,25 @@ const Navigation = () => {
       >
         <Toolbar sx={{ justifyContent: "space-between" }}>
           {/* Logo/Name */}
-          <Link href="/">
-            <Button
-              sx={{
-                color: theme.palette.medievalGold.main,
-                fontFamily: FONTS.MEDIEVAL_DISPLAY,
-                fontSize: "1.6rem",
-                fontWeight: 700,
-                letterSpacing: "0.16em",
-                textShadow: MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW,
-                transition: MEDIEVAL_EFFECTS.TRANSITION,
-                "&:hover": {
-                  color: theme.palette.medievalGold.light,
-                  backgroundColor: "transparent",
-                },
-              }}
-            >
-              JF
-            </Button>
-          </Link>
+          <Button
+            component={Link}
+            href="/"
+            sx={{
+              color: theme.palette.medievalGold.main,
+              fontFamily: FONTS.MEDIEVAL_DISPLAY,
+              fontSize: "1.6rem",
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+              textShadow: MEDIEVAL_EFFECTS.GOLD_TEXT_SHADOW,
+              transition: MEDIEVAL_EFFECTS.TRANSITION,
+              "&:hover": {
+                color: theme.palette.medievalGold.light,
+                backgroundColor: "transparent",
+              },
+            }}
+          >
+            JF
+          </Button>
 
           {/* Desktop Navigation */}
           {!isMobile ? (

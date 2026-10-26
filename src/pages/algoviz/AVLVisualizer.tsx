@@ -10,19 +10,20 @@ import PauseIcon from '@mui/icons-material/Pause';
 import ReplayIcon from '@mui/icons-material/Replay';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { FONTS } from '../../lib/globals';
+import { VIZ_COLORS, panelSx, ctrlBtn } from './visualStyles';
 
 // ─── Colours (match site palette) ────────────────────────────────────────────
 
-const GOLD = '#ffd740';
-const GREEN = '#a8d67e';
-const SOFT_GREEN = '#c5e8a4';
-const RED = '#d73737';
-const VIOLET = '#be50dc';
-const BLUE = '#3a6ea0';
-const BG = '#0a0a19';
-const NODE_BG = '#161628';
-const NODE_BORDER = '#3a3a5a';
-const EDGE_COL = '#2a2a4a';
+const GOLD = VIZ_COLORS.gold;
+const GREEN = VIZ_COLORS.green;
+const SOFT_GREEN = VIZ_COLORS.softGreen;
+const RED = VIZ_COLORS.red;
+const VIOLET = VIZ_COLORS.violet;
+const BLUE = VIZ_COLORS.blue;
+const BG = VIZ_COLORS.background;
+const NODE_BG = VIZ_COLORS.surface;
+const NODE_BORDER = BLUE;
+const EDGE_COL = '#3f6fa8';
 
 // ─── AVL tree types ───────────────────────────────────────────────────────────
 
@@ -227,6 +228,18 @@ function renderTree(
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, cw, ch);
 
+    const light = ctx.createRadialGradient(cw / 2, 0, 0, cw / 2, 0, cw);
+    light.addColorStop(0, `${BLUE}18`);
+    light.addColorStop(1, `${BLUE}00`);
+    ctx.fillStyle = light;
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.strokeStyle = `${BLUE}10`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x < cw; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
+    for (let y = 0; y < ch; y += 40) { ctx.moveTo(0, y); ctx.lineTo(cw, y); }
+    ctx.stroke();
+
     if (!root) return;
 
     const layout = computeLayout(root, cw, ch);
@@ -259,9 +272,9 @@ function renderTree(
         if (!pos) return;
 
         // Determine highlight
-        let fillCol = NODE_BG;
-        let strokeCol = NODE_BORDER;
-        let textCol = '#cccccc';
+        let fillCol: string = NODE_BG;
+        let strokeCol: string = NODE_BORDER;
+        let textCol: string = VIZ_COLORS.text;
 
         if (step) {
             if (step.kind === 'INSERT_NODE' && step.nodeId === n.id) {
@@ -273,7 +286,7 @@ function renderTree(
             } else if (step.kind === 'BALANCE_CHECK' && step.nodeId === n.id) {
                 fillCol = '#1e1a00'; strokeCol = GOLD; textCol = GOLD;
             } else if (step.kind === 'TRAVERSE' && step.nodeId === n.id) {
-                fillCol = '#0e1630'; strokeCol = BLUE; textCol = '#8ab4e8';
+                fillCol = '#0e1630'; strokeCol = BLUE; textCol = BLUE;
             } else if (step.kind === 'DONE') {
                 fillCol = '#0e1e0a'; strokeCol = SOFT_GREEN; textCol = SOFT_GREEN;
             }
@@ -296,7 +309,7 @@ function renderTree(
         // Balance factor tag
         const balance = bf(n);
         const bfStr = balance > 0 ? `+${balance}` : String(balance);
-        ctx.fillStyle = Math.abs(balance) > 1 ? RED : '#555';
+        ctx.fillStyle = Math.abs(balance) > 1 ? RED : VIZ_COLORS.muted;
         ctx.font = `10px monospace`;
         ctx.textAlign = 'center';
         ctx.fillText(bfStr, pos.x + NODE_R - 4, pos.y - NODE_R + 2);
@@ -505,7 +518,7 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
         ROTATE_RIGHT: VIOLET,
         DONE: SOFT_GREEN,
     };
-    const labelColor = currentKind ? (kindColors[currentKind] ?? '#aaa') : '#aaa';
+    const labelColor = currentKind ? (kindColors[currentKind] ?? VIZ_COLORS.muted) : VIZ_COLORS.muted;
 
     const preset = PRESETS[presetIdx];
 
@@ -513,38 +526,30 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
         <Box sx={{ width: '100%', px: { xs: 1, sm: 2, md: 3 }, py: 2, boxSizing: 'border-box' }}>
 
             {/* Canvas + key panel row */}
-            <Box sx={{ maxWidth: 1100, mx: 'auto', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+            <Box sx={{ maxWidth: 1100, mx: 'auto', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: 'flex-start' }}>
 
                 {/* Canvas */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ position: 'relative', aspectRatio: '960/720' }}>
-                    <canvas
-                        ref={canvasRef}
-                        width={960}
-                        height={720}
-                        style={{ display: 'block', width: '100%', height: '100%' }}
-                    />
-
+                <Box sx={{ ...panelSx, flex: 1, width: '100%', minWidth: 0, overflow: 'hidden' }}>
+                <Box>
                     {/* Info strip */}
                     <Box sx={{
-                        position: 'absolute', top: 0, left: 0, right: 0,
-                        px: 3, py: 1,
+                        px: { xs: 1.5, sm: 3 }, py: 1,
                         display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                        bgcolor: '#0d0d20',
-                        borderBottom: '1px solid rgba(255,255,255,0.07)',
+                        bgcolor: VIZ_COLORS.surface,
+                        borderBottom: `1px solid ${GOLD}30`,
                     }}>
-                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#e8e8e8', flex: 1 }}>
+                        <Typography sx={{ fontFamily: FONTS.MEDIEVAL_DISPLAY, fontSize: '1rem', color: VIZ_COLORS.text, flex: 1 }}>
                             AVL Tree
                         </Typography>
                         <Chip
                             label="O(log n) insert"
                             size="small"
-                            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: '#1e1a00', color: GOLD, height: 26 }}
+                            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: `${GOLD}14`, color: GOLD, border: `1px solid ${GOLD}40`, height: 26 }}
                         />
                         <Chip
                             label="Space O(n)"
                             size="small"
-                            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: '#141420', color: '#888', height: 26 }}
+                            sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.78rem', bgcolor: VIZ_COLORS.surface, color: VIZ_COLORS.muted, height: 26 }}
                         />
                         {currentLabel && (
                             <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.82rem', color: labelColor }}>
@@ -558,24 +563,28 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
                         variant="determinate"
                         value={progress}
                         sx={{
-                            position: 'absolute', top: 46, left: 0, right: 0, height: 4,
+                            height: 4,
                             bgcolor: 'rgba(255,255,255,0.05)',
                             '& .MuiLinearProgress-bar': { bgcolor: runState === 'done' ? GREEN : GOLD },
                         }}
+                    />
+                    <canvas
+                        ref={canvasRef}
+                        width={960}
+                        height={720}
+                        style={{ display: 'block', width: '100%', height: 'auto' }}
                     />
                 </Box>
                 </Box>{/* end canvas flex child */}
 
                 {/* Key sequence panel */}
                 <Box sx={{
-                    width: 148,
+                    ...panelSx, width: { xs: '100%', sm: 148 },
                     flexShrink: 0,
-                    bgcolor: '#0a0a18',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 2,
                     p: 1.5,
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: { xs: 'row', sm: 'column' },
+                    flexWrap: 'wrap',
                     gap: 0.6,
                     overflowY: 'auto',
                     maxHeight: 480,
@@ -583,10 +592,11 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
                     <Typography sx={{
                         fontFamily: FONTS.NECTO_MONO,
                         fontSize: '0.68rem',
-                        color: '#555',
+                        color: VIZ_COLORS.muted,
                         mb: 0.5,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
+                        flexBasis: { xs: '100%', sm: 'auto' },
                     }}>
                         Key Sequence
                     </Typography>
@@ -600,14 +610,14 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                bgcolor: isDone ? '#0e1e0a' : isActive ? `${GOLD}14` : '#141428',
+                                bgcolor: isDone ? `${GREEN}14` : isActive ? `${GOLD}14` : VIZ_COLORS.surface,
                                 border: `1px solid ${isDone ? GREEN + '35' : isActive ? GOLD + '55' : 'rgba(255,255,255,0.05)'}`,
                                 transition: 'background 0.2s, border-color 0.2s',
                             }}>
                                 <Typography sx={{
                                     fontFamily: FONTS.NECTO_MONO,
                                     fontSize: '0.85rem',
-                                    color: isDone ? GREEN : isActive ? GOLD : '#3a3a5a',
+                                    color: isDone ? GREEN : isActive ? GOLD : VIZ_COLORS.muted,
                                     fontWeight: isActive ? 700 : 400,
                                 }}>
                                     {k}
@@ -627,9 +637,7 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
 
             {/* Controls */}
             <Box sx={{
-                maxWidth: 1100, mx: 'auto', px: 3, py: 2, mt: 2,
-                bgcolor: '#0e0e1e',
-                borderTop: `1px solid ${GOLD}22`,
+                ...panelSx, maxWidth: 1100, mx: 'auto', px: 3, py: 2, mt: 2,
                 display: 'flex', flexDirection: 'column', gap: 2,
             }}>
 
@@ -668,7 +676,7 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
 
                     {/* Speed */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mr: 2 }}>
-                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555', mb: 0.25 }}>
+                        <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: VIZ_COLORS.muted, mb: 0.25 }}>
                             Speed
                         </Typography>
                         <Box sx={{ width: 200 }}>
@@ -679,7 +687,7 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
                                 onChange={handleSpeedChange}
                                 sx={{
                                     color: GOLD,
-                                    '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: '#555' },
+                                    '& .MuiSlider-markLabel': { fontFamily: FONTS.NECTO_MONO, fontSize: '0.72rem', color: VIZ_COLORS.muted },
                                     '& .MuiSlider-thumb': { bgcolor: GOLD },
                                 }}
                             />
@@ -691,7 +699,7 @@ export default function AVLVisualizer({ presetIdx, onBack }: AVLVisualizerProps)
                         {AVL_LEGEND.map(({ color, label }) => (
                             <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
                                 <Box sx={{ width: 12, height: 12, bgcolor: color, borderRadius: '3px', flexShrink: 0 }} />
-                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: '#666' }}>
+                                <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.75rem', color: VIZ_COLORS.muted }}>
                                     {label}
                                 </Typography>
                             </Box>
@@ -718,19 +726,13 @@ const AVL_LEGEND = [
     { color: SOFT_GREEN, label: 'Done' },
 ];
 
-const ctrlBtn = {
-    color: '#888',
-    '&:hover': { color: '#ddd', bgcolor: 'rgba(255,255,255,0.06)' },
-    '&.Mui-disabled': { color: '#333' },
-};
-
 function StatPill({ label, value }: { label: string; value: string | number }) {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.1 }}>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.62rem', color: '#555', lineHeight: 1 }}>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '0.62rem', color: VIZ_COLORS.muted, lineHeight: 1 }}>
                 {label}
             </Typography>
-            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: '#ddd', lineHeight: 1.2 }}>
+            <Typography sx={{ fontFamily: FONTS.NECTO_MONO, fontSize: '1rem', color: VIZ_COLORS.text, lineHeight: 1.2 }}>
                 {value}
             </Typography>
         </Box>
@@ -741,9 +743,9 @@ function RunChip({ state }: { state: string }) {
     const running = state === 'running';
     const paused = state === 'paused';
     const done = state === 'done';
-    const bg = running ? '#1a2800' : paused ? '#2a1e00' : done ? '#0e1e0a' : '#141428';
-    const text = running ? GREEN : paused ? GOLD : done ? SOFT_GREEN : '#777';
-    const bdr = running ? GREEN : paused ? GOLD : done ? SOFT_GREEN : 'rgba(255,255,255,0.1)';
+    const bg = running ? `${GREEN}14` : paused ? `${GOLD}14` : done ? `${SOFT_GREEN}14` : VIZ_COLORS.surface;
+    const text = running ? GREEN : paused ? GOLD : done ? SOFT_GREEN : VIZ_COLORS.muted;
+    const bdr = running ? GREEN : paused ? GOLD : done ? SOFT_GREEN : BLUE;
     return (
         <Chip
             label={RUN_LABEL[state] ?? 'Ready'}
@@ -757,10 +759,10 @@ function BackBtn({ onClick }: { onClick: () => void }) {
     return (
         <Box component="button" onClick={onClick} sx={{
             px: 2, py: 0.75,
-            bgcolor: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 1, color: '#666',
+            bgcolor: 'transparent', border: `1px solid ${GOLD}40`,
+            borderRadius: 1, color: GOLD,
             fontFamily: FONTS.NECTO_MONO, fontSize: '0.85rem', cursor: 'pointer',
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.25)' },
+            '&:hover': { bgcolor: `${BLUE}14`, borderColor: GOLD },
         }}>← Reconfigure</Box>
     );
 }

@@ -326,30 +326,30 @@ const HomePage = () => {
           animation: "jz-rise 0.55s ease-out 0.9s both",
         }}
       >
-        <Link href="/developer">
-          <Button
-            variant="outlined"
-            startIcon={<FaCode />}
-            sx={{
-              color: theme.palette.parchment.main,
-              borderColor: "rgba(200, 162, 74, 0.45)",
-              borderRadius: "4px",
-              backgroundImage: MEDIEVAL_EFFECTS.PANEL_BG,
-              fontFamily: FONTS.MEDIEVAL_DISPLAY,
-              letterSpacing: "0.08em",
-              px: 3.5,
-              py: 1.2,
-              transition: MEDIEVAL_EFFECTS.TRANSITION,
-              "&:hover": {
-                borderColor: theme.palette.medievalGold.light,
-                color: theme.palette.medievalGold.light,
-                boxShadow: "0 0 18px rgba(200, 162, 74, 0.28)",
-              },
-            }}
-          >
-            Learn About the Developer
-          </Button>
-        </Link>
+        <Button
+          component={Link}
+          href="/developer"
+          variant="outlined"
+          startIcon={<FaCode />}
+          sx={{
+            color: theme.palette.parchment.main,
+            borderColor: "rgba(200, 162, 74, 0.45)",
+            borderRadius: "4px",
+            backgroundImage: MEDIEVAL_EFFECTS.PANEL_BG,
+            fontFamily: FONTS.MEDIEVAL_DISPLAY,
+            letterSpacing: "0.08em",
+            px: 3.5,
+            py: 1.2,
+            transition: MEDIEVAL_EFFECTS.TRANSITION,
+            "&:hover": {
+              borderColor: theme.palette.medievalGold.light,
+              color: theme.palette.medievalGold.light,
+              boxShadow: "0 0 18px rgba(200, 162, 74, 0.28)",
+            },
+          }}
+        >
+          Learn About the Developer
+        </Button>
       </Box>
     </Container>
   );

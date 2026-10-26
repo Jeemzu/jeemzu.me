@@ -615,11 +615,31 @@ static void fill(int x, int y, int w, int h, Color c)
     SDL_RenderFillRect(G.ren, &rc);
 }
 
+static void backdrop()
+{
+    SDL_SetRenderDrawColor(G.ren, 15, 18, 25, 255);
+    SDL_RenderClear(G.ren);
+    SDL_SetRenderDrawBlendMode(G.ren, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(G.ren, 111, 159, 212, 12);
+    for (int x = 0; x < SW; x += 40)
+        SDL_RenderDrawLine(G.ren, x, 0, x, SH);
+    for (int y = 0; y < SH; y += 40)
+        SDL_RenderDrawLine(G.ren, 0, y, SW, y);
+}
+
+static void glow(int x, int y, int w, int h, Color c)
+{
+    for (int spread = 3; spread > 0; --spread)
+    {
+        SDL_SetRenderDrawColor(G.ren, c.r, c.g, c.b, 14);
+        SDL_Rect halo{x - spread, y - spread, w + spread * 2, h + spread * 2};
+        SDL_RenderFillRect(G.ren, &halo);
+    }
+}
+
 static void render()
 {
-    // Clear to editor dark background
-    SDL_SetRenderDrawColor(G.ren, 10, 10, 25, 255);
-    SDL_RenderClear(G.ren);
+    backdrop();
 
     if (!G.configured)
     {
@@ -648,7 +668,7 @@ static void render()
     {
         int x0 = MX + G.search_lo * (bw + gap);
         int x1 = MX + G.search_hi * (bw + gap) + bw;
-        fill(x0, BTOP, x1 - x0, BH, {20, 20, 60});
+        fill(x0, BTOP, x1 - x0, BH, {26, 40, 60});
     }
 
     // Draw bars
@@ -660,27 +680,30 @@ static void render()
 
         Color col;
         if (i == G.found_idx)
-            col = {197, 232, 164}; // found   — soft green  (#c5e8a4)
+            col = {180, 228, 204}; // found
         else if (G.done[i])
-            col = {168, 214, 126}; // sorted  — site green  (#a8d67e)
+            col = {111, 191, 148}; // sorted
         else if (i == G.pivot)
-            col = {190, 80, 220}; // pivot   — violet
+            col = {169, 139, 205}; // pivot
         else if (i == G.sw_a || i == G.sw_b)
-            col = {215, 55, 55}; // moved   — spike red   (#d73737)
+            col = {217, 96, 112}; // moved
         else if (i == G.hi_a || (G.hi_b >= 0 &&
                                  i == G.hi_b))
-            col = {255, 215, 64}; // compare — gold        (#ffd740)
+            col = {232, 207, 143}; // compare
         else if (G.not_found)
             col = {60, 60, 70}; // not found — dark gray
         else
-            col = {58, 110, 160}; // default — platform blue (#3a6ea0)
+            col = {111, 159, 212}; // sapphire; matches VIZ_COLORS in visualStyles.ts
 
+        glow(bx, by, bw, bheight, col);
         fill(bx, by, bw, bheight, col);
 
-        // Subtle 2-px top highlight for bar depth
-        SDL_SetRenderDrawColor(G.ren, 255, 255, 255, 30);
+        SDL_SetRenderDrawColor(G.ren, 248, 236, 196, 140);
         SDL_Rect top{bx, by, bw, 2};
         SDL_RenderFillRect(G.ren, &top);
+        SDL_SetRenderDrawColor(G.ren, 15, 18, 25, 45);
+        SDL_Rect shade{bx, by + bheight / 2, bw, bheight / 2};
+        SDL_RenderFillRect(G.ren, &shade);
     }
 
     SDL_RenderPresent(G.ren);
@@ -690,8 +713,7 @@ static void render()
 
 static void render_grid()
 {
-    SDL_SetRenderDrawColor(G.ren, 10, 10, 25, 255);
-    SDL_RenderClear(G.ren);
+    backdrop();
 
     if (!G.configured || G.grid_rows == 0)
     {
@@ -725,33 +747,35 @@ static void render_grid()
             switch (state)
             {
             case GCELL_WALL:
-                col = {30, 30, 40};
+                col = {38, 44, 56};
                 break; // dark gray
             case GCELL_START:
-                col = {168, 214, 126};
+                col = {111, 191, 148};
                 break; // site green
             case GCELL_END:
-                col = {215, 55, 55};
+                col = {217, 96, 112};
                 break; // red
             case GCELL_OPEN:
-                col = {58, 110, 200};
+                col = {111, 159, 212};
                 break; // blue (frontier)
             case GCELL_CLOSED:
-                col = {40, 60, 120};
+                col = {39, 72, 111};
                 break; // dark blue (visited)
             case GCELL_CURRENT:
-                col = {255, 215, 64};
+                col = {232, 207, 143};
                 break; // gold (expanding)
             case GCELL_PATH:
-                col = {197, 232, 164};
+                col = {180, 228, 204};
                 break; // soft green (path)
             default:
-                col = {18, 18, 36};
+                col = {19, 27, 40};
                 break; // empty — near black
             }
             int x = ox + c * cs + gap;
             int y = oy + r * cs + gap;
             int sz = cs - gap;
+            if (state == GCELL_CURRENT || state == GCELL_PATH || state == GCELL_START || state == GCELL_END)
+                glow(x, y, sz, sz, col);
             fill(x, y, sz, sz, col);
         }
     }

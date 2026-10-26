@@ -16,7 +16,6 @@ import brickbreakgif from '../../assets/images/brickbreak.gif';
 import tetrispng from '../../assets/images/tetris.png';
 import tetrisgif from '../../assets/images/tetris.gif';
 import platformerpng from '../../assets/images/platformer.png';
-import comingSoonpng from "../../assets/images/comingsoon.png";
 
 export const useGameLauncher = () => {
     const [, navigate] = useLocation();
@@ -129,15 +128,5 @@ export const createGameData = (launchers: {
             gameplayGif: tetrisgif,
             genre: 'Classics',
             onPlay: launchers.launchTetris,
-        },
-        {
-            id: 'progenitors',
-            title: 'The Progenitors',
-            description: 'A turn-based RPG. Progress saved locally.',
-            thumbnail: comingSoonpng,
-            gameplayGif: comingSoonpng,
-            genre: 'RPG',
-            featured: true,
-            onPlay: () => launchers.showComingSoon('The Progenitors'),
         }
     ];
