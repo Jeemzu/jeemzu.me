@@ -82,6 +82,11 @@ export default function GddGeneratorPage() {
   const input = useRef<HTMLInputElement>(null);
   const status = useRef<HTMLDivElement>(null);
   const operation = useRef(0);
+  const setupEngine =
+    project.draft.prototype?.engines.includes("threejs") &&
+    !project.draft.prototype.engines.includes("unity")
+      ? "threejs"
+      : "unity";
 
   useEffect(
     () => () => {
@@ -338,7 +343,7 @@ export default function GddGeneratorPage() {
     try {
       const bytes = example
         ? createExample(await loadExampleAssets())
-        : createTemplate();
+        : createTemplate(project.draft.prototype);
       if (operation.current !== current) return;
       downloadBlob(
         example ? "dino-rush-example.zip" : "gdd-template.zip",
@@ -385,11 +390,8 @@ export default function GddGeneratorPage() {
               label: "Setup prompt",
               icon: <FaScrewdriverWrench />,
               content: (
-                <Tooltip title="Create a personalized Windows setup prompt for Unity, Blender, Audacity, and MCP tools.">
-                  <Button
-                    variant="text"
-                    onClick={() => setDevSetupOpen(true)}
-                  >
+                <Tooltip title="Create a personalized Windows setup prompt for Unity or Three.js and supporting tools.">
+                  <Button variant="text" onClick={() => setDevSetupOpen(true)}>
                     Dev Setup Prompt
                   </Button>
                 </Tooltip>
@@ -614,6 +616,8 @@ export default function GddGeneratorPage() {
         }}
       />
       <DevSetupDialog
+        key={setupEngine}
+        initialEngine={setupEngine}
         open={devSetupOpen}
         onClose={() => setDevSetupOpen(false)}
       />

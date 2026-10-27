@@ -13,6 +13,7 @@ describe("GDD Markdown", () => {
       "Combat and character systems",
       "Presentation and interaction",
       "Implementation overview",
+      "Prototype requirements",
       "First playable slice",
       "Audience and release",
     ]);

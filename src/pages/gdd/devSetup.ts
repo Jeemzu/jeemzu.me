@@ -1,4 +1,5 @@
 import template from "./dev-setup-prompt.md?raw";
+import threejsTemplate from "./threejs-dev-setup-prompt.md?raw";
 
 export const DEV_SETUP_CLIENTS = [
   { id: "vscode", label: "VS Code", config: "%APPDATA%\\Code\\User\\mcp.json" },
@@ -30,6 +31,7 @@ export const DEV_SETUP_CLIENTS = [
 ] as const;
 
 export interface DevSetupOptions {
+  engine: "unity" | "threejs";
   agentClient: string;
   agentMcpConfig: string;
   unityVersion: string;
@@ -40,6 +42,7 @@ export interface DevSetupOptions {
 
 export function defaultDevSetupOptions(): DevSetupOptions {
   return {
+    engine: "unity",
     agentClient: DEV_SETUP_CLIENTS[0].id,
     agentMcpConfig: DEV_SETUP_CLIENTS[0].config,
     unityVersion: "lts",
@@ -69,35 +72,47 @@ function validateWindowsPath(value: string, label: string) {
 }
 
 export function createDevSetupPrompt(options: DevSetupOptions): string {
+  if (options.engine !== "unity" && options.engine !== "threejs")
+    throw new Error("Select Unity or Three.js for Dev Setup.");
   if (!DEV_SETUP_CLIENTS.some((client) => client.id === options.agentClient)) {
     throw new Error("Select a supported agent client.");
   }
   const unityVersion = options.unityVersion.trim().toLowerCase();
-  if (!/^(?:lts|latest|6000\.\d+\.\d+f\d+)$/.test(unityVersion)) {
+  if (
+    options.engine === "unity" &&
+    !/^(?:lts|latest|6000\.\d+\.\d+f\d+)$/.test(unityVersion)
+  ) {
     throw new Error(
       "Unity version: use lts, latest, or an exact Unity 6 release such as 6000.6.4f1.",
     );
   }
   const modules = options.unityModules.trim();
   if (
-    modules.length > 300 ||
-    (modules && !/^[a-z][a-z0-9-]*(?:\s+[a-z][a-z0-9-]*)*$/.test(modules))
+    options.engine === "unity" &&
+    (modules.length > 300 ||
+      (modules && !/^[a-z][a-z0-9-]*(?:\s+[a-z][a-z0-9-]*)*$/.test(modules)))
   ) {
     throw new Error("Unity modules: use space-separated module IDs.");
   }
   const settings = {
+    engine: options.engine,
     agentClient: options.agentClient,
     agentMcpConfig: validateWindowsPath(
       options.agentMcpConfig,
       "MCP config path",
     ),
-    unityVersion,
-    unityModules: [...new Set(modules ? modules.split(/\s+/) : [])],
+    ...(options.engine === "unity"
+      ? {
+          unityVersion,
+          unityModules: [...new Set(modules ? modules.split(/\s+/) : [])],
+        }
+      : { nodeVersion: "lts" }),
     blenderMinVersion: "5.1",
     toolsDir: validateWindowsPath(options.toolsDir, "Tools folder"),
     acceptLicenseAgreements: options.acceptLicenseAgreements,
   };
-  return template.replace("{{SETTINGS_JSON}}", () =>
-    JSON.stringify(settings, null, 2),
+  return (options.engine === "unity" ? template : threejsTemplate).replace(
+    "{{SETTINGS_JSON}}",
+    () => JSON.stringify(settings, null, 2),
   );
 }

@@ -34,10 +34,18 @@ import {
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialEngine: DevSetupOptions["engine"];
 }
 
-export default function DevSetupDialog({ open, onClose }: Props) {
-  const [options, setOptions] = useState(defaultDevSetupOptions);
+export default function DevSetupDialog({
+  open,
+  onClose,
+  initialEngine,
+}: Props) {
+  const [options, setOptions] = useState(() => ({
+    ...defaultDevSetupOptions(),
+    engine: initialEngine,
+  }));
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -54,7 +62,7 @@ export default function DevSetupDialog({ open, onClose }: Props) {
     try {
       const prompt = createDevSetupPrompt(options);
       downloadBlob(
-        "unity-game-dev-setup-prompt.md",
+        `${options.engine}-game-dev-setup-prompt.md`,
         new Blob([prompt], { type: "text/markdown;charset=utf-8" }),
       );
       setNotice("Prompt downloaded. Give it to your agent on Windows.");
@@ -95,11 +103,13 @@ export default function DevSetupDialog({ open, onClose }: Props) {
                 component="ul"
                 sx={{ ...bodySx, m: 0, pl: 2.5, "& li": { mt: 1 } }}
               >
-                <li>
-                  Unity sign-in cannot be automated. The agent saves browser
-                  sign-in for the end and waits for you; license activation
-                  depends on it.
-                </li>
+                {options.engine === "unity" && (
+                  <li>
+                    Unity sign-in cannot be automated. The agent saves browser
+                    sign-in for the end and waits for you; license activation
+                    depends on it.
+                  </li>
+                )}
                 <li>
                   Restart your AI client after setup to load the new MCP
                   servers.
@@ -119,6 +129,23 @@ export default function DevSetupDialog({ open, onClose }: Props) {
                   falls back to building the add-on from downloaded source.
                 </li>
               </Box>
+              <TextField
+                select
+                label="Engine"
+                value={options.engine}
+                onChange={(event) => {
+                  if (
+                    event.target.value === "unity" ||
+                    event.target.value === "threejs"
+                  )
+                    change({ engine: event.target.value });
+                }}
+                fullWidth
+                sx={fieldSx}
+              >
+                <MenuItem value="unity">Unity</MenuItem>
+                <MenuItem value="threejs">Three.js</MenuItem>
+              </TextField>
             </Box>
             <TextField
               label="Operating system"
@@ -170,25 +197,33 @@ export default function DevSetupDialog({ open, onClose }: Props) {
               sx={fieldSx}
               slotProps={{ htmlInput: { maxLength: 240 } }}
             />
-            <TextField
-              label="Unity 6 version"
-              value={options.unityVersion}
-              placeholder="lts, latest, or 6000.6.4f1"
-              onChange={(event) => change({ unityVersion: event.target.value })}
-              required
-              fullWidth
-              sx={fieldSx}
-              slotProps={{ htmlInput: { maxLength: 40 } }}
-            />
-            <TextField
-              label="Unity module IDs (optional)"
-              value={options.unityModules}
-              placeholder="windows-il2cpp webgl"
-              onChange={(event) => change({ unityModules: event.target.value })}
-              fullWidth
-              sx={fieldSx}
-              slotProps={{ htmlInput: { maxLength: 300 } }}
-            />
+            {options.engine === "unity" && (
+              <TextField
+                label="Unity 6 version"
+                value={options.unityVersion}
+                placeholder="lts, latest, or 6000.6.4f1"
+                onChange={(event) =>
+                  change({ unityVersion: event.target.value })
+                }
+                required
+                fullWidth
+                sx={fieldSx}
+                slotProps={{ htmlInput: { maxLength: 40 } }}
+              />
+            )}
+            {options.engine === "unity" && (
+              <TextField
+                label="Unity module IDs (optional)"
+                value={options.unityModules}
+                placeholder="windows-il2cpp webgl"
+                onChange={(event) =>
+                  change({ unityModules: event.target.value })
+                }
+                fullWidth
+                sx={fieldSx}
+                slotProps={{ htmlInput: { maxLength: 300 } }}
+              />
+            )}
             <FormControlLabel
               sx={bodySx}
               control={

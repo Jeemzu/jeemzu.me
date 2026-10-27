@@ -40,6 +40,7 @@ import {
   type EditorItem,
 } from "./editor";
 import type { PdfImage } from "./images";
+import PrototypeFields from "./PrototypeFields";
 
 interface Props {
   draft: EditorDraft;
@@ -180,6 +181,11 @@ export default function GddEditorForm({
               />
             </Stack>
           </Box>
+          <PrototypeFields
+            value={draft.prototype}
+            sectionCount={draft.sections.length}
+            onChange={(prototype) => onChange({ ...draft, prototype })}
+          />
           {draft.sections.map((section, sectionIndex) => (
             <Box key={section.id} sx={panelSx} data-section-id={section.id}>
               <Stack
@@ -513,7 +519,10 @@ export default function GddEditorForm({
             variant="outlined"
             sx={{ ...outlineButtonSx, alignSelf: "flex-start" }}
             startIcon={<FaPlus />}
-            disabled={draft.sections.length >= LIMITS.sections || count >= 400}
+            disabled={
+              draft.sections.length + (draft.prototype ? 1 : 0) >=
+                LIMITS.sections || count >= 400
+            }
             onClick={() => {
               const section = newSection();
               setExpanded(section.id);

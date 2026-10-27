@@ -13,7 +13,7 @@ describe("GDD template archives", () => {
       "images/example.png",
     ]);
     const imported = importArchive(zip);
-    expect(imported.document.sections).toHaveLength(8);
+    expect(imported.document.sections).toHaveLength(9);
     expect(imported.document.imagePaths).toEqual(["images/example.png"]);
     expect(
       validateDimensions(imported.images["images/example.png"], "example"),

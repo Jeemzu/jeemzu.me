@@ -143,7 +143,7 @@ describe("GDD form model", () => {
     const item = draft.sections[0].items[0];
     if (item.type !== "text") throw new Error("Expected text default");
     item.body = "My actual design.";
-    expect(parseDocument(draftMarkdown(draft)).sections).toHaveLength(1);
+    expect(parseDocument(draftMarkdown(draft)).sections).toHaveLength(2);
     expect(openProject(saveProject({ draft, assets: {} })).draft).toEqual(
       draft,
     );

@@ -1,5 +1,12 @@
 import { Unzip, UnzipInflate, strFromU8, strToU8, zipSync } from "fflate";
 import { LIMITS, parseDocument, type GddDocument } from "./document";
+import {
+  defaultPrototype,
+  engineRequirements,
+  PROTOTYPE_SECTION,
+  prototypeItems,
+  type PrototypeRequirements,
+} from "./prototype";
 
 export interface ImportedGdd {
   document: GddDocument;
@@ -61,6 +68,8 @@ Describe art direction, camera, interface, audio, and animation.
 | Controls | Describe supported inputs. |
 | Save data | Describe what persists and when. |
 
+{{PROTOTYPE_REQUIREMENTS}}
+
 ## First playable slice
 
 ### Scope
@@ -81,13 +90,23 @@ State exactly what is included and what is excluded.
 ## Audience and release
 
 Describe target players, platforms, monetization, technology, and release plans.
-`;
+`.replace("{{PROTOTYPE_REQUIREMENTS}}", prototypeMarkdown(defaultPrototype()));
+
+function prototypeMarkdown(prototype: PrototypeRequirements): string {
+  return `## ${PROTOTYPE_SECTION}\n\n${prototypeItems(prototype)
+    .map((item) => `### ${item.heading}\n\n${item.body || "Undecided."}`)
+    .join("\n\n")}`;
+}
 
 const INSTRUCTIONS = `GDD GENERATOR TEMPLATE
 
 Prefer the web form? Open https://jeemzu.me/gdd-generator to fill out sections
 and upload images directly. Account saves preserve your editable form.
 Import GDD reopens a saved draft or this populated Markdown template.
+The web form selects engines and target platforms independently.
+Prototype requirements include only selected engine sections. Edit version,
+rendering, loading, networking, locales, constraints, and open decisions before setup.
+Unity, Three.js, Unreal, Phaser, and a custom engine are supported.
 
 1. Extract this ZIP.
 2. Edit gdd.md with any plain-text or Markdown editor.
@@ -134,9 +153,26 @@ const EXAMPLE_PNG = Uint8Array.from(
   (character) => character.charCodeAt(0),
 );
 
-export function createTemplate(): Uint8Array {
+export function createTemplate(
+  prototype: PrototypeRequirements = defaultPrototype(),
+): Uint8Array {
+  const defaultRequirements = prototypeMarkdown(defaultPrototype());
+  const selected: PrototypeRequirements = {
+    ...defaultPrototype(),
+    engines: prototype.engines,
+    platforms: prototype.platforms,
+    customPlatform: prototype.customPlatform,
+    details: Object.fromEntries(
+      prototype.engines.map((engine) => [engine, engineRequirements(engine)]),
+    ),
+  };
   return zipSync({
-    "gdd.md": strToU8(TEMPLATE_MARKDOWN),
+    "gdd.md": strToU8(
+      TEMPLATE_MARKDOWN.replace(
+        defaultRequirements,
+        prototypeMarkdown(selected),
+      ),
+    ),
     "README.txt": strToU8(INSTRUCTIONS),
     "images/example.png": EXAMPLE_PNG,
   });

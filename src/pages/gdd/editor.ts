@@ -9,6 +9,14 @@ import {
   type Inline,
 } from "./document";
 import { validateDimensions } from "./images";
+import {
+  defaultPrototype,
+  ENGINES,
+  PLATFORMS,
+  PROTOTYPE_SECTION,
+  prototypeItems,
+  type PrototypeRequirements,
+} from "./prototype";
 
 export interface EditorImage {
   id: string;
@@ -35,6 +43,7 @@ export interface EditorDraft {
   title: string;
   introduction: string;
   sections: EditorSection[];
+  prototype?: PrototypeRequirements;
 }
 
 export interface EditorProject {
@@ -80,6 +89,7 @@ export function defaultDraft(): EditorDraft {
   return {
     title: "",
     introduction: "",
+    prototype: defaultPrototype(),
     sections: defaults.map(([title, headings]) => ({
       id: crypto.randomUUID(),
       title,
@@ -145,7 +155,22 @@ export function projectPaths(draft: EditorDraft): string[] {
 }
 
 export function draftMarkdown(draft: EditorDraft, validate = true): string {
-  const sections = draft.sections
+  const entries = [...draft.sections];
+  if (draft.prototype) {
+    const index =
+      draft.prototype.sectionIndex ??
+      entries.findIndex((section) => section.title === "First playable slice");
+    entries.splice(index < 0 ? entries.length : index, 0, {
+      id: "prototype",
+      title: PROTOTYPE_SECTION,
+      items: prototypeItems(draft.prototype).map((item) => ({
+        ...item,
+        id: item.heading,
+        type: "text" as const,
+      })),
+    });
+  }
+  const sections = entries
     .map((section) => {
       const items = section.items.flatMap((item): string[] => {
         if (item.type === "text") {
@@ -290,6 +315,55 @@ export function draftFromMarkdown(source: string): EditorDraft {
   }
   if (definitions && draft.introduction)
     draft.introduction += `\n\n${definitions}`;
+  const prototypeSections = draft.sections.filter(
+    (entry) => entry.title === PROTOTYPE_SECTION,
+  );
+  const prototypeSection = prototypeSections[0];
+  const headings = [
+    "Target platforms",
+    "Shared requirements",
+    ...ENGINES.map((engine) => engine.label),
+  ];
+  if (
+    prototypeSections.length === 1 &&
+    prototypeSection.items.length > 0 &&
+    prototypeSection.items.every(
+      (part) => part.type === "text" && headings.includes(part.heading),
+    ) &&
+    new Set(prototypeSection.items.map((part) => part.heading)).size ===
+      prototypeSection.items.length
+  ) {
+    const prototype: PrototypeRequirements = {
+      sectionIndex: draft.sections.indexOf(prototypeSection),
+      engines: [],
+      platforms: [],
+      customPlatform: "",
+      details: {},
+      shared: "",
+    };
+    for (const part of prototypeSection.items) {
+      if (part.type !== "text") continue;
+      const engine = ENGINES.find((entry) => entry.label === part.heading);
+      if (engine) {
+        prototype.engines.push(engine.id);
+        prototype.details[engine.id] = part.body;
+      } else if (part.heading === "Shared requirements") {
+        prototype.shared = part.body;
+      } else {
+        const targets = part.body.split(/\n\s*\n/);
+        prototype.platforms = targets.filter((target) =>
+          PLATFORMS.some((platform) => platform === target),
+        );
+        prototype.customPlatform = targets
+          .filter((target) => !prototype.platforms.includes(target))
+          .join("\n\n");
+      }
+    }
+    draft.prototype = prototype;
+    draft.sections = draft.sections.filter(
+      (entry) => entry !== prototypeSection,
+    );
+  }
   return draft;
 }
 
@@ -380,6 +454,68 @@ export function readDraft(value: unknown): EditorDraft {
     title: text(data.title, 100),
     introduction: text(data.introduction, 2000),
     sections,
+    ...(data.prototype !== undefined
+      ? { prototype: readPrototype(data.prototype) }
+      : {}),
+  };
+}
+
+function readPrototype(value: unknown): PrototypeRequirements {
+  if (
+    !record(value) ||
+    !Array.isArray(value.engines) ||
+    !Array.isArray(value.platforms) ||
+    !record(value.details)
+  )
+    throw new Error("Invalid prototype requirements in draft.");
+  const engines: PrototypeRequirements["engines"] = [];
+  for (const id of value.engines) {
+    const engine = ENGINES.find((entry) => entry.id === id);
+    if (!engine || engines.includes(engine.id))
+      throw new Error("Invalid engines or platforms in draft.");
+    engines.push(engine.id);
+  }
+  const platforms: string[] = [];
+  for (const target of value.platforms) {
+    const platform = PLATFORMS.find((entry) => entry === target);
+    if (!platform || platforms.includes(platform))
+      throw new Error("Invalid engines or platforms in draft.");
+    platforms.push(platform);
+  }
+  if (
+    engines.length !== value.engines.length ||
+    platforms.length !== value.platforms.length ||
+    typeof value.customPlatform !== "string" ||
+    value.customPlatform.length > 1000 ||
+    typeof value.shared !== "string" ||
+    value.shared.length > LIMITS.characters ||
+    (value.sectionIndex !== undefined &&
+      (typeof value.sectionIndex !== "number" ||
+        !Number.isInteger(value.sectionIndex) ||
+        value.sectionIndex < 0 ||
+        value.sectionIndex >= LIMITS.sections)) ||
+    Object.keys(value.details).some(
+      (key) => !ENGINES.some((engine) => engine.id === key),
+    )
+  )
+    throw new Error("Invalid engines or platforms in draft.");
+  const details: PrototypeRequirements["details"] = {};
+  for (const engine of ENGINES) {
+    const body = value.details[engine.id];
+    if (body === undefined) continue;
+    if (typeof body !== "string" || body.length > LIMITS.characters)
+      throw new Error("Invalid engine requirements in draft.");
+    details[engine.id] = body;
+  }
+  return {
+    ...(typeof value.sectionIndex === "number"
+      ? { sectionIndex: value.sectionIndex }
+      : {}),
+    engines,
+    platforms,
+    customPlatform: value.customPlatform,
+    shared: value.shared,
+    details,
   };
 }
 
