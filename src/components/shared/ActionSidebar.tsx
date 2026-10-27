@@ -6,11 +6,11 @@ import {
   Box,
   IconButton,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { FaBars, FaChevronDown, FaChevronLeft } from "react-icons/fa6";
 import { bodySx, headingSx } from "../../lib/medievalStyles";
+import SidebarTooltip from "./SidebarTooltip";
 
 interface Section {
   id: string;
@@ -57,7 +57,7 @@ export default function ActionSidebar({
         {!collapsed && (
           <Typography sx={{ ...headingSx, pl: 1 }}>{title}</Typography>
         )}
-        <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        <SidebarTooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
           <IconButton
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-expanded={!collapsed}
@@ -70,7 +70,7 @@ export default function ActionSidebar({
           >
             {collapsed ? <FaBars size={18} /> : <FaChevronLeft size={18} />}
           </IconButton>
-        </Tooltip>
+        </SidebarTooltip>
       </Stack>
       <Stack
         id={`${sidebarId}-sections`}
@@ -79,7 +79,7 @@ export default function ActionSidebar({
       >
         {sections.map((section) =>
           collapsed ? (
-            <Tooltip key={section.id} title={section.label} placement="right">
+            <SidebarTooltip key={section.id} title={section.label}>
               <IconButton
                 aria-label={`Expand ${section.label}`}
                 onClick={() => {
@@ -92,7 +92,7 @@ export default function ActionSidebar({
               >
                 {section.icon}
               </IconButton>
-            </Tooltip>
+            </SidebarTooltip>
           ) : (
             <Accordion
               key={section.id}

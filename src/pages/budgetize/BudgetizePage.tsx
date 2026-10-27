@@ -8,11 +8,11 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ReactElement } from "react";
 import { createPortal } from "react-dom";
-import { Button, Stack, Tooltip } from "@mui/material";
+import { Button, Stack } from "@mui/material";
 import { FaDownload, FaFileExport, FaTableCells, FaUpload } from "react-icons/fa6";
 import ActionSidebar from "../../components/shared/ActionSidebar";
+import SidebarTooltip from "../../components/shared/SidebarTooltip";
 import PageHeading from "../../components/shared/PageHeading";
 import type { DebtPaymentStrategy, MonthRef } from "./types";
 import { emptyBudget, monthlyRecurrence } from "./types";
@@ -81,48 +81,6 @@ const VIEW_TABS = [
 ] as const;
 
 type ViewTab = (typeof VIEW_TABS)[number]["id"];
-
-const TOOLTIP_BG = "#1f3a5f";
-const TOOLTIP_BORDER = "#c8a24a";
-
-function SidebarTooltip({ title, children }: { title: string; children: ReactElement }) {
-  return (
-    <Tooltip
-      title={title}
-      placement="right"
-      arrow
-      disableFocusListener
-      disableTouchListener
-      slotProps={{
-        tooltip: {
-          sx: {
-            bgcolor: TOOLTIP_BG,
-            color: "#f3e7c4",
-            border: `1px solid ${TOOLTIP_BORDER}`,
-            borderRadius: "6px",
-            fontSize: "0.8rem",
-            px: 1.5,
-            py: 1,
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.5)",
-          },
-        },
-        arrow: {
-          sx: {
-            color: TOOLTIP_BG,
-            "&::before": {
-              backgroundColor: TOOLTIP_BG,
-              borderLeft: `1px solid ${TOOLTIP_BORDER}`,
-              borderBottom: `1px solid ${TOOLTIP_BORDER}`,
-              boxSizing: "border-box",
-            },
-          },
-        },
-      }}
-    >
-      {children}
-    </Tooltip>
-  );
-}
 
 type LoadState = "loading" | "ready" | "error";
 

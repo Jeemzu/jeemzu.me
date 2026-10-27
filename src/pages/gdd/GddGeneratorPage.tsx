@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogTitle,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import {
@@ -22,6 +21,7 @@ import {
   FaUpload,
 } from "react-icons/fa6";
 import PageHeading from "../../components/shared/PageHeading";
+import SidebarTooltip from "../../components/shared/SidebarTooltip";
 import {
   bodySx,
   dialogPaperSx,
@@ -34,6 +34,7 @@ import { createTemplate } from "./archive";
 import { LIMITS, parseDocument } from "./document";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
+import GddAssistant from "./GddAssistant";
 import ActionSidebar from "../../components/shared/ActionSidebar";
 import GddAccountLibrary from "./GddAccountLibrary";
 import GddExampleDialog from "./GddExampleDialog";
@@ -64,6 +65,7 @@ export default function GddGeneratorPage() {
   }));
   const [images, setImages] = useState<Record<string, PdfImage>>({});
   const [accountBusy, setAccountBusy] = useState(false);
+  const [assistantBusy, setAssistantBusy] = useState(false);
   const [accountResetVersion, setAccountResetVersion] = useState(0);
   const [busy, setBusy] = useState<"import" | "images" | "pdf" | null>(null);
   const [error, setError] = useState("");
@@ -372,17 +374,17 @@ export default function GddGeneratorPage() {
               label: "Example GDD",
               icon: <FaFileLines />,
               content: (
-                <Tooltip title="Preview the Dino Rush example GDD, load it into the editor, or download its source ZIP.">
+                <SidebarTooltip title="Preview the Dino Rush example GDD, load it into the editor, or download its source ZIP.">
                   <span>
                     <Button
                       variant="text"
-                      disabled={busy !== null || accountBusy}
+                      disabled={busy !== null || accountBusy || assistantBusy}
                       onClick={() => setExampleOpen(true)}
                     >
                       View Example GDD
                     </Button>
                   </span>
-                </Tooltip>
+                </SidebarTooltip>
               ),
             },
             {
@@ -390,11 +392,11 @@ export default function GddGeneratorPage() {
               label: "Setup prompt",
               icon: <FaScrewdriverWrench />,
               content: (
-                <Tooltip title="Create a personalized Windows setup prompt for Unity or Three.js and supporting tools.">
+                <SidebarTooltip title="Create a personalized Windows setup prompt for Unity or Three.js and supporting tools.">
                   <Button variant="text" onClick={() => setDevSetupOpen(true)}>
                     Dev Setup Prompt
                   </Button>
-                </Tooltip>
+                </SidebarTooltip>
               ),
             },
             {
@@ -403,20 +405,20 @@ export default function GddGeneratorPage() {
               icon: <FaFilePdf />,
               content: (
                 <>
-                  <Tooltip title="Empty sections and subsections are omitted from the PDF.">
+                  <SidebarTooltip title="Empty sections and subsections are omitted from the PDF.">
                     <Box component="span">
                       <Button
                         fullWidth
                         startIcon={<FaFilePdf />}
                         variant="text"
-                        disabled={busy !== null || accountBusy}
+                        disabled={busy !== null || accountBusy || assistantBusy}
                         onClick={() => void generate()}
                       >
                         Generate PDF
                       </Button>
                     </Box>
-                  </Tooltip>
-                  <Tooltip
+                  </SidebarTooltip>
+                  <SidebarTooltip
                     title={
                       !pdfBlob
                         ? "Generate a PDF first."
@@ -440,8 +442,8 @@ export default function GddGeneratorPage() {
                         Download PDF
                       </Button>
                     </span>
-                  </Tooltip>
-                  <Tooltip
+                  </SidebarTooltip>
+                  <SidebarTooltip
                     title={
                       !pdfUrl
                         ? "Generate a PDF first."
@@ -462,7 +464,7 @@ export default function GddGeneratorPage() {
                         Open PDF
                       </Button>
                     </span>
-                  </Tooltip>
+                  </SidebarTooltip>
                 </>
               ),
             },
@@ -472,42 +474,42 @@ export default function GddGeneratorPage() {
               icon: <FaUpload />,
               content: (
                 <>
-                  <Tooltip title="Download a blank GDD template ZIP for local editing and later import.">
+                  <SidebarTooltip title="Download a blank GDD template ZIP for local editing and later import.">
                     <span>
                       <Button
                         startIcon={<FaDownload />}
                         variant="text"
-                        disabled={busy !== null || accountBusy}
+                        disabled={busy !== null || accountBusy || assistantBusy}
                         onClick={() => void downloadTemplate()}
                       >
                         Download template
                       </Button>
                     </span>
-                  </Tooltip>
-                  <Tooltip title="Load a GDD from ZIP, PDF, DOCX, Markdown, text, or HTML into the editor.">
+                  </SidebarTooltip>
+                  <SidebarTooltip title="Load a GDD from ZIP, PDF, DOCX, Markdown, text, or HTML into the editor.">
                     <span>
                       <Button
                         startIcon={<FaUpload />}
                         variant="text"
-                        disabled={busy !== null || accountBusy}
+                        disabled={busy !== null || accountBusy || assistantBusy}
                         onClick={() => setImportOpen(true)}
                       >
                         Import GDD
                       </Button>
                     </span>
-                  </Tooltip>
-                  <Tooltip title="Download gdd.md and images/ for local editing or GDD import.">
+                  </SidebarTooltip>
+                  <SidebarTooltip title="Download GDD source and images. Guided drafts also include editor metadata and reference materials to resume checkpoints.">
                     <span>
                       <Button
                         startIcon={<FaDownload />}
                         variant="text"
-                        disabled={busy !== null || accountBusy}
+                        disabled={busy !== null || accountBusy || assistantBusy}
                         onClick={downloadSource}
                       >
                         Download source ZIP
                       </Button>
                     </span>
-                  </Tooltip>
+                  </SidebarTooltip>
                 </>
               ),
             },
@@ -572,7 +574,7 @@ export default function GddGeneratorPage() {
             project={project}
             pdf={pdfBlob}
             dirty={dirty}
-            disabled={busy !== null}
+            disabled={busy !== null || assistantBusy}
             resetVersion={accountResetVersion}
             onBusyChange={setAccountBusy}
             onSavedChange={(saved) => setDirty(!saved)}
@@ -588,11 +590,24 @@ export default function GddGeneratorPage() {
               setPdfUrl(URL.createObjectURL(pdf));
             }}
           />
+          <GddAssistant
+            key={`assistant-${editorVersion}`}
+            project={project}
+            disabled={busy !== null || accountBusy || assistantBusy}
+            onBusyChange={setAssistantBusy}
+            onChange={(next, documentChanged) => {
+              setProject(next);
+              setDirty(true);
+              setError("");
+              setNotice("");
+              if (documentChanged) invalidatePdf();
+            }}
+          />
           <GddEditorForm
             key={editorVersion}
             draft={project.draft}
             images={images}
-            disabled={busy !== null || accountBusy}
+            disabled={busy !== null || accountBusy || assistantBusy}
             onChange={changeDraft}
             onUpload={(sectionId, groupId, files) =>
               void uploadImages(sectionId, groupId, files)
@@ -623,7 +638,7 @@ export default function GddGeneratorPage() {
       />
       <GddExampleDialog
         open={exampleOpen}
-        disabled={busy !== null || accountBusy}
+        disabled={busy !== null || accountBusy || assistantBusy}
         onClose={() => setExampleOpen(false)}
         onDownload={() => void downloadTemplate(true)}
         onPopulate={() => {
@@ -691,7 +706,7 @@ game.zip                  game.zip
           </Button>
           <Button
             color="error"
-            disabled={busy !== null || accountBusy}
+            disabled={busy !== null || accountBusy || assistantBusy}
             onClick={() => {
               if (pendingImport === "example") void populateExample();
               else if (pendingImport) void importFile(pendingImport);

@@ -9,6 +9,7 @@ import {
   type Inline,
 } from "./document";
 import { validateDimensions } from "./images";
+import { readWorkflow, type AssistantWorkflow } from "./assistant";
 import {
   defaultPrototype,
   ENGINES,
@@ -44,6 +45,7 @@ export interface EditorDraft {
   introduction: string;
   sections: EditorSection[];
   prototype?: PrototypeRequirements;
+  assistant?: AssistantWorkflow;
 }
 
 export interface EditorProject {
@@ -145,11 +147,19 @@ function formattedHeading(spans: Inline[]): string {
 export function projectPaths(draft: EditorDraft): string[] {
   return [
     ...new Set(
-      draft.sections.flatMap((section) =>
-        section.items.flatMap((item) =>
-          item.type === "images" ? item.images.map((image) => image.path) : [],
+      draft.sections
+        .flatMap((section) =>
+          section.items.flatMap((item) =>
+            item.type === "images"
+              ? item.images.map((image) => image.path)
+              : [],
+          ),
+        )
+        .concat(
+          draft.assistant?.references.flatMap((reference) =>
+            reference.imagePath ? [reference.imagePath] : [],
+          ) ?? [],
         ),
-      ),
     ),
   ];
 }
@@ -457,6 +467,9 @@ export function readDraft(value: unknown): EditorDraft {
     ...(data.prototype !== undefined
       ? { prototype: readPrototype(data.prototype) }
       : {}),
+    ...(data.assistant !== undefined
+      ? { assistant: readWorkflow(data.assistant) }
+      : {}),
   };
 }
 
@@ -544,6 +557,13 @@ export function projectAssets(
   for (const path of paths) {
     const bytes = project.assets[path];
     if (!bytes) throw new Error(`Missing image: ${path}`);
+    if (
+      bytes.length > 256 * 1024 &&
+      project.draft.assistant?.references.some(
+        (reference) => reference.imagePath === path,
+      )
+    )
+      throw new Error(`${path} exceeds the 256 KB assistant reference limit.`);
     validateAsset(bytes, path);
     assets[path] = bytes;
     total += bytes.length;

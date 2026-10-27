@@ -7,6 +7,7 @@ import {
   openProject,
   projectAssets,
   readDraft,
+  saveProject,
   validateAsset,
   type EditorProject,
 } from "./editor";
@@ -288,6 +289,7 @@ export async function importDocument(file: File): Promise<DocumentImport> {
 }
 
 export function markdownArchive(project: EditorProject): Uint8Array {
+  if (project.draft.assistant) return saveProject(project);
   const markdown = strToU8(draftMarkdown(project.draft));
   if (markdown.length > LIMITS.markdown)
     throw new Error("The Markdown export exceeds 1 MB.");
