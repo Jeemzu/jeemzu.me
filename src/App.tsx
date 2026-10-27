@@ -90,7 +90,6 @@ const LevelEditorPage = LC(
   lazy(() => import("./pages/editor/LevelEditorPage")),
 );
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
-const GamePage = LC(lazy(() => import("./pages/games/GamePage")));
 const GamePlayerPage = LC(lazy(() => import("./game-player/GamePlayerPage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
@@ -127,22 +126,15 @@ export function Routes() {
                 <ProjectsPage />
               </DeveloperLayout>
             </Route>
+            <Route path="/play/impossible/editor" component={LevelEditorPage} />
             <Route path="/play/:gameId" component={GamePlayerPage} />
-            <Route path="/games/snake">
-              <Redirect to="/play/snake" replace />
+            <Route path="/games/:id">
+              {({ id }) => <Redirect to={`/play/${encodeURIComponent(id)}`} replace />}
             </Route>
-            <Route path="/games/tetris">
-              <Redirect to="/play/tetris" replace />
-            </Route>
-            <Route path="/games/brickbreak">
-              <Redirect to="/play/brickbreak" replace />
-            </Route>
-            <Route path="/games/zaim">
-              <Redirect to="/play/zaim" replace />
-            </Route>
-            <Route path="/games/:id" component={GamePage} />
             <Route path="/games" component={GamesPage} />
-            <Route path="/editor" component={LevelEditorPage} />
+            <Route path="/editor">
+              <Redirect to="/play/impossible/editor" replace />
+            </Route>
             <Route path="/algoviz" component={AlgoVizPage} />
             <Route path="/admin" component={AdminPage} />
             <Route path="/budgetize" component={BudgetizePage} />
@@ -164,9 +156,7 @@ export function Routes() {
 }
 
 function App() {
-  const [isLegacyGamePage] = useRoute("/games/:id");
-  const [isPlayerPage] = useRoute("/play/*?");
-  const isGamePage = isLegacyGamePage || isPlayerPage;
+  const [isGamePage] = useRoute("/play/*?");
 
   useEffect(() => {
     // Attempt a silent token refresh on load to restore any active admin session.

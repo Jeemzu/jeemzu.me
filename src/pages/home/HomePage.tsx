@@ -94,7 +94,7 @@ const APPS: AppCardDef[] = [
     title: "Level Editor",
     description: "Build your own platformer levels and play them.",
     icon: <FaPenRuler size={34} />,
-    path: "/editor",
+    path: "/play/impossible/editor",
     accent: "glassRuby",
     note: "Sign-in required",
     iconAnimation: "jz-scribe 0.85s ease-in-out both",

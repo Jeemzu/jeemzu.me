@@ -14,8 +14,6 @@ const GamesPage = () => {
     showComingSoon,
     GameModal,
     ComingSoonGameModal,
-    WasmModal,
-    LevelSelectModal,
   } = useGameLauncher();
   const gameData = createGameData({
     launchSnake,
@@ -46,8 +44,6 @@ const GamesPage = () => {
 
       {GameModal}
       {ComingSoonGameModal}
-      {LevelSelectModal}
-      {WasmModal}
       <AuthPromptToast />
     </Container>
   );

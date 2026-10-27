@@ -1,7 +1,7 @@
 import type { GameModule } from "../../game-player/contract";
 import { GameLoop } from "../../game-player/render/GameLoop";
 import type { GameStat } from "../../lib/GameTypes";
-import { ENDURANCE_THRESHOLD, REFLEX_ROUNDS, type AimOptions } from "./config";
+import type { AimOptions } from "./config";
 import { cellAt } from "./grid";
 import { bindInput } from "./input";
 import { advance, announcement, averageReaction, click, createState } from "./logic";
@@ -15,7 +15,7 @@ const aim: GameModule<AimOptions> = {
     let state = createState(ctx.options.mode);
     let running = false;
     let previousTime = 0;
-    let lastHud = "", lastAnnouncement: string | null | undefined;
+    let lastAnnouncement: string | null | undefined;
     const publish = () => {
       view.sync(state);
       const text = announcement(state);
@@ -23,12 +23,6 @@ const aim: GameModule<AimOptions> = {
         lastAnnouncement = text;
         ctx.emit({ type: "panel", panel: text ? { title: text, actions: [] } : null });
       }
-      const items = state.mode === "reflex"
-        ? [{ label: "Round", value: `${Math.min(REFLEX_ROUNDS, state.times.length + 1)} / ${REFLEX_ROUNDS}` }]
-        : [{ label: "Time", value: `${state.remaining.toFixed(1)}s` },
-          ...(state.mode === "endurance" ? [{ label: "Stage", value: String(state.stage) }, { label: "Hits", value: `${state.stageClicks} / ${ENDURANCE_THRESHOLD}` }] : [])];
-      const hud = JSON.stringify(items);
-      if (hud !== lastHud) { lastHud = hud; ctx.emit({ type: "hud", items }); }
       if (state.phase === "over" && running) {
         running = false;
         let stats: GameStat[];
@@ -68,7 +62,7 @@ const aim: GameModule<AimOptions> = {
         state = createState(ctx.options.mode);
         running = true;
         previousTime = performance.now();
-        lastHud = ""; lastAnnouncement = undefined;
+        lastAnnouncement = undefined;
         view.reset();
         ctx.audio.stop("zaim.hit");
         ctx.emit({ type: "score", score: 0 });

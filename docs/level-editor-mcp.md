@@ -66,7 +66,7 @@ the existing Admin-only controls.
    on the protocol stream.
 
 3. Have the agent call `editor_connection_info` and display its port and pairing
-   code. Open `http://localhost:5173/editor`, choose **Agent**, enter both values,
+   code. Open `http://localhost:5173/play/impossible/editor`, choose **Agent**, enter both values,
    and choose **Connect**.
 4. Call `editor_list_sessions` and inspect the target session before editing.
    The connection dialog displays the tab's session ID.

@@ -27,7 +27,8 @@ export interface BloomOptions {
 
 export interface StageOptions {
   logicalSize: LogicalSize;
-  background: ColorRepresentation;
+  /** `null` renders a transparent canvas so the Player background shows through. */
+  background: ColorRepresentation | null;
   bloom?: BloomOptions;
 }
 
@@ -49,9 +50,10 @@ export class Stage {
     const { width, height } = opts.logicalSize;
     this.logicalSize = opts.logicalSize;
 
-    this.renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    this.renderer = new WebGLRenderer({ antialias: true, alpha: opts.background === null, powerPreference: "high-performance" });
     // scene.background (not setClearColor) is converted per render target, so post-processing doesn't double-encode it.
-    this.scene.background = new Color(opts.background);
+    if (opts.background === null) this.renderer.setClearColor(0x000000, 0);
+    else this.scene.background = new Color(opts.background);
     const canvas = this.renderer.domElement;
     canvas.style.display = "block";
     canvas.style.width = "100%";

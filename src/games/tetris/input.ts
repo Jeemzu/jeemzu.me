@@ -1,10 +1,13 @@
 export type InputAction = "left" | "right" | "rotate" | "hardDrop";
 
+const REPEAT_DELAY = 0.22;
+const REPEAT_INTERVAL = 0.09;
+
 export class TetrisInput {
   private held = new Set<string>();
   private current = 0;
   private elapsed = 0;
-  private nextRepeat = 0.17;
+  private nextRepeat = REPEAT_DELAY;
   private readonly enabled: () => boolean;
   private readonly action: (action: InputAction) => void;
 
@@ -39,13 +42,13 @@ export class TetrisInput {
     if (direction !== this.current) {
       this.current = direction;
       this.elapsed = 0;
-      this.nextRepeat = 0.17;
+      this.nextRepeat = REPEAT_DELAY;
       if (direction) this.action(direction < 0 ? "left" : "right");
     } else if (direction) {
       this.elapsed += dt;
       while (this.elapsed >= this.nextRepeat) {
         this.action(direction < 0 ? "left" : "right");
-        this.nextRepeat += 0.05;
+        this.nextRepeat += REPEAT_INTERVAL;
       }
     }
   }
@@ -54,7 +57,7 @@ export class TetrisInput {
     this.held.clear();
     this.current = 0;
     this.elapsed = 0;
-    this.nextRepeat = 0.17;
+    this.nextRepeat = REPEAT_DELAY;
   };
 
   destroy(): void {

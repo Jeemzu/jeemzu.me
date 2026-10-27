@@ -45,12 +45,23 @@ export default function GamePlayerPage() {
   return <GamePlayer key={entry.id} entry={entry} />;
 }
 
-function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
+export interface GamePlayerProps {
+  entry: GameEntry<unknown>;
+  initialOptions?: unknown;
+  /** Skips the start menu; quitting to the menu then calls `onExit` instead. */
+  autoStart?: boolean;
+  /** Replaces the default "back to /games" navigation. */
+  onExit?: () => void;
+  exitLabel?: string;
+}
+
+export function GamePlayer({ entry, initialOptions, autoStart = false, onExit, exitLabel = "Back to Games" }: GamePlayerProps) {
   const [, navigate] = useLocation();
   const username = useAuthStore((s) => s.username) ?? null;
+  const exit = onExit ?? (() => navigate("/games"));
 
-  const [phase, setPhase] = useState<Phase>("menu");
-  const [options, setOptions] = useState(entry.defaultOptions);
+  const [phase, setPhase] = useState<Phase>(autoStart ? "loading" : "menu");
+  const [options, setOptions] = useState(initialOptions ?? entry.defaultOptions);
   const [paused, setPaused] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [panel, setPanel] = useState<GamePanel | null>(null);
@@ -129,6 +140,12 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
       }
     }
   };
+  const handleStartRef = useRef(handleStart);
+  handleStartRef.current = handleStart;
+
+  useEffect(() => {
+    if (autoStart) void handleStartRef.current();
+  }, [autoStart]);
 
   const setPausedState = useCallback((next: boolean) => {
     const inst = instanceRef.current;
@@ -156,6 +173,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
   const handleQuitToMenu = () => {
     teardown();
     resetRun();
+    if (autoStart && onExit) return onExit();
     setPhase("menu");
   };
 
@@ -226,6 +244,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
   const Options = entry.Options;
   const go = state.gameOver;
   const goScore = go ? format(go.score) : null;
+  const showChrome = phase === "playing" && (!entry.immersive || !!go);
 
   return (
     <Box
@@ -250,15 +269,15 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
           backgroundImage: MEDIEVAL_EFFECTS.PANEL_BG,
         }}
       >
-        <Tooltip title="Back to Games">
-          <IconButton size="small" onClick={() => navigate("/games")} sx={{ color: "medievalGold.main" }}>
+        <Tooltip title={exitLabel}>
+          <IconButton size="small" aria-label={exitLabel} onClick={exit} sx={{ color: "medievalGold.main" }}>
             <ArrowBackIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Typography sx={{ ...headingSx, flex: 1, fontSize: "1.05rem" }} noWrap>
           {entry.title}
         </Typography>
-        {phase === "playing" && (
+        {showChrome && (
           <Typography
             sx={{
               fontFamily: FONTS.MEDIEVAL_DISPLAY,
@@ -286,7 +305,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
         </Tooltip>
       </Box>
 
-      {phase === "playing" && state.hud.length > 0 && (
+      {showChrome && state.hud.length > 0 && (
         <Box sx={{ display: { xs: "flex", md: "none" }, flexShrink: 0, flexWrap: "wrap", alignItems: "center", gap: 2, px: 2, py: 0.75, borderBottom: MEDIEVAL_EFFECTS.FRAME_BORDER }}>
           {state.hud.map((item) => (
             <Box key={item.label} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -297,7 +316,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
         </Box>
       )}
       <Box sx={{ flex: 1, minHeight: 0, display: "flex" }}>
-        <Viewport logicalSize={entry.logicalSize} hostRef={hostRef} onResize={handleResize}>
+        <Viewport logicalSize={entry.logicalSize} hostRef={hostRef} onResize={handleResize} frameless={entry.immersive}>
           {(phase === "menu" || phase === "loading") && (
             <StartMenu
               title={entry.title}
@@ -310,7 +329,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
                 setPhase("leaderboard");
                 void refreshLeaderboard();
               }}
-              onExit={() => navigate("/games")}
+              onExit={exit}
             />
           )}
           {phase === "leaderboard" && (
@@ -350,7 +369,7 @@ function GamePlayer({ entry }: { entry: GameEntry<unknown> }) {
             />
           )}
         </Viewport>
-        {phase === "playing" && (
+        {showChrome && (
           <SidePanel session={state} showLeaderboard={showLeaderboard} currentUser={username} format={format} />
         )}
       </Box>

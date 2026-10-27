@@ -26,12 +26,14 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 
 ### Game Player
 
-- Snake, Tetris, Brick Break and zAim launch at `/play/<id>`; their `/games/<id>` URLs redirect there. The WASM platformer/editor migration is still pending.
+- Snake, Tetris, Brick Break, zAim and The (Im)Possible Game launch at `/play/<id>`; their legacy `/games/<id>` URLs redirect there.
 - Shared Player code lives in `src/game-player`; each migrated game separates its entry metadata, rules, rendering, input, sound cues, and visual style under `src/games/<id>`.
-- Player chrome uses the site theme; Snake is bioluminescent and Tetris uses neon-glass blocks. Arrow keys/WASD steer or move; Up/W rotates Tetris, Down/S soft-drops, Space hard-drops, and Esc/P pauses. Touch controls are not included.
+- Player chrome uses the site theme; Snake is bioluminescent and Tetris uses neon-glass blocks. Arrow keys/WASD steer or move; Up/W rotates Tetris, Down/S soft-drops, Space hard-drops, and Esc/P pauses. Touch controls are not included. Snake music (`public/sounds/snake_music.mp3`) is a 59.6 s loop rebuilt in Audacity MCP: a 64-eighth-note phrase bridged and crossfaded so the wrap stays on the beat grid.
 - Tetris uses clockwise SRS rotation, uniform piece selection, the existing 15-line level progression, and the original line/hard-drop scoring. Its next-piece preview, level, and lines are DOM HUD elements, including on narrow screens. Eleven original effects were synthesized with Audacity MCP, normalized to -12 dB peak, and exported as mono MP3/OGG pairs in `public/sounds/tetris_*`; per-cue playback gains live in `src/games/tetris/sounds.ts`.
 - Brick Break uses a synthwave field with DOM level selection and completion actions. Its 20 layouts, unlock storage, armor, weighted power-ups and cumulative score/lives are preserved. Left/Right or A/D move the paddle; Space/click serves or releases a sticky ball; Q/E or the movement keys aim a caught ball.
-- zAim uses a restrained slate field with the selected accent on targets and crosshair. Endurance, Reflex and Speed retain separate `zaim_<mode>` leaderboards; Reflex stores `10000 - roundedAverageMs` (clamped at zero) and decodes for display. Countdowns, reaction feedback, timers and rounds use DOM UI; pause excludes elapsed time.
+- zAim plays as black targets on a white grid directly on the Player backdrop, with an inverting crosshair. During a run it shows only the countdown and a timer bar that drains and refills at each Endurance checkpoint (Reflex shows its wait/reaction cues instead); score, personal best and Top 10 appear after the run (`GameEntry.immersive`). Endurance, Reflex and Speed retain separate `zaim_<mode>` leaderboards; Reflex stores `10000 - roundedAverageMs` (clamped at zero) and decodes for display. Pause excludes elapsed time.
+- The (Im)Possible Game (`/play/impossible`) is the SDL/WASM build of `cpp/platformer`, styled as starfield noir: parallax stars, gold-rimmed ground, crimson spikes. It renders GPU geometry at canvas size × DPR, steps physics at a fixed 60 Hz, and exposes lifecycle/event exports that `src/games/impossible` bridges to the Player. Space/Up/W/click jump (held jumps repeat); deaths auto-retry with an attempt counter. Rebuild with `cpp/build-all.ps1 -Only platformer` after activating emsdk. Jump/land/death/complete cues were synthesized, normalized to -12 dB peak in Audacity MCP and stored in `public/sounds/impossible_*`.
+- The Level Editor lives at `/play/impossible/editor` (`/editor` redirects). Its canvas fits the available space at device resolution, and **Play** test-runs the current draft in an embedded Player without discarding editor state.
 - `/play/sandbox` is development-only and exercises sizing, bloom, audio, and overlays (click to score, G to end a run). Canvas resolution follows viewport size and device pixel ratio; audio levels persist locally.
 
 ### Algorithm Visualizer
@@ -108,8 +110,8 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 
 - React 19, TypeScript 5.8, and Vite 6, with Wouter for routing.
 - Material UI 7 for the component system and Zustand 5 for client state.
-- Phaser 3 for JavaScript games; C++20 games and the algorithm visualizer compile to WebAssembly with Emscripten.
-- Individual game routes (`/games/:id`) hide the site footer; the Games listing (`/games`) keeps it.
+- Three.js (via the shared Game Player in `src/game-player`) for JavaScript games; C++20 games and the algorithm visualizer compile to WebAssembly with Emscripten.
+- Game Player routes (`/play/*`, including the Level Editor) hide the site footer; legacy `/games/:id` links redirect to `/play/:id`.
 - `openapi-typescript` generates API types from the .NET API's Swagger document.
 - Netlify publishes the Vite `dist/` output as a single-page application.
 

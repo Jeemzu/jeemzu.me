@@ -39,6 +39,15 @@ describe("zAim rules", () => {
     for (let i = 0; i < 40; i++) click(state, state.targets.findIndex(Boolean), first);
     expect(state.score).toBe(400); expect(state.stage).toBe(2);
     expect(state.stageClicks).toBe(0); expect(state.remaining).toBeCloseTo(22);
+    expect(state.timeLimit).toBeCloseTo(22);
+  });
+  it("refills the timer bar to the remaining time at each checkpoint", () => {
+    const state = createState("endurance");
+    advance(state, 2.6, first);
+    advance(state, 9, first);
+    expect(state.remaining / state.timeLimit).toBeCloseTo(0.25);
+    for (let i = 0; i < 40; i++) click(state, state.targets.findIndex(Boolean), first);
+    expect(state.remaining).toBeCloseTo(13); expect(state.remaining / state.timeLimit).toBe(1);
   });
   it("handles long active frames without slowing down mode timers", () => {
     const state = createState("endurance");

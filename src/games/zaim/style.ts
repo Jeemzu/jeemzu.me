@@ -1,1 +1,1 @@
-export const STYLE = { background: 0x0c131c, inactive: 0x1b2835, border: 0x415363, miss: 0xde626f, crosshair: 0xf2f5f8 };
+export const STYLE = { inactive: 0xf2f2f2, active: 0x0a0a0a, border: 0x8a8a8a, miss: 0xd64553, track: 0xffffff, fill: 0xf2f2f2 };

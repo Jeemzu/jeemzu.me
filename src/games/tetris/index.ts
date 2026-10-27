@@ -8,6 +8,8 @@ import { TetrisRenderer } from "./renderer";
 import { TETRIS_CUES } from "./sounds";
 import { PIECE_COLORS } from "./style";
 
+const SOFT_DROP_INTERVAL = 0.06;
+
 const tetris: GameModule<Record<string, never>> = {
   async mount(host, ctx) {
     await ctx.audio.register(TETRIS_CUES);
@@ -76,17 +78,14 @@ const tetris: GameModule<Record<string, never>> = {
         if (!running || state.status !== "playing") return;
         input.update(dt);
         elapsed += dt;
-        const interval = input.softDrop ? Math.min(gravityInterval(state.level), 0.05) : gravityInterval(state.level);
-        while (elapsed >= interval && state.status === "playing") {
-          elapsed -= interval;
+        const interval = input.softDrop ? Math.min(gravityInterval(state.level), SOFT_DROP_INTERVAL) : gravityInterval(state.level);
+        // Banked gravity time must not cascade into several rows when soft drop shortens the interval.
+        elapsed = Math.min(elapsed, interval);
+        if (elapsed >= interval) {
+          elapsed = 0;
           const result = drop(state);
           apply(result);
-          if (!result.locked) {
-            if (input.softDrop) ctx.audio.play("tetris.soft-drop");
-            if (input.direction) horizontal(input.direction);
-          } else {
-            elapsed = 0;
-          }
+          if (!result.locked && input.softDrop) ctx.audio.play("tetris.soft-drop");
         }
       },
       render: () => view.stage.render(),

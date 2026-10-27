@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import WasmGameContainer from '../../components/WasmGameContainer';
-import PlatformerLevelSelect from '../../components/PlatformerLevelSelect';
 import ComingSoonModal from '../../components/ComingSoonModal';
 import { type GameDataProps } from "../GameTypes";
-import { type LevelFile } from '../LevelSchema';
-import { markLevelCompleted } from '../../components/PlatformerLevelSelect';
 import { playPath } from '../../game-player/registry';
 
 import snakepng from '../../assets/images/snake.png';
@@ -21,18 +17,13 @@ import platformerpng from '../../assets/images/platformer.png';
 export const useGameLauncher = () => {
     const [, navigate] = useLocation();
     const [comingSoonGame, setComingSoonGame] = useState<string | null>(null);
-    const [platformerOpen, setPlatformerOpen] = useState(false);
-    const [selectedLevel, setSelectedLevel] = useState<LevelFile | null>(null);
 
     const launchSnake = () => navigate(playPath('snake'));
     const launchZAim = () => navigate(playPath('zaim'));
     const launchBrickBreak = () => navigate(playPath('brickbreak'));
     const launchTetris = () => navigate(playPath('tetris'));
 
-    const launchPlatformer = () => {
-        setSelectedLevel(null);
-        setPlatformerOpen(true);
-    };
+    const launchPlatformer = () => navigate(playPath('impossible'));
 
     const showComingSoon = (gameTitle: string) => {
         setComingSoonGame(gameTitle);
@@ -52,27 +43,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    const LevelSelectModal = (
-        <PlatformerLevelSelect
-            open={platformerOpen && !selectedLevel}
-            onClose={() => setPlatformerOpen(false)}
-            onSelectLevel={(level) => setSelectedLevel(level)}
-        />
-    );
-
-    const WasmModal = selectedLevel ? (
-        <WasmGameContainer
-            open={platformerOpen && !!selectedLevel}
-            onClose={() => setSelectedLevel(null)}
-            gameTitle="The (Im)Possible Game"
-            wasmName="platformer"
-            levelFile={selectedLevel}
-            levelLabel={selectedLevel.number > 0 ? `Level ${selectedLevel.number} — ${selectedLevel.name}` : selectedLevel.name}
-            onLevelComplete={selectedLevel.number > 0 ? () => markLevelCompleted(selectedLevel.number) : undefined}
-        />
-    ) : null;
-
-    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal, WasmModal, LevelSelectModal };
+    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal };
 };
 
 // Create game data with launcher functions

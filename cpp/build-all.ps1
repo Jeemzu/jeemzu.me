@@ -3,7 +3,9 @@
 # Requires: emcc in PATH (run emsdk_env.bat first, or activate emsdk)
 
 param(
-    [string]$OutputDir = "$PSScriptRoot\..\public\wasm"
+    [string]$OutputDir = "$PSScriptRoot\..\public\wasm",
+    # Optional project names to build (e.g. -Only platformer); builds all when omitted.
+    [string[]]$Only = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,7 +14,8 @@ $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 # Find all project directories (each must have a main.cpp)
-$projects = Get-ChildItem -Path $PSScriptRoot -Directory
+$projects = Get-ChildItem -Path $PSScriptRoot -Directory |
+Where-Object { $Only.Count -eq 0 -or $Only -contains $_.Name }
 
 foreach ($project in $projects) {
     $mainFile = Join-Path $project.FullName "main.cpp"

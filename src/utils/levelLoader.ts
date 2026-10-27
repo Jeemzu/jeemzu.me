@@ -1,7 +1,7 @@
 // ─── Level file → C++ WASM bridge loader
 //
 // Converts a LevelFile (tile-grid format) into the sequence of C++ API calls
-// expected by WasmGameContainer:
+// expected by the WASM bridge (src/games/impossible/wasm.ts):
 //   level_begin()
 //   level_add_spike(worldX, worldY)
 //   level_add_pit(worldX, width)
@@ -73,7 +73,7 @@ function mergeContiguous(cols: number[]): ColSpan[] {
 
 /**
  * Returned by buildLevelCommands — a plain description of what to call
- * so that WasmGameContainer (or tests) can apply the calls.
+ * so that the WASM bridge (or tests) can apply the calls.
  */
 export type LevelCommand =
     | { cmd: 'begin' }
@@ -85,7 +85,7 @@ export type LevelCommand =
 
 /**
  * Convert a LevelFile into an ordered sequence of C++ bridge commands.
- * The caller (WasmGameContainer) maps each command to its cwrap call.
+ * The caller (src/games/impossible/wasm.ts) maps each command to its cwrap call.
  */
 export function buildLevelCommands(level: LevelFile): LevelCommand[] {
     level = parseLevelFile(level);

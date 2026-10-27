@@ -9,11 +9,12 @@ interface ViewportProps {
   hostRef: React.RefObject<HTMLDivElement | null>;
   onResize(size: ViewportSize): void;
   padding?: number;
+  frameless?: boolean;
   /** Overlays positioned over the whole viewport area (menus, pause, game over). */
   children?: ReactNode;
 }
 
-export function Viewport({ logicalSize, hostRef, onResize, padding = 16, children }: ViewportProps) {
+export function Viewport({ logicalSize, hostRef, onResize, padding = 16, frameless = false, children }: ViewportProps) {
   const areaRef = useRef<HTMLDivElement>(null);
   const onResizeRef = useRef(onResize);
   onResizeRef.current = onResize;
@@ -72,7 +73,7 @@ export function Viewport({ logicalSize, hostRef, onResize, padding = 16, childre
         sx={{
           position: "relative",
           flexShrink: 0,
-          boxShadow: "0 0 0 1px rgba(200, 162, 74, 0.18), 0 18px 48px rgba(0, 0, 0, 0.55)",
+          boxShadow: frameless ? "none" : "0 0 0 1px rgba(200, 162, 74, 0.18), 0 18px 48px rgba(0, 0, 0, 0.55)",
           "& > canvas": { outline: "none" },
         }}
       />

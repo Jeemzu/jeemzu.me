@@ -55,6 +55,14 @@
     "title": "Level Editor",
     "description": "Create and play custom platformer levels with a browser-based level editor."
   },
+  "/play/impossible": {
+    "title": "The (Im)Possible Game",
+    "description": "Play the starfield-noir (Im)Possible Game: jump spikes and pits across official and custom levels."
+  },
+  "/play/impossible/editor": {
+    "title": "Level Editor",
+    "description": "Create and play custom platformer levels with a browser-based level editor."
+  },
   "/algoviz": {
     "title": "Algorithm Visualizer",
     "description": "Explore sorting, searching, pathfinding, and AVL tree algorithms with interactive, step-by-step visualizations."

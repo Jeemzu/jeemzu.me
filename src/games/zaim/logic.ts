@@ -4,7 +4,7 @@ export interface AimState {
   mode: GameMode;
   phase: "countdown" | "waiting" | "active" | "between" | "miss" | "over";
   phaseTime: number; elapsed: number; targetStarted: number;
-  remaining: number; score: number; stage: number; stageClicks: number;
+  remaining: number; timeLimit: number; score: number; stage: number; stageClicks: number;
   targets: boolean[]; times: number[]; missedCell: number | null;
 }
 export const averageReaction = (times: number[]) => times.length ? Math.round(times.reduce((sum, time) => sum + time, 0) / times.length) : 9999;
@@ -12,7 +12,8 @@ export const encodeReflex = (times: number[]) => Math.max(0, 10000 - averageReac
 export const decodeReflex = (score: number) => Math.max(0, 10000 - score);
 export function createState(mode: GameMode): AimState {
   return { mode, phase: mode === "speed" ? "active" : "countdown", phaseTime: mode === "reflex" ? 2.9 : 2.6,
-    elapsed: 0, targetStarted: 0, remaining: mode === "speed" ? SPEED_TIME : ENDURANCE_TIME, score: 0,
+    elapsed: 0, targetStarted: 0, remaining: mode === "speed" ? SPEED_TIME : ENDURANCE_TIME,
+    timeLimit: mode === "speed" ? SPEED_TIME : ENDURANCE_TIME, score: 0,
     stage: 1, stageClicks: 0, targets: Array<boolean>(mode === "reflex" ? 4 : 16).fill(mode === "speed"), times: [], missedCell: null };
 }
 function activate(state: AimState, count: number, random: () => number, exclude = -1): void {
@@ -79,6 +80,7 @@ export function click(state: AimState, cell: number, random = Math.random): "hit
       state.stage++;
       state.stageClicks = 0;
       state.remaining += TIME_BONUS;
+      state.timeLimit = state.remaining;
     }
     activate(state, 1, random, cell);
   } else if (state.mode === "speed") {

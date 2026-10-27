@@ -83,4 +83,6 @@ export interface GameEntry<O = unknown> {
   displayScore?(score: number, options: O): ScoreDisplay;
   /** Hide leaderboard features (e.g. dev sandbox). */
   noLeaderboard?: boolean;
+  /** Game owns its in-play HUD: no frame, side panel or header score until the run ends. */
+  immersive?: boolean;
 }
