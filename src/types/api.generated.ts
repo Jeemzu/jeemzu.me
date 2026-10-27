@@ -462,6 +462,83 @@ export interface paths {
                         "text/json": components["schemas"]["BudgetChatResult"];
                     };
                 };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Content Too Large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Gateway Timeout */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -582,6 +659,126 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/gdd-assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["GddAssistantRequest"];
+                    "text/json": components["schemas"]["GddAssistantRequest"];
+                    "application/*+json": components["schemas"]["GddAssistantRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GddAssistantResponse"];
+                        "application/json": components["schemas"]["GddAssistantResponse"];
+                        "text/json": components["schemas"]["GddAssistantResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Content Too Large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Bad Gateway */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Gateway Timeout */
+                504: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
             };
         };
@@ -1949,19 +2146,24 @@ export interface components {
             startISO?: string | null;
             endISO?: string | null;
         };
+        BudgetCapabilityGapResponse: {
+            request?: string | null;
+            reason?: string | null;
+            suggestedFeature?: string | null;
+        };
         BudgetChatRequest: {
             question: string;
-            history?: components["schemas"]["ConversationMessage"][] | null;
+            history: components["schemas"]["ConversationMessage"][];
             budget: components["schemas"]["BudgetDataDto"];
             projection: unknown;
             today: string;
-            strategy?: string | null;
+            strategy: string;
         };
         BudgetChatResult: {
             answer?: string | null;
             intent?: string | null;
-            proposal?: unknown;
-            capabilityGap?: unknown;
+            proposal?: components["schemas"]["BudgetProposal"];
+            capabilityGap?: components["schemas"]["BudgetCapabilityGapResponse"];
         };
         BudgetDataDto: {
             people: components["schemas"]["BudgetPersonDto"][];
@@ -2031,6 +2233,39 @@ export interface components {
             personId?: string | null;
             note?: string | null;
         };
+        BudgetOp: {
+            op: string | null;
+            rationale: string | null;
+            targetId?: string | null;
+            targetKind?: string | null;
+            fromISO?: string | null;
+            toISO?: string | null;
+            dateISO?: string | null;
+            mode?: string | null;
+            name?: string | null;
+            /** Format: int32 */
+            amountCents?: number | null;
+            /** Format: int32 */
+            dueDay?: number | null;
+            paidFrom?: string | null;
+            frequency?: string | null;
+            anchorISO?: string | null;
+            startISO?: string | null;
+            endISO?: string | null;
+            kind?: string | null;
+            account?: string | null;
+            personId?: string | null;
+            note?: string | null;
+            balanceTarget?: string | null;
+            /** Format: int32 */
+            year?: number | null;
+            /** Format: int32 */
+            month?: number | null;
+            /** Format: int32 */
+            paycheckCount?: number | null;
+            /** Format: int32 */
+            perPaycheckCents?: number | null;
+        };
         BudgetOverrideDto: {
             id: string;
             targetKind: string;
@@ -2066,6 +2301,10 @@ export interface components {
             frequency: string;
             endISO?: string | null;
             personId?: string | null;
+        };
+        BudgetProposal: {
+            summary?: string | null;
+            ops?: components["schemas"]["BudgetOp"][] | null;
         };
         BudgetSnapshotResponse: {
             data?: components["schemas"]["BudgetDataDto"];
@@ -2104,6 +2343,42 @@ export interface components {
             allTimeRecord?: components["schemas"]["ScoreResponse"];
             /** Format: int32 */
             personalBest?: number | null;
+        };
+        GddAssistantItem: {
+            heading?: string | null;
+            body?: string | null;
+        };
+        GddAssistantMessage: {
+            role?: string | null;
+            content?: string | null;
+        };
+        GddAssistantProposal: {
+            title?: string | null;
+            introduction?: string | null;
+            sections?: components["schemas"]["GddAssistantSection"][] | null;
+        };
+        GddAssistantReference: {
+            name?: string | null;
+            text?: string | null;
+            url?: string | null;
+            imageBase64?: string | null;
+        };
+        GddAssistantRequest: {
+            checkpoint: string;
+            prompt: string;
+            document: string;
+            history: components["schemas"]["GddAssistantMessage"][];
+            references: components["schemas"]["GddAssistantReference"][];
+        };
+        GddAssistantResponse: {
+            message?: string | null;
+            questions?: string[] | null;
+            referenceRequests?: string[] | null;
+            proposal?: components["schemas"]["GddAssistantProposal"];
+        };
+        GddAssistantSection: {
+            title?: string | null;
+            items?: components["schemas"]["GddAssistantItem"][] | null;
         };
         GddDocumentResponse: {
             /** Format: uuid */

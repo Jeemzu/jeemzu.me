@@ -1,8 +1,6 @@
 /**
  * Chat API Service
- * Calls the .NET chat endpoint, which fronts the Python multi-agent service over
- * Render's private network. The agent has no public hostname, so it is never called
- * directly from the browser.
+ * Calls the .NET Semantic Kernel RAG chat endpoint.
  *
  * The server is fully stateless — the client is responsible for tracking
  * conversation history and sending it with each request.

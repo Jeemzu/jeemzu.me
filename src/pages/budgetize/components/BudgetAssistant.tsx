@@ -33,6 +33,7 @@ interface Turn {
   content: string;
   proposal?: BudgetProposal | null;
   gap?: CapabilityGap | null;
+  gapSaved?: boolean;
 }
 
 export function BudgetAssistant({ data, start, weekCount, strategy, mode, onApplyProposal }: Props) {
@@ -67,14 +68,10 @@ export function BudgetAssistant({ data, start, weekCount, strategy, mode, onAppl
       const message =
         result.status === 'unauthorized'
           ? 'Your session expired. Sign in again to keep chatting.'
-          : result.status === 'unavailable'
-            ? "The assistant isn't running right now. Try again in a moment."
-            : 'Something went wrong reaching the assistant.';
+          : result.message;
       setTurns((prev) => [...prev, { role: 'assistant', content: message }]);
       return;
     }
-
-    if (result.capabilityGap) void reportCapabilityGap(result.capabilityGap);
 
     setTurns((prev) => [
       ...prev,
@@ -85,6 +82,12 @@ export function BudgetAssistant({ data, start, weekCount, strategy, mode, onAppl
         gap: result.capabilityGap,
       },
     ]);
+    const gap = result.capabilityGap;
+    if (gap) {
+      void reportCapabilityGap(gap).then((saved) =>
+        setTurns((prev) => prev.map((turn) => turn.gap === gap ? { ...turn, gapSaved: saved } : turn)),
+      );
+    }
   };
 
   const applyAndClear = (index: number, ops: BudgetOp[]) => {
@@ -126,7 +129,10 @@ export function BudgetAssistant({ data, start, weekCount, strategy, mode, onAppl
             <p className="assistant-text">{turn.content}</p>
             {turn.gap && (
               <p className="assistant-gap">
-                Logged as a feature request: <strong>{turn.gap.suggestedFeature}</strong>
+                {turn.gapSaved === undefined
+                  ? 'Saving feature request: '
+                  : turn.gapSaved ? 'Feature request saved: ' : 'Feature request not saved: '}
+                <strong>{turn.gap.suggestedFeature}</strong>
               </p>
             )}
             {turn.proposal && turn.proposal.ops.length > 0 && (

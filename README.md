@@ -4,7 +4,7 @@
 
 ## Architecture Overview
 
-The frontend is a static single-page application. Backend services and the production database are deployed together through a Render Blueprint; only the .NET API is public. The Python agents service communicates with the API over Render's private network.
+The frontend is a static single-page application. The .NET API and production database are deployed through a Render Blueprint; all AI workflows run inside the API.
 
 Page titles and descriptions are defined in `src/lib/routeMetadata.json`. The frontend build generates an HTML entry for every registered route (including each playable game), so link-preview crawlers receive page-specific standard, Open Graph, and Twitter metadata without running JavaScript. Netlify serves those files ahead of the SPA fallback; React updates the same metadata during client-side navigation. Add metadata here when adding a route or playable game.
 
@@ -18,11 +18,10 @@ Browser
   └── Netlify: React application
         └── api.jeemzu.me: ASP.NET Core API
               ├── Render PostgreSQL: application data and vector search
-              ├── Private FastAPI agents: Budgetize assistant
               └── OpenAI: chat completions and embeddings
 ```
 
-The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize chat is sent to the .NET API, which proxies it to the private Python service. The browser does not call the agents service directly.
+The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize uses a native .NET router/analyst/planner workflow with a dedicated provider key; the browser sends its authoritative forecast and still previews and explicitly applies every proposal.
 
 ### Game Player
 
@@ -125,23 +124,22 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - ASP.NET Core 8 provides the public REST API for accounts, authentication, profiles, scores, budgets, contact requests, and profile chat.
 - Entity Framework Core 8 with Npgsql connects to PostgreSQL 16. The `pgvector` extension stores and searches knowledge embeddings.
 - JWT access tokens and httpOnly refresh cookies support authentication; Resend handles account email and contact delivery.
-- A Python 3.11 FastAPI service provides LangGraph-based agent workflows. The .NET API calls its Budgetize assistant over the private service network.
-- Both services are containerized and deployed from the [`jeemzu.api` repository](https://github.com/Jeemzu/jeemzu.api). Render manages the services and production PostgreSQL instance.
+- The .NET API also hosts the Budgetize and GDD assistant workflows through Semantic Kernel, using dedicated OpenAI keys without falling back to the profile key.
+- The API container and PostgreSQL are deployed from the [`jeemzu.api` repository](https://github.com/Jeemzu/jeemzu.api) through Render.
 
 ### AI
 
 - The profile chat uses Microsoft Semantic Kernel with OpenAI chat completions and embeddings. It retrieves relevant knowledge from PostgreSQL via pgvector before generating a grounded response.
-- The Python service uses LangGraph and LangChain integrations to orchestrate specialized agent workflows, including the Budgetize assistant.
-- OpenAI models power chat, planning, and embeddings. Tavily provides web search to agent workflows when configured.
+- Budgetize uses router → analysis/planning/capability gap → deterministic proposal validation, with explicit browser approval.
+- OpenAI powers chat, planning, and embeddings. All three assistant models independently default to GPT-6 Luna.
 
 ### 3rd Party Services
 
 | Service        | Use                                                                                                                                                        |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Netlify        | Hosts the public frontend and serves the static SPA.                                                                                                       |
-| Render         | Hosts the public .NET API, private Python agents service, and managed PostgreSQL database. The resources are defined together in `jeemzu.api/render.yaml`. |
+| Render         | Hosts the public .NET API and managed PostgreSQL database, defined together in `jeemzu.api/render.yaml`. |
 | OpenAI         | Provides language models and text embeddings for AI features.                                                                                              |
-| Tavily         | Optional web-search integration for AI agent workflows; requires a `TAVILY_API_KEY`.                                                                       |
 | Resend         | Delivers contact and account verification/recovery emails when configured.                                                                                 |
 | Google Fonts   | Serves the Cinzel and Caudex fonts used by the site.                                                                                                       |
 | GitHub Actions | Notifies the frontend repository when the backend changes so generated OpenAPI types can be updated. Render performs the backend build and deployment.     |
@@ -169,7 +167,7 @@ supported actions, permissions, and the remaining preview-control phases.
 
 ### Backend
 
-Follow the setup instructions in the [`jeemzu.api` README](https://github.com/Jeemzu/jeemzu.api) to configure .NET, local PostgreSQL, the Python agents, and required secrets. The API applies database migrations when it starts.
+Follow the setup instructions in the [`jeemzu.api` README](https://github.com/Jeemzu/jeemzu.api) to configure .NET, local PostgreSQL, and required secrets. The API applies database migrations when it starts; no Python agents service is required.
 
 ## Build and Deployment
 
@@ -181,6 +179,6 @@ npm run lint           # Run ESLint
 npm run test           # Run frontend tests
 ```
 
-Netlify deploys the frontend build from `dist/`. The Render Blueprint in the backend repository provisions the API, private agents service, and database; both containers auto-deploy from `main`. Set the production `VITE_API_URL` to `https://api.jeemzu.me/api`.
+Netlify deploys the frontend build from `dist/`. The Render Blueprint provisions the API and database; the API auto-deploys from `main`. Set the production `VITE_API_URL` to `https://api.jeemzu.me/api`. Dedicated AI keys belong only on the API service, never in `VITE_` variables.
 
 After backend changes, GitHub Actions dispatches an `api-types-update` event to this repository. API types can also be regenerated manually with `npm run generate-api-types:prod`.
