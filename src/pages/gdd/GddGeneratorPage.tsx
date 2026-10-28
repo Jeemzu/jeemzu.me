@@ -45,6 +45,7 @@ import GddEditorForm from "./GddEditorForm";
 import GddAssistant from "./GddAssistant";
 import ActionSidebar from "../../components/shared/ActionSidebar";
 import GddAccountLibrary from "./GddAccountLibrary";
+import GddSaveBar from "./GddSaveBar";
 import GddExampleDialog from "./GddExampleDialog";
 import DevSetupDialog from "./DevSetupDialog";
 import { createExample, EXAMPLE_MARKDOWN, loadExampleAssets } from "./example";
@@ -55,6 +56,7 @@ import {
   filename,
   projectAssets,
   projectPaths,
+  saveProject,
   validateAsset,
   type EditorDraft,
   type EditorProject,
@@ -88,6 +90,8 @@ export default function GddGeneratorPage() {
   const [exampleOpen, setExampleOpen] = useState(false);
   const [devSetupOpen, setDevSetupOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [completionPrompt, setCompletionPrompt] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [assistantView, setAssistantView] = useState<
     "closed" | "open" | "minimized"
   >("closed");
@@ -95,6 +99,7 @@ export default function GddGeneratorPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const libraryActions = useRef<{ save: () => void }>(null);
   const status = useRef<HTMLDivElement>(null);
   const operation = useRef(0);
   const workflow = project.draft.assistant;
@@ -208,6 +213,27 @@ export default function GddGeneratorPage() {
           ? cause.message
           : "The source ZIP could not be created.",
       );
+    }
+  }
+
+  function saveLocally() {
+    setError("");
+    setSaveError("");
+    try {
+      const bytes = saveProject(project);
+      downloadBlob(
+        `${filename(project.draft.title)} - GDD.zip`,
+        new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
+      );
+      setDirty(false);
+      setNotice("Editable progress saved locally.");
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "The draft could not be saved locally.";
+      setError(message);
+      setSaveError(message);
     }
   }
 
@@ -387,8 +413,26 @@ export default function GddGeneratorPage() {
     }
   }
 
+  const saveBar = (
+    <GddSaveBar
+      signedIn={signedIn}
+      disabled={busy !== null || accountBusy || assistantBusy}
+      error={saveError}
+      onCloud={() => {
+        setSaveError("");
+        setAssistantView((current) =>
+          current === "open" ? "minimized" : current,
+        );
+        setCompletionPrompt(false);
+        setLibraryOpen(true);
+        libraryActions.current?.save();
+      }}
+      onLocal={saveLocally}
+    />
+  );
+
   return (
-    <Container maxWidth={false} disableGutters>
+    <Container maxWidth={false} disableGutters sx={{ pb: 12 }}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         <ActionSidebar
           title="GDD tools"
@@ -636,6 +680,7 @@ export default function GddGeneratorPage() {
         </DialogTitle>
         <DialogContent>
           <GddAccountLibrary
+            ref={libraryActions}
             project={project}
             pdf={pdfBlob}
             dirty={dirty}
@@ -652,12 +697,13 @@ export default function GddGeneratorPage() {
               setNotice("");
               setImportWarnings([]);
               setPdfBlob(pdf);
-              setPdfUrl(URL.createObjectURL(pdf));
+              setPdfUrl(pdf ? URL.createObjectURL(pdf) : null);
               setLibraryOpen(false);
             }}
           />
         </DialogContent>
         <DialogActions>
+          {!completionPrompt && saveBar}
           <Button sx={outlineButtonSx} onClick={() => setLibraryOpen(false)}>
             Close
           </Button>
@@ -709,6 +755,8 @@ export default function GddGeneratorPage() {
             project={project}
             disabled={busy !== null || accountBusy || assistantBusy}
             onBusyChange={setAssistantBusy}
+            onImagesPrepared={setImages}
+            onComplete={() => setCompletionPrompt(true)}
             onChange={(next, documentChanged, replaceDocument) => {
               setProject(next);
               setDirty(true);
@@ -733,6 +781,9 @@ export default function GddGeneratorPage() {
             }}
           />
         </DialogContent>
+        {!libraryOpen && !completionPrompt && (
+          <DialogActions>{saveBar}</DialogActions>
+        )}
       </Dialog>
       {assistantView === "minimized" && (
         <Tooltip title="Restore AI Assistant">
@@ -752,7 +803,7 @@ export default function GddGeneratorPage() {
               ...goldButtonSx,
               position: "fixed",
               right: { xs: 16, sm: 24 },
-              bottom: "max(24px, env(safe-area-inset-bottom))",
+              bottom: "calc(88px + env(safe-area-inset-bottom))",
               zIndex: (theme) => theme.zIndex.fab,
               borderRadius: 8,
               maxWidth: "calc(100vw - 32px)",
@@ -767,6 +818,37 @@ export default function GddGeneratorPage() {
           </Button>
         </Tooltip>
       )}
+      {!libraryOpen && assistantView !== "open" && !completionPrompt && saveBar}
+      <Dialog
+        open={completionPrompt}
+        onClose={() => setCompletionPrompt(false)}
+        aria-labelledby="gdd-completion-title"
+        slotProps={{ paper: { sx: { ...dialogPaperSx, mb: 12 } } }}
+      >
+        <DialogTitle id="gdd-completion-title" sx={headingSx}>
+          Generate a new PDF?
+        </DialogTitle>
+        <DialogActions>
+          {saveBar}
+          <Button
+            sx={outlineButtonSx}
+            onClick={() => setCompletionPrompt(false)}
+          >
+            Not now
+          </Button>
+          <Button
+            sx={goldButtonSx}
+            disabled={busy !== null || accountBusy || assistantBusy}
+            onClick={() => {
+              setCompletionPrompt(false);
+              setAssistantView("minimized");
+              void generate();
+            }}
+          >
+            Generate PDF
+          </Button>
+        </DialogActions>
+      </Dialog>
       <input
         ref={input}
         type="file"

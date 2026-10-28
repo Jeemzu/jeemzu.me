@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import {
   Alert,
   Box,
@@ -44,6 +50,7 @@ import {
 import { prepareImages, type PdfImage } from "./images";
 
 interface Props {
+  ref?: Ref<{ save: () => void }>;
   project: EditorProject;
   pdf: Blob | null;
   dirty: boolean;
@@ -54,7 +61,7 @@ interface Props {
   onLoad: (
     project: EditorProject,
     images: Record<string, PdfImage>,
-    pdf: Blob,
+    pdf: Blob | null,
   ) => void;
 }
 
@@ -63,6 +70,7 @@ function megabytes(bytes: number): string {
 }
 
 export default function GddAccountLibrary({
+  ref,
   project,
   pdf,
   dirty,
@@ -85,6 +93,11 @@ export default function GddAccountLibrary({
     action: "load" | "delete";
   } | null>(null);
   const request = useRef<AbortController | null>(null);
+  useImperativeHandle(ref, () => ({
+    save: () => {
+      if (!disabled && !busy && library) save(false);
+    },
+  }));
 
   useEffect(() => {
     setSelected(null);
@@ -167,11 +180,14 @@ export default function GddAccountLibrary({
   }
 
   function save(asNew: boolean) {
-    if (!pdf) return;
     void perform(async (signal, active) => {
-      if (pdf.size > GDD_PDF_LIMIT)
+      if (pdf && pdf.size > GDD_PDF_LIMIT)
         throw new Error("Account saves support PDFs up to 20 MB.");
-      const draft = saveProject(project);
+      const title = project.draft.title.trim() || "Untitled GDD";
+      const draft = saveProject({
+        ...project,
+        draft: { ...project.draft, title },
+      });
       const existing = asNew ? null : selected;
       const replaced = existing
         ? library?.documents.find((entry) => entry.id === existing.id)
@@ -179,23 +195,21 @@ export default function GddAccountLibrary({
       const usage =
         (library?.usedBytes ?? 0) -
         (replaced ? replaced.pdfBytes + replaced.draftBytes : 0) +
-        pdf.size +
+        (pdf?.size ?? 0) +
         draft.length;
       if (usage > GDD_ACCOUNT_LIMIT)
         throw new Error(
           "This save exceeds your 100 MB storage limit. Delete a saved document or reduce its images.",
         );
-      const result = await saveGdd(
-        project.draft.title,
-        pdf,
-        draft,
-        existing,
-        signal,
-      );
+      const result = await saveGdd(title, pdf, draft, existing, signal);
       if (!active()) return;
       setSelected(result);
       onSavedChange(true);
-      setNotice("PDF and editable draft saved to your account.");
+      setNotice(
+        pdf
+          ? "PDF and editable draft saved to your account."
+          : "Editable draft saved to your account.",
+      );
       // A committed save stays successful even if the subsequent library refresh fails.
       try {
         const updated = await listGdds(signal);
@@ -214,7 +228,9 @@ export default function GddAccountLibrary({
   function load(document: SavedGdd) {
     void perform(async (signal, active) => {
       const [pdfBlob, draftBlob] = await Promise.all([
-        loadGddFile(document, "pdf", signal),
+        document.pdfBytes > 0
+          ? loadGddFile(document, "pdf", signal)
+          : Promise.resolve(null),
         loadGddFile(document, "draft", signal),
       ]);
       const imported = openProject(
@@ -224,7 +240,9 @@ export default function GddAccountLibrary({
       if (active()) {
         onLoad(imported, prepared, pdfBlob);
         setSelected(document);
-        setNotice("PDF and editable draft loaded.");
+        setNotice(
+          pdfBlob ? "PDF and editable draft loaded." : "Editable draft loaded.",
+        );
       }
     });
   }
@@ -252,7 +270,7 @@ export default function GddAccountLibrary({
           <Button
             variant="outlined"
             sx={outlineButtonSx}
-            disabled={locked || !pdf || !library}
+            disabled={locked || !library}
             onClick={() => save(false)}
           >
             {selected ? "Update saved GDD" : "Save to account"}
@@ -261,7 +279,7 @@ export default function GddAccountLibrary({
             <Button
               variant="outlined"
               sx={outlineButtonSx}
-              disabled={locked || !pdf || !library}
+              disabled={locked || !library}
               onClick={() => save(true)}
             >
               Save as new
@@ -422,7 +440,7 @@ export default function GddAccountLibrary({
                         </Button>
                         <Button
                           size="small"
-                          disabled={locked}
+                          disabled={locked || document.pdfBytes === 0}
                           onClick={() =>
                             void perform(async (signal, active) => {
                               const blob = await loadGddFile(

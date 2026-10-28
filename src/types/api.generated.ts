@@ -2352,16 +2352,25 @@ export interface components {
             role?: string | null;
             content?: string | null;
         };
+        GddAssistantImage: {
+            referenceId?: string | null;
+            section?: string | null;
+            heading?: string | null;
+            caption?: string | null;
+        };
         GddAssistantProposal: {
             title?: string | null;
             introduction?: string | null;
             sections?: components["schemas"]["GddAssistantSection"][] | null;
+            images?: components["schemas"]["GddAssistantImage"][] | null;
         };
         GddAssistantReference: {
             name?: string | null;
             text?: string | null;
             url?: string | null;
             imageBase64?: string | null;
+            id?: string | null;
+            imagePath?: string | null;
         };
         GddAssistantRequest: {
             /** @description Scratch builds a new design; fill expands or revises an existing GDD. */
@@ -2376,6 +2385,7 @@ export interface components {
             message?: string | null;
             questions?: string[] | null;
             referenceRequests?: string[] | null;
+            unresolved?: string[] | null;
             proposal?: components["schemas"]["GddAssistantProposal"];
         };
         GddAssistantSection: {

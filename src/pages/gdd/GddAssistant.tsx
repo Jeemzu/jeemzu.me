@@ -33,11 +33,15 @@ import {
   newWorkflow,
   readWorkflow,
   recentHistory,
+  validateImageProposals,
   type AssistantMode,
   type AssistantReference,
   type AssistantWorkflow,
 } from "./assistant";
 import { importAssistantReference } from "./assistantReferences";
+import AssistantMarkdown from "./AssistantMarkdown";
+import { reviewResponse, splitUnresolved } from "./assistantReview";
+import { prepareImages, type PdfImage } from "./images";
 import {
   defaultDraft,
   draftMarkdown,
@@ -55,6 +59,8 @@ interface Props {
     replaceDocument?: boolean,
   ) => void;
   onBusyChange: (busy: boolean) => void;
+  onComplete: () => void;
+  onImagesPrepared: (images: Record<string, PdfImage>) => void;
 }
 
 export default function GddAssistant({
@@ -62,6 +68,8 @@ export default function GddAssistant({
   disabled,
   onChange,
   onBusyChange,
+  onComplete,
+  onImagesPrepared,
 }: Props) {
   const username = useAuthStore((state) =>
     state.isAuthenticated ? state.username : null,
@@ -177,6 +185,9 @@ export default function GddAssistant({
             : [];
         }),
         pendingProposal: stage.response?.proposal ?? null,
+        previousUnresolved: stage.history.flatMap(
+          (message) => message.unresolved ?? [],
+        ),
       });
       if (document.length > 100000)
         throw new Error(
@@ -194,6 +205,8 @@ export default function GddAssistant({
           document,
           history: stage.history,
           references: workflow.references.map((reference) => ({
+            id: reference.id,
+            imagePath: reference.imagePath,
             name: reference.name,
             text: reference.text,
             url: reference.url,
@@ -207,6 +220,7 @@ export default function GddAssistant({
         signal,
       );
       if (!active()) return;
+      validateImageProposals(response.proposal, workflow.references);
       if ((await draftFingerprint(latest.current.draft)) !== fingerprint)
         throw new Error(
           "The document changed during generation. Request a new proposal.",
@@ -224,7 +238,11 @@ export default function GddAssistant({
                 history: recentHistory([
                   ...entry.history,
                   { role: "user", content: prompt },
-                  { role: "assistant", content: response.message },
+                  {
+                    role: "assistant",
+                    content: response.message,
+                    unresolved: response.unresolved,
+                  },
                 ]),
               }
             : entry,
@@ -247,14 +265,22 @@ export default function GddAssistant({
         draft: changed,
       });
       draftMarkdown(validated, false);
+      const assets = projectAssets({
+        draft: validated,
+        assets: project.assets,
+      });
+      const prepared = await prepareImages(assets);
       if (active()) {
         onChange(
           {
             draft: validated,
-            assets: projectAssets({ draft: validated, assets: project.assets }),
+            assets,
           },
           true,
         );
+        onImagesPrepared(prepared);
+        if (validated.assistant?.stages.every((entry) => entry.approved))
+          onComplete();
         setNotes("");
         setLink("");
       }
@@ -318,6 +344,7 @@ export default function GddAssistant({
 
   const firstPending =
     workflow?.stages.findIndex((entry) => !entry.approved) ?? 0;
+  const review = stage?.response ? reviewResponse(stage.response) : null;
   return (
     <Box>
       <Stack spacing={2}>
@@ -417,88 +444,210 @@ export default function GddAssistant({
                 aria-label="Checkpoint conversation"
                 sx={{ maxHeight: 280, overflow: "auto" }}
               >
-                {stage.history.map((message, current) => (
-                  <Box key={current} sx={{ mb: 2 }}>
-                    <Typography variant="caption" sx={headingSx}>
-                      {message.role === "user" ? "You" : "Assistant"}
-                    </Typography>
-                    <Typography
+                {stage.history.map((message, current) => {
+                  const parsed = splitUnresolved(message.content);
+                  const notes = [
+                    ...new Set([
+                      ...(message.unresolved ?? []),
+                      ...parsed.unresolved,
+                    ]),
+                  ];
+                  const showUnresolved = !(
+                    review && current === stage.history.length - 1
+                  );
+                  return (
+                    <Box
+                      key={current}
                       sx={{
-                        ...bodySx,
-                        whiteSpace: "pre-wrap",
-                        overflowWrap: "anywhere",
-                        textAlign: "left",
+                        mb: 2,
+                        p: 2,
+                        borderLeft: "2px solid",
+                        borderColor:
+                          message.role === "user"
+                            ? "rgba(200,162,74,0.3)"
+                            : "medievalGold.main",
+                        bgcolor: "rgba(0,0,0,0.12)",
                       }}
                     >
-                      {message.content}
-                    </Typography>
-                  </Box>
-                ))}
+                      <Typography
+                        component="h3"
+                        variant="caption"
+                        sx={{ ...headingSx, mb: 1 }}
+                      >
+                        {message.role === "user" ? "You" : "Assistant"}
+                      </Typography>
+                      {message.role === "assistant" ? (
+                        <>
+                          <AssistantMarkdown>{parsed.text}</AssistantMarkdown>
+                          {showUnresolved && !!notes.length && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography
+                                component="h4"
+                                sx={{ ...headingSx, mb: 1 }}
+                              >
+                                Unresolved
+                              </Typography>
+                              <Box
+                                component="ul"
+                                sx={{ ...bodySx, pl: 3, m: 0 }}
+                              >
+                                {notes.map((note, i) => (
+                                  <li key={i}>
+                                    <AssistantMarkdown>
+                                      {note}
+                                    </AssistantMarkdown>
+                                  </li>
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                        </>
+                      ) : (
+                        <Typography
+                          component="p"
+                          sx={{
+                            ...bodySx,
+                            m: 0,
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                            textAlign: "left",
+                          }}
+                        >
+                          {message.content}
+                        </Typography>
+                      )}
+                    </Box>
+                  );
+                })}
               </Box>
             ) : null}
-            {stage?.response && (
+            {review && (
               <Box aria-label="Checkpoint review">
-                {stage.response.questions.length > 0 && (
+                {review.questions.length > 0 && (
                   <Box>
-                    <Typography sx={headingSx}>Decisions</Typography>
+                    <Typography component="h3" sx={{ ...headingSx, mb: 1 }}>
+                      Decisions
+                    </Typography>
                     <Box
                       component="ul"
                       sx={{ ...bodySx, textAlign: "left", pl: 3 }}
                     >
-                      {stage.response.questions.map((question) => (
-                        <li key={question}>{question}</li>
+                      {review.questions.map((question) => (
+                        <li key={question}>
+                          <AssistantMarkdown>{question}</AssistantMarkdown>
+                        </li>
                       ))}
                     </Box>
                   </Box>
                 )}
-                {stage.response.referenceRequests.length > 0 && (
+                {review.referenceRequests.length > 0 && (
                   <Box>
-                    <Typography sx={headingSx}>Requested references</Typography>
+                    <Typography component="h3" sx={{ ...headingSx, mb: 1 }}>
+                      Requested references
+                    </Typography>
                     <Box
                       component="ul"
                       sx={{ ...bodySx, textAlign: "left", pl: 3 }}
                     >
-                      {stage.response.referenceRequests.map((reference) => (
-                        <li key={reference}>{reference}</li>
+                      {review.referenceRequests.map((reference) => (
+                        <li key={reference}>
+                          <AssistantMarkdown>{reference}</AssistantMarkdown>
+                        </li>
                       ))}
                     </Box>
                   </Box>
                 )}
-                <Typography sx={headingSx}>Proposed changes</Typography>
+                <Typography component="h3" sx={{ ...headingSx, mb: 2 }}>
+                  Proposed changes
+                </Typography>
                 <Box
-                  sx={{ maxHeight: 480, overflow: "auto", textAlign: "left" }}
+                  sx={{
+                    maxHeight: 480,
+                    overflow: "auto",
+                    textAlign: "left",
+                    pr: 1,
+                    mb: 2,
+                  }}
                 >
-                  {stage.response.proposal.title && (
-                    <Typography sx={headingSx}>
-                      {stage.response.proposal.title}
+                  {review.proposal.title && (
+                    <Typography component="h4" sx={{ ...headingSx, mb: 1.5 }}>
+                      {review.proposal.title}
                     </Typography>
                   )}
-                  {stage.response.proposal.introduction && (
-                    <Typography sx={{ ...bodySx, whiteSpace: "pre-wrap" }}>
-                      {stage.response.proposal.introduction}
-                    </Typography>
+                  {review.proposal.introduction && (
+                    <AssistantMarkdown>
+                      {review.proposal.introduction}
+                    </AssistantMarkdown>
                   )}
-                  {stage.response.proposal.sections.map((section) => (
-                    <Box key={section.title} sx={{ mt: 2 }}>
-                      <Typography sx={headingSx}>{section.title}</Typography>
+                  {review.proposal.sections.map((section) => (
+                    <Box key={section.title} sx={{ mt: 3 }}>
+                      <Typography component="h4" sx={{ ...headingSx, mb: 2 }}>
+                        {section.title}
+                      </Typography>
                       {section.items.map((item, current) => (
-                        <Box key={current} sx={{ mt: 1 }}>
-                          <Typography sx={{ ...bodySx, fontWeight: 700 }}>
-                            {item.heading}
-                          </Typography>
+                        <Box key={current} sx={{ mt: 2.5 }}>
                           <Typography
+                            component="h5"
                             sx={{
                               ...bodySx,
-                              whiteSpace: "pre-wrap",
-                              overflowWrap: "anywhere",
+                              fontSize: "1rem",
+                              fontWeight: 700,
+                              mb: 1,
                             }}
                           >
-                            {item.body}
+                            {item.heading}
                           </Typography>
+                          <AssistantMarkdown>{item.body}</AssistantMarkdown>
                         </Box>
                       ))}
                     </Box>
                   ))}
+                  {!!review.proposal.images?.length && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography component="h4" sx={{ ...headingSx, mb: 1 }}>
+                        Proposed images
+                      </Typography>
+                      {review.proposal.images.map((image) => {
+                        const reference = workflow.references.find(
+                          (entry) => entry.id === image.referenceId,
+                        );
+                        return (
+                          <Box key={image.referenceId} sx={{ mb: 2 }}>
+                            {reference?.imagePath && (
+                              <Box
+                                component="img"
+                                src={`data:image/jpeg;base64,${imageBase64(project.assets[reference.imagePath])}`}
+                                alt={image.caption}
+                                sx={{
+                                  maxWidth: "100%",
+                                  maxHeight: 180,
+                                  display: "block",
+                                  mb: 1,
+                                }}
+                              />
+                            )}
+                            <Typography component="p" sx={bodySx}>
+                              {image.section} / {image.heading}: {image.caption}
+                            </Typography>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  )}
+                  {!!review.unresolved.length && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography component="h4" sx={{ ...headingSx, mb: 1 }}>
+                        Unresolved
+                      </Typography>
+                      <Box component="ul" sx={{ ...bodySx, pl: 3, m: 0 }}>
+                        {review.unresolved.map((note, current) => (
+                          <li key={current}>
+                            <AssistantMarkdown>{note}</AssistantMarkdown>
+                          </li>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
                 <Tooltip
                   title={
@@ -510,7 +659,7 @@ export default function GddAssistant({
                   <span>
                     <Button
                       sx={goldButtonSx}
-                      disabled={locked || Boolean(stage.prompt.trim())}
+                      disabled={locked || Boolean(stage?.prompt.trim())}
                       onClick={approve}
                     >
                       Approve checkpoint

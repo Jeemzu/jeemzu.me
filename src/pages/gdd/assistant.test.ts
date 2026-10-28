@@ -9,6 +9,7 @@ import {
   readWorkflow,
   recentHistory,
   validateResponse,
+  validateImageProposals,
   type AssistantResponse,
 } from "./assistant";
 import {
@@ -42,6 +43,85 @@ function response(index = 0): AssistantResponse {
 }
 
 describe("GDD assistant checkpoints", () => {
+  it("adds only approved uploaded reference images without duplicating placements", () => {
+    const draft = defaultDraft();
+    draft.title = "Image game";
+    draft.assistant = newWorkflow("fill");
+    const reference = {
+      id: crypto.randomUUID(),
+      checkpoint: 0,
+      name: "Mood",
+      text: "",
+      url: "",
+      imagePath: `images/${crypto.randomUUID()}.jpg`,
+    };
+    draft.assistant.references = [reference];
+    const proposal = {
+      title: "",
+      introduction: "",
+      sections: [],
+      images: [
+        {
+          referenceId: reference.id,
+          section: "Game direction",
+          heading: "Mood board",
+          caption: "Quiet island reference",
+        },
+      ],
+    };
+    draft.assistant.stages[0].response = { ...response(), proposal };
+    const changed = approveCheckpoint(draft);
+    const group = changed.sections[0].items.find(
+      (item) => item.type === "images",
+    );
+    expect(group?.type === "images" && group.images[0]).toMatchObject({
+      path: reference.imagePath,
+      caption: "Quiet island reference",
+    });
+    expect(draft.sections[0].items.some((item) => item.type === "images")).toBe(
+      false,
+    );
+    const repeated = proposalDraft(changed, proposal);
+    expect(
+      repeated.sections[0].items.flatMap((item) =>
+        item.type === "images" ? item.images : [],
+      ),
+    ).toHaveLength(1);
+    expect(changed.assistant?.references[0].imagePath).toBe(
+      reference.imagePath,
+    );
+  });
+
+  it("rejects unavailable, duplicate and out-of-checkpoint image proposals", () => {
+    const image = {
+      referenceId: crypto.randomUUID(),
+      section: "Game direction",
+      heading: "Mood",
+      caption: "Reference",
+    };
+    const proposal = {
+      title: "",
+      introduction: "",
+      sections: [],
+      images: [image],
+    };
+    expect(() => validateImageProposals(proposal, [])).toThrow("unavailable");
+    expect(() =>
+      validateImageProposals({ ...proposal, images: [image, image] }, []),
+    ).toThrow("more than once");
+    expect(() =>
+      validateResponse(
+        {
+          ...response(),
+          proposal: {
+            ...proposal,
+            images: [{ ...image, section: "Audience and release" }],
+          },
+        },
+        0,
+      ),
+    ).toThrow("outside");
+  });
   it("defaults legacy workflows to scratch mode and rejects unknown modes", () => {
     const legacy = { ...newWorkflow(), mode: undefined };
     expect(readWorkflow(legacy).mode).toBe("scratch");
@@ -292,12 +372,26 @@ describe("GDD assistant checkpoints", () => {
       imagePath: "images/reference.jpg",
     });
     const project = { draft, assets: { "images/reference.jpg": bytes } };
+    draft.assistant.stages[0].response.proposal.images = [
+      {
+        referenceId: draft.assistant.references[0].id,
+        section: "Game direction",
+        heading: "Visual references",
+        caption: "Muted color reference",
+      },
+    ];
+    draft.assistant.stages[0].response.unresolved = ["Target browsers."];
     expect(openProject(saveProject(project))).toEqual(project);
     expect(openProject(markdownArchive(project))).toEqual(project);
     expect(unzipSync(markdownArchive(project))["editor.json"]).toBeDefined();
     expect(
       openProject(markdownArchive(project)).assets["images/reference.jpg"],
     ).toEqual(bytes);
+    const approved = { ...project, draft: approveCheckpoint(draft) };
+    expect(openProject(saveProject(approved))).toEqual(approved);
+    expect(draftMarkdown(approved.draft, false)).toContain(
+      "![Muted color reference](images/reference.jpg)",
+    );
     expect(
       openProject(
         saveProject({ ...project, draft: { ...draft, sections: [] } }),

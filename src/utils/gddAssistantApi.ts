@@ -13,6 +13,8 @@ export interface GddAssistantRequest {
   document: string;
   history: AssistantMessage[];
   references: {
+    id?: string;
+    imagePath?: string;
     name: string;
     text: string;
     url: string;

@@ -76,11 +76,23 @@ const proposalSchema = z.object({
       }),
     )
     .max(2),
+  images: z
+    .array(
+      z.object({
+        referenceId: z.string().uuid(),
+        section: line(100).min(1),
+        heading: line(100).min(1),
+        caption: line(400).min(1),
+      }),
+    )
+    .max(12)
+    .optional(),
 });
 export const assistantResponseSchema = z.object({
   message: z.string().min(1).max(4000),
   questions: z.array(z.string().min(1).max(500)).max(5),
   referenceRequests: z.array(z.string().min(1).max(500)).max(5),
+  unresolved: z.array(z.string().min(1).max(1000)).max(30).optional(),
   proposal: proposalSchema,
 });
 export type AssistantResponse = z.infer<typeof assistantResponseSchema>;
@@ -89,6 +101,7 @@ export type AssistantProposal = AssistantResponse["proposal"];
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().min(1).max(8000),
+  unresolved: z.array(z.string().min(1).max(1000)).max(30).optional(),
 });
 export type AssistantMessage = z.infer<typeof messageSchema>;
 const referenceSchema = z.object({
@@ -187,7 +200,10 @@ export function readWorkflow(value: unknown): AssistantWorkflow {
       (stage.response !== null && stage.baseFingerprint === null)
     )
       throw new Error("The draft contains invalid checkpoint history.");
-    if (stage.response) validateResponse(stage.response, index);
+    if (stage.response) {
+      validateResponse(stage.response, index);
+      validateImageProposals(stage.response.proposal, workflow.references);
+    }
   });
   return workflow;
 }
@@ -204,6 +220,9 @@ export function validateResponse(
   if (
     response.proposal.sections.some(
       (section) => !allowed.includes(section.title),
+    ) ||
+    response.proposal.images?.some(
+      (image) => !allowed.includes(image.section),
     ) ||
     new Set(response.proposal.sections.map((section) => section.title)).size !==
       response.proposal.sections.length ||
@@ -224,6 +243,28 @@ export function validateResponse(
       "The assistant returned duplicate subsection headings. Request a revised proposal.",
     );
   return response;
+}
+
+export function validateImageProposals(
+  proposal: AssistantProposal,
+  references: AssistantReference[],
+) {
+  const images = proposal.images ?? [];
+  if (new Set(images.map((image) => image.referenceId)).size !== images.length)
+    throw new Error(
+      "The assistant proposed the same reference image more than once.",
+    );
+  for (const image of images) {
+    if (
+      !references.some(
+        (reference) =>
+          reference.id === image.referenceId && reference.imagePath,
+      )
+    )
+      throw new Error(
+        "The assistant proposed an unavailable reference image. Request a revised proposal.",
+      );
+  }
 }
 
 export function proposalDraft(
@@ -276,6 +317,50 @@ export function proposalDraft(
     if (existing) sections[sections.indexOf(existing)] = replacement;
     else sections.push(replacement);
   }
+  validateImageProposals(proposal, draft.assistant?.references ?? []);
+  for (const image of proposal.images ?? []) {
+    const reference = draft.assistant?.references.find(
+      (entry) => entry.id === image.referenceId,
+    );
+    if (!reference?.imagePath)
+      throw new Error("The proposed reference image is unavailable.");
+    let section = sections.find((entry) => entry.title === image.section);
+    if (sections.filter((entry) => entry.title === image.section).length > 1)
+      throw new Error(
+        `Rename duplicate "${image.section}" sections before applying the proposal.`,
+      );
+    if (!section) {
+      section = { id: crypto.randomUUID(), title: image.section, items: [] };
+      sections.push(section);
+    }
+    const items = section.items.map((item) =>
+      item.type === "images"
+        ? {
+            ...item,
+            images: item.images.filter(
+              (entry) => entry.path !== reference.imagePath,
+            ),
+          }
+        : item,
+    );
+    const group = items.find(
+      (item) => item.type === "images" && item.heading === image.heading,
+    );
+    const addition = {
+      id: crypto.randomUUID(),
+      path: reference.imagePath,
+      caption: image.caption,
+    };
+    if (group?.type === "images") group.images.push(addition);
+    else
+      items.push({
+        id: crypto.randomUUID(),
+        type: "images",
+        heading: image.heading,
+        images: [addition],
+      });
+    sections[sections.indexOf(section)] = { ...section, items };
+  }
   return {
     ...draft,
     title: proposal.title || draft.title,
@@ -295,7 +380,8 @@ export function approveCheckpoint(draft: EditorDraft): EditorDraft {
     workflow.mode === "fill" &&
     !stage.response.proposal.title &&
     !stage.response.proposal.introduction &&
-    !stage.response.proposal.sections.length
+    !stage.response.proposal.sections.length &&
+    !stage.response.proposal.images?.length
   )
     throw new Error(
       "Request proposed changes before approving this checkpoint.",

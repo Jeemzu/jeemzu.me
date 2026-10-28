@@ -28,6 +28,22 @@ function reply(body: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("GDD account library", () => {
+  it("saves editable progress without uploading a PDF", async () => {
+    const draftOnly = { ...saved, pdfBytes: 0 };
+    const fetch = reply(draftOnly, 201);
+    expect(
+      await saveGdd(saved.title, null, new Uint8Array([80, 75]), null),
+    ).toEqual(draftOnly);
+    const form: FormData = fetch.mock.calls[0][1].body;
+    expect(form.has("pdf")).toBe(false);
+    expect(form.has("draft")).toBe(true);
+    reply({
+      documents: [draftOnly],
+      usedBytes: saved.draftBytes,
+      limitBytes: GDD_ACCOUNT_LIMIT,
+    });
+    expect((await listGdds()).documents[0].pdfBytes).toBe(0);
+  });
   it("loads validated metadata and combined PDF/draft usage without caching", async () => {
     const body = {
       documents: [saved],

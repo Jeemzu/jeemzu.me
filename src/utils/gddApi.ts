@@ -124,14 +124,14 @@ export async function listGdds(signal?: AbortSignal): Promise<GddLibrary> {
 
 export async function saveGdd(
   title: string,
-  pdf: Blob,
+  pdf: Blob | null,
   draft: Uint8Array,
   existing: SavedGdd | null,
   signal?: AbortSignal,
 ): Promise<SavedGdd> {
   const form = new FormData();
   form.set("title", title.trim());
-  form.set("pdf", pdf, "document.pdf");
+  if (pdf) form.set("pdf", pdf, "document.pdf");
   form.set(
     "draft",
     new Blob([Uint8Array.from(draft).buffer], { type: "application/zip" }),
