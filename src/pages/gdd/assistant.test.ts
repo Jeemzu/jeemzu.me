@@ -42,6 +42,134 @@ function response(index = 0): AssistantResponse {
 }
 
 describe("GDD assistant checkpoints", () => {
+  it("defaults legacy workflows to scratch mode and rejects unknown modes", () => {
+    const legacy = { ...newWorkflow(), mode: undefined };
+    expect(readWorkflow(legacy).mode).toBe("scratch");
+    expect(() => readWorkflow({ ...legacy, mode: "unknown" })).toThrow(
+      "invalid",
+    );
+    expect(() => readWorkflow({ ...newWorkflow(), current: 4 })).toThrow(
+      "inconsistent",
+    );
+  });
+
+  it("fills or revises only proposed subsections and preserves omitted content and ordering", () => {
+    const draft = defaultDraft();
+    draft.title = "My game";
+    draft.introduction = "My introduction.";
+    draft.assistant = newWorkflow("fill");
+    const section = draft.sections[0];
+    section.items[0] = {
+      ...section.items[0],
+      type: "text",
+      body: "My existing vision.",
+      headingMarkdown: "**Vision and player experience**",
+    };
+    const imageGroup = {
+      id: "images",
+      type: "images" as const,
+      heading: "Mood",
+      images: [],
+    };
+    section.items.splice(1, 0, imageGroup);
+    const proposal = {
+      title: "",
+      introduction: "",
+      sections: [
+        {
+          title: section.title,
+          items: [
+            {
+              heading: "What distinguishes the game",
+              body: "A new differentiator.",
+            },
+            { heading: "Scope constraints", body: "One small island." },
+          ],
+        },
+      ],
+    };
+    const filled = proposalDraft(draft, proposal);
+    expect(filled.title).toBe(draft.title);
+    expect(filled.introduction).toBe(draft.introduction);
+    expect(filled.prototype).toBe(draft.prototype);
+    expect(filled.sections[1]).toBe(draft.sections[1]);
+    expect(filled.sections[0].items[0]).toBe(section.items[0]);
+    expect(filled.sections[0].items[1]).toBe(imageGroup);
+    expect(filled.sections[0].items[2]).toMatchObject({
+      id: section.items[2].id,
+      body: "A new differentiator.",
+    });
+    expect(filled.sections[0].items[3]).toMatchObject({
+      heading: "Scope constraints",
+    });
+    expect(section.items[2]).toMatchObject({ body: "" });
+
+    const revised = proposalDraft(filled, {
+      ...proposal,
+      sections: [
+        {
+          title: section.title,
+          items: [
+            { heading: section.items[0].heading, body: "An expanded vision." },
+          ],
+        },
+      ],
+    });
+    expect(revised.sections[0].items[0]).toMatchObject({
+      id: section.items[0].id,
+      headingMarkdown: "**Vision and player experience**",
+      body: "An expanded vision.",
+    });
+    expect(revised.sections[0].items[2]).toBe(filled.sections[0].items[2]);
+    filled.sections[0].items.push({ ...section.items[0], id: "duplicate" });
+    expect(() =>
+      proposalDraft(filled, {
+        ...proposal,
+        sections: [
+          {
+            title: section.title,
+            items: [{ heading: section.items[0].heading, body: "Revision." }],
+          },
+        ],
+      }),
+    ).toThrow("duplicate");
+  });
+
+  it("supports independent fill checkpoints and persists mode and approvals in editable ZIPs", async () => {
+    let draft = defaultDraft();
+    draft.assistant = newWorkflow("fill");
+    draft.assistant.current = 4;
+    expect(() => readWorkflow(draft.assistant)).not.toThrow();
+    draft.assistant.stages[4].response = response(4);
+    draft.assistant.stages[4].baseFingerprint = await draftFingerprint(draft);
+    expect(
+      draft.sections.find(
+        (section) => section.title === "Implementation overview",
+      )?.items[0],
+    ).toMatchObject({ body: "" });
+    draft = approveCheckpoint(draft);
+    expect(draft.assistant!.stages[4].approved).toBe(true);
+    expect(draft.assistant!.current).toBe(0);
+    draft.assistant!.stages[0].response = response();
+    draft.assistant!.stages[0].baseFingerprint = await draftFingerprint(draft);
+    draft = approveCheckpoint(draft);
+    expect(draft.assistant!.stages[4].approved).toBe(true);
+    expect(() => readWorkflow(draft.assistant)).not.toThrow();
+    const restored = openProject(markdownArchive({ draft, assets: {} }));
+    expect(restored.draft.assistant).toEqual(draft.assistant);
+    expect(restored.draft.assistant!.mode).toBe("fill");
+  });
+
+  it("does not approve a fill response containing only questions", () => {
+    const draft = defaultDraft();
+    draft.assistant = newWorkflow("fill");
+    draft.assistant.stages[0].response = {
+      ...response(),
+      proposal: { title: "", introduction: "", sections: [] },
+    };
+    expect(() => approveCheckpoint(draft)).toThrow("Request proposed changes");
+  });
+
   it("does not alter document text until approval and advances only one checkpoint", async () => {
     const draft = defaultDraft();
     draft.assistant = newWorkflow();
@@ -125,6 +253,11 @@ describe("GDD assistant checkpoints", () => {
     const bad = response();
     bad.proposal.sections[0].items[0].body = "## Heading";
     expect(() => validateResponse(bad, 0)).toThrow("invalid");
+    const duplicate = response();
+    duplicate.proposal.sections[0].items.push(
+      duplicate.proposal.sections[0].items[0],
+    );
+    expect(() => validateResponse(duplicate, 0)).toThrow();
     const workflow = newWorkflow();
     workflow.stages[2].approved = true;
     expect(() => readWorkflow(workflow)).toThrow("inconsistent");

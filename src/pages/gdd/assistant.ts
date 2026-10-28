@@ -125,15 +125,20 @@ const stageSchema = z.object({
 });
 const workflowSchema = z.object({
   version: z.literal(1),
+  mode: z.enum(["scratch", "fill"]).default("scratch"),
   current: z.number().int().min(0).max(5),
   stages: z.array(stageSchema).length(6),
   references: z.array(referenceSchema).max(12),
 });
 export type AssistantWorkflow = z.infer<typeof workflowSchema>;
+export type AssistantMode = AssistantWorkflow["mode"];
 
-export function newWorkflow(): AssistantWorkflow {
+export function newWorkflow(
+  mode: AssistantMode = "scratch",
+): AssistantWorkflow {
   return {
     version: 1,
+    mode,
     current: 0,
     stages: CHECKPOINTS.map(() => ({
       prompt: "",
@@ -153,7 +158,8 @@ export function readWorkflow(value: unknown): AssistantWorkflow {
   const workflow = parsed.data;
   const firstPending = workflow.stages.findIndex((stage) => !stage.approved);
   if (
-    (firstPending >= 0 &&
+    (workflow.mode === "scratch" &&
+      firstPending >= 0 &&
       (workflow.current > firstPending ||
         workflow.stages.slice(firstPending).some((stage) => stage.approved))) ||
     new Set(workflow.references.map((reference) => reference.id)).size !==
@@ -207,6 +213,16 @@ export function validateResponse(
     throw new Error(
       "The assistant proposed changes outside the current checkpoint.",
     );
+  if (
+    response.proposal.sections.some(
+      (section) =>
+        new Set(section.items.map((item) => item.heading)).size !==
+        section.items.length,
+    )
+  )
+    throw new Error(
+      "The assistant returned duplicate subsection headings. Request a revised proposal.",
+    );
   return response;
 }
 
@@ -224,17 +240,37 @@ export function proposalDraft(
         `Rename duplicate "${proposed.title}" sections before applying the proposal.`,
       );
     const existing = matches[0];
+    const fill = draft.assistant?.mode === "fill";
+    const items = fill ? [...(existing?.items ?? [])] : [];
+    for (const item of proposed.items) {
+      const matches = items.filter(
+        (entry) => entry.type === "text" && entry.heading === item.heading,
+      );
+      if (matches.length > 1)
+        throw new Error(
+          `Rename duplicate "${item.heading}" subsections before applying the proposal.`,
+        );
+      const previous = matches[0];
+      const replacement = {
+        id: previous?.id ?? crypto.randomUUID(),
+        type: "text" as const,
+        heading: item.heading,
+        body: item.body,
+        ...(previous?.headingMarkdown
+          ? { headingMarkdown: previous.headingMarkdown }
+          : {}),
+      };
+      if (previous) items[items.indexOf(previous)] = replacement;
+      else items.push(replacement);
+    }
     const replacement: EditorSection = {
       id: existing?.id ?? crypto.randomUUID(),
       title: proposed.title,
       items: [
-        ...proposed.items.map((item) => ({
-          id: crypto.randomUUID(),
-          type: "text" as const,
-          heading: item.heading,
-          body: item.body,
-        })),
-        ...(existing?.items.filter((item) => item.type === "images") ?? []),
+        ...items,
+        ...(!fill
+          ? (existing?.items.filter((item) => item.type === "images") ?? [])
+          : []),
       ],
     };
     if (existing) sections[sections.indexOf(existing)] = replacement;
@@ -256,28 +292,46 @@ export function approveCheckpoint(draft: EditorDraft): EditorDraft {
     throw new Error("Request a proposal before approving this checkpoint.");
   const changed = proposalDraft(draft, stage.response.proposal);
   if (
-    !changed.title.trim() ||
-    CHECKPOINTS[index].sections.some(
-      (title) =>
-        !changed.sections.some(
-          (section) =>
-            section.title === title &&
-            section.items.some(
-              (item) => item.type === "text" && item.body.trim(),
-            ),
-        ),
-    )
+    workflow.mode === "fill" &&
+    !stage.response.proposal.title &&
+    !stage.response.proposal.introduction &&
+    !stage.response.proposal.sections.length
+  )
+    throw new Error(
+      "Request proposed changes before approving this checkpoint.",
+    );
+  if (
+    workflow.mode === "scratch" &&
+    (!changed.title.trim() ||
+      CHECKPOINTS[index].sections.some(
+        (title) =>
+          !changed.sections.some(
+            (section) =>
+              section.title === title &&
+              section.items.some(
+                (item) => item.type === "text" && item.body.trim(),
+              ),
+          ),
+      ))
   )
     throw new Error(
       "Request a proposal covering every section in this checkpoint and a game title before approving. Mark non-applicable systems explicitly.",
     );
   changed.assistant = {
     ...workflow,
-    current: Math.min(5, index + 1),
+    current:
+      workflow.mode === "fill"
+        ? Math.max(
+            0,
+            workflow.stages.findIndex(
+              (entry, current) => current !== index && !entry.approved,
+            ),
+          )
+        : Math.min(5, index + 1),
     stages: workflow.stages.map((entry, current) =>
       current === index
         ? { ...entry, approved: true, response: null, baseFingerprint: null }
-        : current > index
+        : workflow.mode === "scratch" && current > index
           ? {
               ...entry,
               approved: false,

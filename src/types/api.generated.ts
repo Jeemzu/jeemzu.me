@@ -2364,6 +2364,8 @@ export interface components {
             imageBase64?: string | null;
         };
         GddAssistantRequest: {
+            /** @description Scratch builds a new design; fill expands or revises an existing GDD. */
+            mode?: string;
             checkpoint: string;
             prompt: string;
             document: string;

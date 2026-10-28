@@ -5,6 +5,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Stack,
   TextField,
   Tooltip,
@@ -15,6 +19,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { completeGddCheckpoint } from "../../utils/gddAssistantApi";
 import {
   bodySx,
+  dialogPaperSx,
   fieldSx,
   goldButtonSx,
   headingSx,
@@ -28,11 +33,13 @@ import {
   newWorkflow,
   readWorkflow,
   recentHistory,
+  type AssistantMode,
   type AssistantReference,
   type AssistantWorkflow,
 } from "./assistant";
 import { importAssistantReference } from "./assistantReferences";
 import {
+  defaultDraft,
   draftMarkdown,
   projectAssets,
   readDraft,
@@ -42,7 +49,11 @@ import {
 interface Props {
   project: EditorProject;
   disabled: boolean;
-  onChange: (project: EditorProject, documentChanged: boolean) => void;
+  onChange: (
+    project: EditorProject,
+    documentChanged: boolean,
+    replaceDocument?: boolean,
+  ) => void;
   onBusyChange: (busy: boolean) => void;
 }
 
@@ -60,6 +71,7 @@ export default function GddAssistant({
   const [warnings, setWarnings] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [link, setLink] = useState("");
+  const [pendingMode, setPendingMode] = useState<AssistantMode | null>(null);
   const upload = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null);
   const latest = useRef(project);
@@ -100,6 +112,25 @@ export default function GddAssistant({
     }
   }
 
+  function start(mode: AssistantMode) {
+    if (locked) return;
+    if (mode === "scratch") {
+      onChange(
+        {
+          draft: { ...defaultDraft(), assistant: newWorkflow(mode) },
+          assets: {},
+        },
+        true,
+        true,
+      );
+    } else if (!update(newWorkflow(mode))) return;
+    setNotes("");
+    setLink("");
+    setWarnings([]);
+    setError("");
+    setPendingMode(null);
+  }
+
   async function perform(
     action: (active: () => boolean, signal: AbortSignal) => Promise<void>,
   ) {
@@ -137,6 +168,14 @@ export default function GddAssistant({
     void perform(async (active, signal) => {
       const document = JSON.stringify({
         currentGdd: draftMarkdown(project.draft, false),
+        missingDetails: project.draft.sections.flatMap((section) => {
+          const headings = section.items
+            .filter((item) => item.type === "text" && !item.body.trim())
+            .map((item) => item.heading);
+          return headings.length || !section.items.length
+            ? [{ section: section.title, headings }]
+            : [];
+        }),
         pendingProposal: stage.response?.proposal ?? null,
       });
       if (document.length > 100000)
@@ -144,10 +183,14 @@ export default function GddAssistant({
           "The GDD and pending proposal exceed 100,000 characters. Reduce the document before requesting assistance.",
         );
       const fingerprint = await draftFingerprint(project.draft);
+      const prompt =
+        stage.prompt.trim() ||
+        "Identify missing details in this checkpoint and propose additions grounded in my existing GDD. Ask focused questions where decisions are needed.";
       const response = await completeGddCheckpoint(
         {
+          mode: workflow.mode,
           checkpoint: checkpoint.id,
-          prompt: stage.prompt.trim(),
+          prompt,
           document,
           history: stage.history,
           references: workflow.references.map((reference) => ({
@@ -180,7 +223,7 @@ export default function GddAssistant({
                 baseFingerprint: fingerprint,
                 history: recentHistory([
                   ...entry.history,
-                  { role: "user", content: stage.prompt.trim() },
+                  { role: "user", content: prompt },
                   { role: "assistant", content: response.message },
                 ]),
               }
@@ -288,11 +331,11 @@ export default function GddAssistant({
             {warning}
           </Alert>
         ))}
-        {!workflow ? (
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <Tooltip
             title={
               username
-                ? "Build a GDD through six approval checkpoints. Selected prompts and references are sent to OpenAI only when you request a proposal."
+                ? "Replace the open draft and build a new GDD through six approval checkpoints. Selected context is sent to OpenAI only when you request a proposal."
                 : "Sign in to use the AI design assistant."
             }
           >
@@ -300,13 +343,40 @@ export default function GddAssistant({
               <Button
                 disabled={locked}
                 sx={goldButtonSx}
-                onClick={() => update(newWorkflow())}
+                onClick={() => setPendingMode("scratch")}
               >
-                Start guided GDD
+                Start from scratch
               </Button>
             </span>
           </Tooltip>
-        ) : (
+          <Tooltip
+            title={
+              username
+                ? "Use the open draft as context. Choose any checkpoint to review additions or revisions before applying them."
+                : "Sign in to use the AI design assistant."
+            }
+          >
+            <span>
+              <Button
+                disabled={locked || workflow?.mode === "fill"}
+                sx={outlineButtonSx}
+                onClick={() =>
+                  workflow ? setPendingMode("fill") : start("fill")
+                }
+              >
+                Fill in the blanks
+              </Button>
+            </span>
+          </Tooltip>
+          {workflow && (
+            <Chip
+              label={
+                workflow.mode === "fill" ? "Fill in the blanks" : "From scratch"
+              }
+            />
+          )}
+        </Stack>
+        {workflow && (
           <>
             <Stack
               direction="row"
@@ -322,7 +392,10 @@ export default function GddAssistant({
                   color={current === index ? "primary" : "default"}
                   variant={current === index ? "filled" : "outlined"}
                   disabled={
-                    locked || (firstPending >= 0 && current > firstPending)
+                    locked ||
+                    (workflow.mode === "scratch" &&
+                      firstPending >= 0 &&
+                      current > firstPending)
                   }
                   onClick={() => {
                     update({ ...workflow, current });
@@ -427,7 +500,13 @@ export default function GddAssistant({
                     </Box>
                   ))}
                 </Box>
-                <Tooltip title="Applies the proposed text, replacing text in the listed sections. Existing image categories and other sections are preserved. Submit or clear any unsent prompt first. Revising an earlier checkpoint requires reapproval of later checkpoints.">
+                <Tooltip
+                  title={
+                    workflow.mode === "fill"
+                      ? "Applies only the proposed subsections, adding new ones or replacing matching headings. Other text, images and prototype controls are preserved. Submit or clear any unsent prompt first."
+                      : "Applies the proposed text, replacing text in the listed sections. Existing image categories and other sections are preserved. Submit or clear any unsent prompt first. Revising an earlier checkpoint requires reapproval of later checkpoints."
+                  }
+                >
                   <span>
                     <Button
                       sx={goldButtonSx}
@@ -442,7 +521,9 @@ export default function GddAssistant({
             )}
             <TextField
               label={
-                index === 0 && !stage?.history.length
+                workflow.mode === "scratch" &&
+                index === 0 &&
+                !stage?.history.length
                   ? "Describe your game"
                   : "Prompt"
               }
@@ -573,7 +654,10 @@ export default function GddAssistant({
                 <span>
                   <Button
                     sx={goldButtonSx}
-                    disabled={locked || !stage?.prompt.trim()}
+                    disabled={
+                      locked ||
+                      (workflow.mode === "scratch" && !stage?.prompt.trim())
+                    }
                     onClick={generate}
                   >
                     {stage?.response ? "Revise proposal" : "Request proposal"}
@@ -590,6 +674,35 @@ export default function GddAssistant({
           </>
         )}
       </Stack>
+      <Dialog
+        open={pendingMode !== null}
+        onClose={() => setPendingMode(null)}
+        aria-labelledby="gdd-assistant-mode-title"
+        slotProps={{ paper: { sx: dialogPaperSx } }}
+      >
+        <DialogTitle id="gdd-assistant-mode-title" sx={headingSx}>
+          {pendingMode === "scratch"
+            ? "Replace the current GDD?"
+            : "Switch assistant mode?"}
+        </DialogTitle>
+        <DialogContent sx={bodySx}>
+          {pendingMode === "scratch"
+            ? "The current draft, images, prototype settings and assistant progress will be replaced. Saved account copies are unchanged."
+            : "Assistant progress and references will be reset. Your GDD will be preserved."}
+        </DialogContent>
+        <DialogActions>
+          <Button sx={outlineButtonSx} onClick={() => setPendingMode(null)}>
+            Cancel
+          </Button>
+          <Button
+            sx={goldButtonSx}
+            disabled={locked}
+            onClick={() => pendingMode && start(pendingMode)}
+          >
+            {pendingMode === "scratch" ? "Replace GDD" : "Switch mode"}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <input
         ref={upload}
         type="file"

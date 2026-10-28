@@ -709,12 +709,27 @@ export default function GddGeneratorPage() {
             project={project}
             disabled={busy !== null || accountBusy || assistantBusy}
             onBusyChange={setAssistantBusy}
-            onChange={(next, documentChanged) => {
+            onChange={(next, documentChanged, replaceDocument) => {
               setProject(next);
               setDirty(true);
               setError("");
               setNotice("");
-              if (documentChanged) invalidatePdf();
+              if (replaceDocument) {
+                setAccountResetVersion((version) => version + 1);
+                setEditorVersion((version) => version + 1);
+                setImportWarnings([]);
+              }
+              if (documentChanged) {
+                const paths = projectPaths(next.draft);
+                setImages((current) =>
+                  Object.fromEntries(
+                    Object.entries(current).filter(([path]) =>
+                      paths.includes(path),
+                    ),
+                  ),
+                );
+                invalidatePdf();
+              }
             }}
           />
         </DialogContent>

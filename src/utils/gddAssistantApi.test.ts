@@ -16,31 +16,35 @@ const request: GddAssistantRequest = {
 afterEach(() => vi.resetAllMocks());
 
 describe("GDD assistant API", () => {
-  it("uses authenticated, cancellable requests and validates the response", async () => {
-    vi.mocked(authFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          message: "Let's refine the concept.",
-          questions: [],
-          referenceRequests: [],
-          proposal: { title: "Game", introduction: "", sections: [] },
+  it.each(["scratch", "fill"] as const)(
+    "sends %s mode in authenticated, cancellable requests and validates the response",
+    async (mode) => {
+      const payload = { ...request, mode };
+      vi.mocked(authFetch).mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: "Let's refine the concept.",
+            questions: [],
+            referenceRequests: [],
+            proposal: { title: "Game", introduction: "", sections: [] },
+          }),
+        ),
+      );
+      const controller = new AbortController();
+      expect(
+        (await completeGddCheckpoint(payload, 0, controller.signal)).proposal
+          .title,
+      ).toBe("Game");
+      expect(authFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gdd-assistant"),
+        expect.objectContaining({
+          method: "POST",
+          signal: controller.signal,
+          body: JSON.stringify(payload),
         }),
-      ),
-    );
-    const controller = new AbortController();
-    expect(
-      (await completeGddCheckpoint(request, 0, controller.signal)).proposal
-        .title,
-    ).toBe("Game");
-    expect(authFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/gdd-assistant"),
-      expect.objectContaining({
-        method: "POST",
-        signal: controller.signal,
-        body: JSON.stringify(request),
-      }),
-    );
-  });
+      );
+    },
+  );
   it.each([401, 403, 413, 429, 502])(
     "surfaces HTTP %i without a success-shaped fallback",
     async (status) => {

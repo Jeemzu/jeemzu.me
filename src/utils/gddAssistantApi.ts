@@ -1,11 +1,13 @@
 import { authFetch } from "./authFetch";
 import {
   validateResponse,
+  type AssistantMode,
   type AssistantMessage,
   type AssistantResponse,
 } from "../pages/gdd/assistant";
 
 export interface GddAssistantRequest {
+  mode?: AssistantMode;
   checkpoint: string;
   prompt: string;
   document: string;
