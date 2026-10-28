@@ -126,7 +126,7 @@ export function GamePlayer({ entry, initialOptions, autoStart = false, onExit, e
       if (sizeRef.current) instance.resize(sizeRef.current);
       instance.start();
       setPhase("playing");
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === "hidden" && !entry.realtime) {
         instance.pause();
         audioEngine.suspend();
         setPaused(true);
@@ -160,7 +160,7 @@ export function GamePlayer({ entry, initialOptions, autoStart = false, onExit, e
     setPaused(next);
   }, []);
 
-  const canPause = phase === "playing" && !state.gameOver && !panel?.actions.length;
+  const canPause = phase === "playing" && !entry.realtime && !state.gameOver && !panel?.actions.length;
 
   const handleRestart = () => {
     resetRun();

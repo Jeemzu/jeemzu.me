@@ -13,6 +13,7 @@ import brickbreakgif from '../../assets/images/brickbreak.gif';
 import tetrispng from '../../assets/images/tetris.png';
 import tetrisgif from '../../assets/images/tetris.gif';
 import platformerpng from '../../assets/images/platformer.png';
+import puttpartysvg from '../../assets/images/puttparty.svg';
 
 export const useGameLauncher = () => {
     const [, navigate] = useLocation();
@@ -24,6 +25,7 @@ export const useGameLauncher = () => {
     const launchTetris = () => navigate(playPath('tetris'));
 
     const launchPlatformer = () => navigate(playPath('impossible'));
+    const launchPuttParty = () => navigate(playPath('puttparty'));
 
     const showComingSoon = (gameTitle: string) => {
         setComingSoonGame(gameTitle);
@@ -43,7 +45,7 @@ export const useGameLauncher = () => {
         />
     ) : null;
 
-    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, showComingSoon, GameModal, ComingSoonGameModal };
+    return { launchSnake, launchZAim, launchBrickBreak, launchTetris, launchPlatformer, launchPuttParty, showComingSoon, GameModal, ComingSoonGameModal };
 };
 
 // Create game data with launcher functions
@@ -53,8 +55,18 @@ export const createGameData = (launchers: {
     launchBrickBreak: () => void;
     launchTetris: () => void;
     launchPlatformer: () => void;
+    launchPuttParty: () => void;
     showComingSoon: (gameTitle: string) => void;
 }): GameDataProps[] => [
+        {
+            id: 'puttparty',
+            title: 'Better Putt Party',
+            description: 'Online mini-golf for 1-6 players. Everyone putts at once across six holes; lowest score wins.',
+            thumbnail: puttpartysvg,
+            gameplayGif: puttpartysvg,
+            genre: 'Native',
+            onPlay: launchers.launchPuttParty,
+        },
         {
             id: 'platformer',
             title: 'The (Im)Possible Game',

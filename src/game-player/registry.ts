@@ -5,6 +5,7 @@ import { tetrisEntry } from "../games/tetris/entry";
 import { brickEntry } from "../games/brickbreak/entry";
 import { aimEntry } from "../games/zaim/entry";
 import { impossibleEntry } from "../games/impossible/entry";
+import { puttPartyEntry } from "../games/puttparty/entry";
 
 /** Erases the options type so entries with different option shapes can share one list. */
 const erase = <O,>(e: GameEntry<O>) => e as unknown as GameEntry<unknown>;
@@ -15,6 +16,7 @@ const ENTRIES: GameEntry<unknown>[] = [
   erase(brickEntry),
   erase(aimEntry),
   erase(impossibleEntry),
+  erase(puttPartyEntry),
   ...(import.meta.env.DEV ? [erase(sandboxEntry)] : []),
 ];
 

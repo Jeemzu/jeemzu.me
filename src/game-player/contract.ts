@@ -85,4 +85,6 @@ export interface GameEntry<O = unknown> {
   noLeaderboard?: boolean;
   /** Game owns its in-play HUD: no frame, side panel or header score until the run ends. */
   immersive?: boolean;
+  /** Online play that keeps running for other players: no pause, and leaving the tab never pauses. */
+  realtime?: boolean;
 }

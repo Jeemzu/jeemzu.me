@@ -14,6 +14,7 @@ const GamesPage = () => {
     showComingSoon,
     GameModal,
     ComingSoonGameModal,
+    launchPuttParty,
   } = useGameLauncher();
   const gameData = createGameData({
     launchSnake,
@@ -21,6 +22,7 @@ const GamesPage = () => {
     launchBrickBreak,
     launchTetris,
     launchPlatformer,
+    launchPuttParty,
     showComingSoon,
   });
 

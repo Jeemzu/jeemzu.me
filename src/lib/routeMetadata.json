@@ -63,6 +63,10 @@
     "title": "Level Editor",
     "description": "Create and play custom platformer levels with a browser-based level editor."
   },
+  "/play/puttparty": {
+    "title": "Better Putt Party",
+    "description": "Online multiplayer mini-golf for 1-6 players: create a room, share the code, and putt six holes at the same time."
+  },
   "/algoviz": {
     "title": "Algorithm Visualizer",
     "description": "Explore sorting, searching, pathfinding, and AVL tree algorithms with interactive, step-by-step visualizations."
