@@ -4,6 +4,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
   IconButton,
   Stack,
   Typography,
@@ -12,12 +13,14 @@ import { FaBars, FaChevronDown, FaChevronLeft } from "react-icons/fa6";
 import { bodySx, headingSx } from "../../lib/medievalStyles";
 import SidebarTooltip from "./SidebarTooltip";
 
-interface Section {
+type Section = {
   id: string;
   label: string;
   icon: ReactNode;
-  content: ReactNode;
-}
+} & (
+  | { content: ReactNode; onClick?: never }
+  | { onClick: () => void; content?: never }
+);
 
 export default function ActionSidebar({
   title,
@@ -29,9 +32,10 @@ export default function ActionSidebar({
   const sidebarId = useId();
   const [manuallyCollapsed, setManuallyCollapsed] = useState(false);
   const [closedSections, setClosedSections] = useState<string[]>([]);
+  const expandableSections = sections.filter((section) => !section.onClick);
   const allSectionsClosed =
-    sections.length > 0 &&
-    sections.every((section) => closedSections.includes(section.id));
+    expandableSections.length > 0 &&
+    expandableSections.every((section) => closedSections.includes(section.id));
   const collapsed = manuallyCollapsed || allSectionsClosed;
 
   return (
@@ -57,7 +61,9 @@ export default function ActionSidebar({
         {!collapsed && (
           <Typography sx={{ ...headingSx, pl: 1 }}>{title}</Typography>
         )}
-        <SidebarTooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+        <SidebarTooltip
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
           <IconButton
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-expanded={!collapsed}
@@ -81,8 +87,15 @@ export default function ActionSidebar({
           collapsed ? (
             <SidebarTooltip key={section.id} title={section.label}>
               <IconButton
-                aria-label={`Expand ${section.label}`}
+                aria-label={
+                  section.onClick ? section.label : `Expand ${section.label}`
+                }
+                aria-haspopup={section.onClick ? "dialog" : undefined}
                 onClick={() => {
+                  if (section.onClick) {
+                    section.onClick();
+                    return;
+                  }
                   setClosedSections((closed) =>
                     closed.filter((id) => id !== section.id),
                   );
@@ -93,6 +106,27 @@ export default function ActionSidebar({
                 {section.icon}
               </IconButton>
             </SidebarTooltip>
+          ) : section.onClick ? (
+            <Button
+              key={section.id}
+              onClick={section.onClick}
+              aria-haspopup="dialog"
+              startIcon={section.icon}
+              sx={{
+                ...bodySx,
+                minHeight: 48,
+                justifyContent: "flex-start",
+                textAlign: "left",
+                textTransform: "none",
+                px: 1,
+                "& .MuiButton-startIcon": {
+                  color: "medievalGold.light",
+                  mr: 1.5,
+                },
+              }}
+            >
+              {section.label}
+            </Button>
           ) : (
             <Accordion
               key={section.id}

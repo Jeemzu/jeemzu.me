@@ -33,7 +33,6 @@ import {
   dialogPaperSx,
   headingSx,
   outlineButtonSx,
-  panelSx,
 } from "../../lib/medievalStyles";
 import { downloadBlob } from "../budgetize/lib/download";
 import {
@@ -247,11 +246,8 @@ export default function GddAccountLibrary({
   if (!username) return null;
   const locked = disabled || busy;
   return (
-    <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
+    <Box>
       <Stack spacing={2}>
-        <Typography variant="h5" sx={headingSx}>
-          My GDDs
-        </Typography>
         <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
           <Button
             variant="outlined"

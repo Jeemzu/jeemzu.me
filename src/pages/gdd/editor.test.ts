@@ -4,6 +4,7 @@ import { createTemplate, importArchive, TEMPLATE_MARKDOWN } from "./archive";
 import { parseDocument } from "./document";
 import {
   defaultDraft,
+  canCompleteSetup,
   draftFromMarkdown,
   draftMarkdown,
   moveItem,
@@ -28,6 +29,47 @@ function exampleProject(): EditorProject {
 }
 
 describe("GDD form model", () => {
+  it("requires a title, supported engine and target platform before completing setup", () => {
+    const draft = defaultDraft();
+    expect(draft.setupComplete).toBe(false);
+    expect(canCompleteSetup(draft)).toBe(false);
+    draft.title = "My game";
+    expect(canCompleteSetup(draft)).toBe(false);
+    if (!draft.prototype) throw new Error("Missing default prototype.");
+    draft.prototype.platforms = ["Windows"];
+    expect(canCompleteSetup(draft)).toBe(true);
+    draft.prototype.engines = [];
+    expect(canCompleteSetup(draft)).toBe(false);
+    draft.prototype.engines = ["custom"];
+    expect(canCompleteSetup(draft)).toBe(false);
+    draft.prototype.engines = ["unity", "threejs"];
+    expect(canCompleteSetup(draft)).toBe(true);
+    draft.title = "  ";
+    expect(canCompleteSetup(draft)).toBe(false);
+  });
+
+  it("persists setup completion in account drafts and leaves legacy imports unlocked", () => {
+    for (const complete of [false, true]) {
+      const draft = { ...defaultDraft(), setupComplete: complete };
+      expect(
+        openProject(saveProject({ draft, assets: {} })).draft.setupComplete,
+      ).toBe(complete);
+    }
+    const imported = draftFromMarkdown("# Legacy\n\n## Design\n\nText.");
+    expect(imported.setupComplete).toBeUndefined();
+    expect(
+      openProject(saveProject({ draft: imported, assets: {} })).draft
+        .setupComplete,
+    ).toBeUndefined();
+    expect(() =>
+      readDraft({
+        format: "jeemzu-gdd-editor",
+        version: 1,
+        draft: { ...defaultDraft(), setupComplete: "yes" },
+      }),
+    ).toThrow("Invalid setup status");
+  });
+
   it("opens a parent-folder ZIP with the same editable draft and original assets", () => {
     const project = exampleProject();
     const files = unzipSync(saveProject(project));

@@ -7,6 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { generatePdf } from "./generatePdf";
 import { createTemplate, importArchive } from "./archive";
 import { parseDocument } from "./document";
+import { requirementMarkdown } from "./prototype";
 
 interface LayoutNode {
   type: string;
@@ -109,5 +110,58 @@ describe("GDD PDF export", () => {
         node.children?.some((child) => child.value === "01 / SECTION"),
     );
     expect(section?.lines?.length).toBeGreaterThan(0);
+  });
+
+  it("renders labeled prototype fields and multiline values without table-cell limits", async () => {
+    const markdown = requirementMarkdown({
+      fields: {
+        Controls: "Keyboard | controller\n\n- WASD moves.\n- Space jumps.",
+        "Save data": "Checkpoint progress.\n\nSave after each area.",
+        "Technical constraints": "A detailed performance budget. "
+          .repeat(20)
+          .trim(),
+      },
+      additional: "No paid plugins.",
+    });
+    let layout: LayoutNode | undefined;
+    await pdf(
+      cloneElement(
+        GddPdf({
+          content: parseDocument(
+            `# Prototype\n\n## Prototype requirements\n\n### Shared requirements\n\n${markdown}\n`,
+          ),
+          images: {},
+          pageNumbers: { "section-1": 3 },
+        }),
+        {
+          onRender: (data: unknown) => {
+            if (
+              typeof data !== "object" ||
+              !data ||
+              !("_INTERNAL__LAYOUT__DATA_" in data)
+            )
+              throw new Error("PDF layout data is unavailable.");
+            layout = data._INTERNAL__LAYOUT__DATA_ as LayoutNode;
+          },
+        },
+      ),
+    ).toBlob();
+    expect(layout).toBeDefined();
+    const text = layout
+      ? descendants(layout)
+          .filter((node) => node.type === "TEXT_INSTANCE")
+          .map((node) => node.value)
+          .join(" ")
+      : "";
+    for (const value of [
+      "Controls",
+      "Keyboard | controller",
+      "WASD moves.",
+      "Space jumps.",
+      "Save after each area.",
+      "A detailed performance budget.",
+      "No paid plugins.",
+    ])
+      expect(text).toContain(value);
   });
 });

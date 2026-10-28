@@ -9,16 +9,22 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import {
   FaArrowUpRightFromSquare,
   FaDownload,
+  FaComments,
   FaFileLines,
   FaFilePdf,
+  FaMinus,
+  FaRobot,
   FaScrewdriverWrench,
   FaUpload,
+  FaXmark,
 } from "react-icons/fa6";
 import PageHeading from "../../components/shared/PageHeading";
 import SidebarTooltip from "../../components/shared/SidebarTooltip";
@@ -30,8 +36,10 @@ import {
   outlineButtonSx,
 } from "../../lib/medievalStyles";
 import { downloadBlob } from "../budgetize/lib/download";
+import { useAuthStore } from "../../stores/authStore";
 import { createTemplate } from "./archive";
 import { LIMITS, parseDocument } from "./document";
+import { CHECKPOINTS } from "./assistant";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
 import GddAssistant from "./GddAssistant";
@@ -59,6 +67,7 @@ import {
 } from "./importDocument";
 
 export default function GddGeneratorPage() {
+  const signedIn = useAuthStore((state) => state.isAuthenticated);
   const [project, setProject] = useState<EditorProject>(() => ({
     draft: defaultDraft(),
     assets: {},
@@ -78,12 +87,27 @@ export default function GddGeneratorPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [exampleOpen, setExampleOpen] = useState(false);
   const [devSetupOpen, setDevSetupOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [assistantView, setAssistantView] = useState<
+    "closed" | "open" | "minimized"
+  >("closed");
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const status = useRef<HTMLDivElement>(null);
   const operation = useRef(0);
+  const workflow = project.draft.assistant;
+  const assistantProgress = workflow
+    ? `${workflow.current + 1}/${CHECKPOINTS.length} - ${CHECKPOINTS[workflow.current].label}`
+    : "AI Assistant";
+  const assistantStatus = assistantBusy
+    ? "Working"
+    : workflow?.stages.every((stage) => stage.approved)
+      ? "Complete"
+      : workflow?.stages[workflow.current].response
+        ? "Ready for review"
+        : "";
   const setupEngine =
     project.draft.prototype?.engines.includes("threejs") &&
     !project.draft.prototype.engines.includes("unity")
@@ -369,6 +393,22 @@ export default function GddGeneratorPage() {
         <ActionSidebar
           title="GDD tools"
           sections={[
+            ...(signedIn
+              ? [
+                  {
+                    id: "library",
+                    label: "My GDDs",
+                    icon: <FaFileLines />,
+                    onClick: () => setLibraryOpen(true),
+                  },
+                ]
+              : []),
+            {
+              id: "assistant",
+              label: "AI Assistant",
+              icon: <FaRobot />,
+              onClick: () => setAssistantView("open"),
+            },
             {
               id: "example",
               label: "Example GDD",
@@ -570,6 +610,31 @@ export default function GddGeneratorPage() {
               </Stack>
             )}
           </Box>
+          <GddEditorForm
+            key={editorVersion}
+            draft={project.draft}
+            images={images}
+            disabled={busy !== null || accountBusy || assistantBusy}
+            onChange={changeDraft}
+            onUpload={(sectionId, groupId, files) =>
+              void uploadImages(sectionId, groupId, files)
+            }
+          />
+        </Stack>
+      </Stack>
+      <Dialog
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        keepMounted
+        fullWidth
+        maxWidth="lg"
+        aria-labelledby="gdd-library-title"
+        slotProps={{ paper: { sx: dialogPaperSx } }}
+      >
+        <DialogTitle id="gdd-library-title" sx={headingSx}>
+          My GDDs
+        </DialogTitle>
+        <DialogContent>
           <GddAccountLibrary
             project={project}
             pdf={pdfBlob}
@@ -588,8 +653,57 @@ export default function GddGeneratorPage() {
               setImportWarnings([]);
               setPdfBlob(pdf);
               setPdfUrl(URL.createObjectURL(pdf));
+              setLibraryOpen(false);
             }}
           />
+        </DialogContent>
+        <DialogActions>
+          <Button sx={outlineButtonSx} onClick={() => setLibraryOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={assistantView === "open"}
+        onClose={() => setAssistantView("minimized")}
+        keepMounted
+        fullWidth
+        maxWidth="md"
+        aria-labelledby="gdd-assistant-title"
+        slotProps={{ paper: { sx: dialogPaperSx } }}
+      >
+        <DialogTitle
+          id="gdd-assistant-toolbar"
+          component="div"
+          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+        >
+          <Typography
+            component="h2"
+            id="gdd-assistant-title"
+            sx={{ ...headingSx, flex: 1 }}
+          >
+            AI Assistant
+          </Typography>
+          <Tooltip title="Minimize">
+            <IconButton
+              aria-label="Minimize AI Assistant"
+              onClick={() => setAssistantView("minimized")}
+              sx={{ color: "medievalGold.light" }}
+            >
+              <FaMinus size={18} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Close">
+            <IconButton
+              aria-label="Close AI Assistant"
+              onClick={() => setAssistantView("closed")}
+              sx={{ color: "medievalGold.light" }}
+            >
+              <FaXmark size={18} />
+            </IconButton>
+          </Tooltip>
+        </DialogTitle>
+        <DialogContent dividers>
           <GddAssistant
             key={`assistant-${editorVersion}`}
             project={project}
@@ -603,18 +717,41 @@ export default function GddGeneratorPage() {
               if (documentChanged) invalidatePdf();
             }}
           />
-          <GddEditorForm
-            key={editorVersion}
-            draft={project.draft}
-            images={images}
-            disabled={busy !== null || accountBusy || assistantBusy}
-            onChange={changeDraft}
-            onUpload={(sectionId, groupId, files) =>
-              void uploadImages(sectionId, groupId, files)
+        </DialogContent>
+      </Dialog>
+      {assistantView === "minimized" && (
+        <Tooltip title="Restore AI Assistant">
+          <Button
+            variant="contained"
+            aria-label="Restore AI Assistant"
+            aria-haspopup="dialog"
+            onClick={() => setAssistantView("open")}
+            startIcon={
+              assistantBusy ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <FaComments />
+              )
             }
-          />
-        </Stack>
-      </Stack>
+            sx={{
+              ...goldButtonSx,
+              position: "fixed",
+              right: { xs: 16, sm: 24 },
+              bottom: "max(24px, env(safe-area-inset-bottom))",
+              zIndex: (theme) => theme.zIndex.fab,
+              borderRadius: 8,
+              maxWidth: "calc(100vw - 32px)",
+              boxShadow: 6,
+              textTransform: "none",
+            }}
+          >
+            <Box component="span" role="status" aria-live="polite">
+              {assistantStatus ? `${assistantStatus} - ` : ""}
+              {assistantProgress}
+            </Box>
+          </Button>
+        </Tooltip>
+      )}
       <input
         ref={input}
         type="file"

@@ -16,6 +16,9 @@ import {
   PLATFORMS,
   PROTOTYPE_SECTION,
   prototypeItems,
+  SHARED_FIELDS,
+  type RequirementContent,
+  type RequirementDefinitions,
   type PrototypeRequirements,
 } from "./prototype";
 
@@ -41,6 +44,7 @@ export interface EditorSection {
 }
 
 export interface EditorDraft {
+  setupComplete?: boolean;
   title: string;
   introduction: string;
   sections: EditorSection[];
@@ -89,6 +93,7 @@ export function defaultDraft(): EditorDraft {
     ["Audience and release", ["Target audience", "Platforms and monetization"]],
   ];
   return {
+    setupComplete: false,
     title: "",
     introduction: "",
     prototype: defaultPrototype(),
@@ -118,6 +123,14 @@ export function moveItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const result = [...items];
   [result[index], result[destination]] = [result[destination], result[index]];
   return result;
+}
+
+export function canCompleteSetup(draft: EditorDraft): boolean {
+  return Boolean(
+    draft.title.trim() &&
+    draft.prototype?.engines.some((engine) => engine !== "custom") &&
+    draft.prototype.platforms.length,
+  );
 }
 
 function escaped(value: string): string {
@@ -391,6 +404,11 @@ export function readDraft(value: unknown): EditorDraft {
     throw new Error("This ZIP contains an unsupported GDD editor draft.");
   }
   const data = value.draft;
+  if (
+    data.setupComplete !== undefined &&
+    typeof data.setupComplete !== "boolean"
+  )
+    throw new Error("Invalid setup status in draft.");
   const ids = new Set<string>();
   function id(value: unknown): string {
     if (
@@ -461,6 +479,9 @@ export function readDraft(value: unknown): EditorDraft {
     };
   });
   return {
+    ...(typeof data.setupComplete === "boolean"
+      ? { setupComplete: data.setupComplete }
+      : {}),
     title: text(data.title, 100),
     introduction: text(data.introduction, 2000),
     sections,
@@ -500,8 +521,6 @@ function readPrototype(value: unknown): PrototypeRequirements {
     platforms.length !== value.platforms.length ||
     typeof value.customPlatform !== "string" ||
     value.customPlatform.length > 1000 ||
-    typeof value.shared !== "string" ||
-    value.shared.length > LIMITS.characters ||
     (value.sectionIndex !== undefined &&
       (typeof value.sectionIndex !== "number" ||
         !Number.isInteger(value.sectionIndex) ||
@@ -516,9 +535,7 @@ function readPrototype(value: unknown): PrototypeRequirements {
   for (const engine of ENGINES) {
     const body = value.details[engine.id];
     if (body === undefined) continue;
-    if (typeof body !== "string" || body.length > LIMITS.characters)
-      throw new Error("Invalid engine requirements in draft.");
-    details[engine.id] = body;
+    details[engine.id] = readRequirementContent(body, engine.requirements);
   }
   return {
     ...(typeof value.sectionIndex === "number"
@@ -527,9 +544,38 @@ function readPrototype(value: unknown): PrototypeRequirements {
     engines,
     platforms,
     customPlatform: value.customPlatform,
-    shared: value.shared,
+    shared: readRequirementContent(value.shared, SHARED_FIELDS),
     details,
   };
+}
+
+function readRequirementContent(
+  value: unknown,
+  definitions: RequirementDefinitions,
+): RequirementContent {
+  if (typeof value === "string" && value.length <= LIMITS.characters)
+    return value;
+  if (
+    !record(value) ||
+    !record(value.fields) ||
+    typeof value.additional !== "string" ||
+    Object.keys(value).some((key) => key !== "fields" && key !== "additional")
+  )
+    throw new Error("Invalid prototype requirement fields in draft.");
+  const fields: Record<string, string> = {};
+  let length = value.additional.length;
+  for (const [label, body] of Object.entries(value.fields)) {
+    if (
+      !definitions.some(([name]) => name === label) ||
+      typeof body !== "string"
+    )
+      throw new Error("Invalid prototype requirement fields in draft.");
+    fields[label] = body;
+    length += body.length;
+  }
+  if (length > LIMITS.characters)
+    throw new Error("Prototype requirements exceed the character limit.");
+  return { fields, additional: value.additional };
 }
 
 export function validateAsset(bytes: Uint8Array, path: string): void {

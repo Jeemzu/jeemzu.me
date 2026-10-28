@@ -5,6 +5,7 @@ import {
   engineRequirements,
   PROTOTYPE_SECTION,
   prototypeItems,
+  SHARED_REQUIREMENTS,
   type PrototypeRequirements,
 } from "./prototype";
 
@@ -90,7 +91,15 @@ State exactly what is included and what is excluded.
 ## Audience and release
 
 Describe target players, platforms, monetization, technology, and release plans.
-`.replace("{{PROTOTYPE_REQUIREMENTS}}", prototypeMarkdown(defaultPrototype()));
+`.replace("{{PROTOTYPE_REQUIREMENTS}}", prototypeMarkdown(templatePrototype()));
+
+function templatePrototype(): PrototypeRequirements {
+  return {
+    ...defaultPrototype(),
+    details: { unity: engineRequirements("unity") },
+    shared: SHARED_REQUIREMENTS,
+  };
+}
 
 function prototypeMarkdown(prototype: PrototypeRequirements): string {
   return `## ${PROTOTYPE_SECTION}\n\n${prototypeItems(prototype)
@@ -106,7 +115,8 @@ Import GDD reopens a saved draft or this populated Markdown template.
 The web form selects engines and target platforms independently.
 Prototype requirements include only selected engine sections. Edit version,
 rendering, loading, networking, locales, constraints, and open decisions before setup.
-Unity, Three.js, Unreal, Phaser, and a custom engine are supported.
+Unity, Three.js, Unreal, and Phaser are selectable in Setup.
+Imported custom engine and platform information is retained for compatibility.
 
 1. Extract this ZIP.
 2. Edit gdd.md with any plain-text or Markdown editor.
@@ -156,9 +166,9 @@ const EXAMPLE_PNG = Uint8Array.from(
 export function createTemplate(
   prototype: PrototypeRequirements = defaultPrototype(),
 ): Uint8Array {
-  const defaultRequirements = prototypeMarkdown(defaultPrototype());
+  const defaultRequirements = prototypeMarkdown(templatePrototype());
   const selected: PrototypeRequirements = {
-    ...defaultPrototype(),
+    ...templatePrototype(),
     engines: prototype.engines,
     platforms: prototype.platforms,
     customPlatform: prototype.customPlatform,

@@ -1,8 +1,5 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Button,
   Dialog,
@@ -10,6 +7,10 @@ import {
   DialogTitle,
   IconButton,
   Stack,
+  Tab,
+  Tabs,
+  TabScrollButton,
+  type TabScrollButtonProps,
   TextField,
   Tooltip,
   Typography,
@@ -17,7 +18,6 @@ import {
 import {
   FaArrowDown,
   FaArrowUp,
-  FaChevronDown,
   FaPlus,
   FaTrash,
   FaUpload,
@@ -26,6 +26,7 @@ import {
   bodySx,
   dialogPaperSx,
   fieldSx,
+  goldButtonSx,
   headingSx,
   outlineButtonSx,
   panelSx,
@@ -33,6 +34,7 @@ import {
 import { LIMITS } from "./document";
 import {
   moveItem,
+  canCompleteSetup,
   newImageGroup,
   newSection,
   newText,
@@ -41,6 +43,7 @@ import {
 } from "./editor";
 import type { PdfImage } from "./images";
 import PrototypeFields from "./PrototypeFields";
+import TechnicalDetails from "./technical/TechnicalDetails";
 
 interface Props {
   draft: EditorDraft;
@@ -48,6 +51,86 @@ interface Props {
   disabled: boolean;
   onChange: (draft: EditorDraft) => void;
   onUpload: (sectionId: string, groupId: string, files: File[]) => void;
+}
+
+function SectionTabScrollButton(props: TabScrollButtonProps) {
+  return (
+    <TabScrollButton
+      {...props}
+      aria-label={
+        props.direction === "left" ? "Scroll tabs left" : "Scroll tabs right"
+      }
+    />
+  );
+}
+
+function EditableCardTitle({
+  value,
+  label,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  label: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+
+  function finish() {
+    setEditing(false);
+    if (text !== value) onChange(text);
+  }
+
+  return editing ? (
+    <TextField
+      autoFocus
+      label={label}
+      value={text}
+      disabled={disabled}
+      size="small"
+      fullWidth
+      sx={fieldSx}
+      slotProps={{ htmlInput: { maxLength: 100 } }}
+      onFocus={(event) => event.target.select()}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={finish}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.querySelector("input")?.blur();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setEditing(false);
+        }
+      }}
+    />
+  ) : (
+    <Typography component="h3" sx={{ m: 0, minWidth: 0, flex: 1 }}>
+      <Button
+        disabled={disabled}
+        aria-label={`Edit ${label.toLowerCase()}: ${value || "Untitled"}`}
+        onClick={() => {
+          setText(value);
+          setEditing(true);
+        }}
+        sx={{
+          ...headingSx,
+          textTransform: "none",
+          textAlign: "left",
+          justifyContent: "flex-start",
+          overflowWrap: "anywhere",
+          minWidth: 0,
+          maxWidth: "100%",
+          px: 0.5,
+          fontSize: "1.1rem",
+        }}
+      >
+        {value || "Untitled"}
+      </Button>
+    </Typography>
+  );
 }
 
 function ItemActions({
@@ -103,9 +186,18 @@ export default function GddEditorForm({
   onChange,
   onUpload,
 }: Props) {
-  const [expanded, setExpanded] = useState<string | false>(
-    draft.sections[0]?.id ?? false,
-  );
+  const tabId = useId();
+  const [selectedTab, setSelectedTab] = useState("setup");
+  const unlocked = draft.setupComplete !== false;
+  const activeTab =
+    !unlocked ||
+    (selectedTab !== "setup" &&
+      selectedTab !== "technical" &&
+      !draft.sections.some(
+        (section) => `section-${section.id}` === selectedTab,
+      ))
+      ? "setup"
+      : selectedTab;
   const [removal, setRemoval] = useState<{
     label: string;
     confirm: () => void;
@@ -151,107 +243,234 @@ export default function GddEditorForm({
           },
         }}
       >
-        <Stack spacing={3}>
-          <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
-            <Stack spacing={2}>
-              <Typography variant="h5" sx={headingSx}>
-                Document details
-              </Typography>
-              <TextField
-                label="Game title"
-                value={draft.title}
-                onChange={(event) =>
-                  onChange({ ...draft, title: event.target.value })
-                }
-                slotProps={{ htmlInput: { maxLength: 100 } }}
-                fullWidth
-                sx={fieldSx}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            mb: 3,
+            minWidth: 0,
+          }}
+        >
+          <Tabs
+            value={activeTab}
+            onChange={(_, value: string) => setSelectedTab(value)}
+            variant="scrollable"
+            scrollButtons
+            allowScrollButtonsMobile
+            slots={{ scrollButtons: SectionTabScrollButton }}
+            aria-label="GDD sections"
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              borderBottom: "1px solid rgba(200,162,74,0.3)",
+              "& .MuiTab-root": { ...headingSx, textTransform: "none" },
+              "& .MuiTab-root.Mui-selected": { color: "medievalGold.light" },
+              "& .MuiTabs-indicator": { backgroundColor: "medievalGold.main" },
+              "& .MuiTabs-scrollButtons": {
+                color: "medievalGold.light",
+                width: 40,
+                minHeight: 48,
+                border: "1px solid rgba(200,162,74,0.35)",
+                borderRadius: 1,
+                "&:hover": { backgroundColor: "rgba(200,162,74,0.12)" },
+                "&.Mui-disabled": { opacity: 0.3 },
+              },
+            }}
+          >
+            <Tab
+              label="Setup"
+              value="setup"
+              disabled={disabled}
+              id={`${tabId}-tab-setup`}
+              aria-controls={`${tabId}-panel-setup`}
+            />
+            <Tab
+              label="Technical Details"
+              value="technical"
+              disabled={disabled || !unlocked}
+              id={`${tabId}-tab-technical`}
+              aria-controls={`${tabId}-panel-technical`}
+            />
+            {draft.sections.map((section) => (
+              <Tab
+                key={section.id}
+                label={section.title || "Untitled section"}
+                value={`section-${section.id}`}
+                disabled={disabled || !unlocked}
+                id={`${tabId}-tab-section-${section.id}`}
+                aria-controls={`${tabId}-panel-section-${section.id}`}
               />
-              <TextField
-                label="Cover text"
-                value={draft.introduction}
-                onChange={(event) =>
-                  onChange({ ...draft, introduction: event.target.value })
-                }
-                multiline
-                minRows={2}
-                maxRows={8}
-                fullWidth
-                sx={fieldSx}
+            ))}
+          </Tabs>
+          <Button
+            variant="outlined"
+            sx={{ ...outlineButtonSx, flexShrink: 0, minHeight: 48 }}
+            startIcon={<FaPlus />}
+            disabled={
+              disabled ||
+              !unlocked ||
+              draft.sections.length + (draft.prototype ? 1 : 0) >=
+                LIMITS.sections ||
+              count >= 400
+            }
+            onClick={() => {
+              const section = newSection();
+              setSelectedTab(`section-${section.id}`);
+              onChange({ ...draft, sections: [...draft.sections, section] });
+            }}
+          >
+            Add section
+          </Button>
+        </Box>
+        <Box
+          role="tabpanel"
+          id={`${tabId}-panel-${activeTab}`}
+          aria-labelledby={`${tabId}-tab-${activeTab}`}
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "minmax(0, 1fr)",
+              lg: "repeat(2, minmax(0, 1fr))",
+            },
+            gap: 3,
+            alignItems: "start",
+            "& > *": { minWidth: 0 },
+          }}
+        >
+          {activeTab === "setup" && (
+            <>
+              <Box sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
+                <Stack spacing={2}>
+                  <Typography variant="h5" sx={headingSx}>
+                    Document details
+                  </Typography>
+                  <TextField
+                    label="Game title"
+                    value={draft.title}
+                    onChange={(event) =>
+                      onChange({ ...draft, title: event.target.value })
+                    }
+                    slotProps={{ htmlInput: { maxLength: 100 } }}
+                    fullWidth
+                    sx={fieldSx}
+                  />
+                  <TextField
+                    label="Cover text"
+                    value={draft.introduction}
+                    onChange={(event) =>
+                      onChange({ ...draft, introduction: event.target.value })
+                    }
+                    multiline
+                    minRows={2}
+                    maxRows={8}
+                    fullWidth
+                    sx={fieldSx}
+                  />
+                </Stack>
+              </Box>
+              <PrototypeFields
+                value={draft.prototype}
+                sectionCount={draft.sections.length}
+                disabled={disabled}
+                onChange={(prototype) => onChange({ ...draft, prototype })}
               />
-            </Stack>
-          </Box>
-          <PrototypeFields
-            value={draft.prototype}
-            sectionCount={draft.sections.length}
-            onChange={(prototype) => onChange({ ...draft, prototype })}
-          />
-          {draft.sections.map((section, sectionIndex) => (
-            <Box key={section.id} sx={panelSx} data-section-id={section.id}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                sx={{ px: 2, pt: 1 }}
-                justifyContent="space-between"
+              <Tooltip
+                title={
+                  !canCompleteSetup(draft)
+                    ? "Enter a game title and select at least one engine and target platform."
+                    : ""
+                }
               >
-                <Typography sx={bodySx}>Section {sectionIndex + 1}</Typography>
-                <ItemActions
-                  label={`section ${sectionIndex + 1}`}
-                  first={sectionIndex === 0}
-                  last={sectionIndex === draft.sections.length - 1}
-                  onMove={(direction) =>
-                    onChange({
-                      ...draft,
-                      sections: moveItem(
-                        draft.sections,
-                        sectionIndex,
-                        direction,
-                      ),
-                    })
-                  }
-                  onRemove={() =>
-                    setRemoval({
-                      label: section.title || `Section ${sectionIndex + 1}`,
-                      confirm: () =>
+                <Box sx={{ gridColumn: "1 / -1", justifySelf: "end" }}>
+                  <Button
+                    sx={goldButtonSx}
+                    disabled={disabled || !canCompleteSetup(draft)}
+                    onClick={() => {
+                      onChange({ ...draft, setupComplete: true });
+                      setSelectedTab("technical");
+                    }}
+                  >
+                    Continue
+                  </Button>
+                </Box>
+              </Tooltip>
+            </>
+          )}
+          {activeTab === "technical" &&
+            (draft.prototype ? (
+              <TechnicalDetails
+                value={draft.prototype}
+                disabled={disabled}
+                onChange={(prototype) => onChange({ ...draft, prototype })}
+              />
+            ) : (
+              <PrototypeFields
+                value={draft.prototype}
+                sectionCount={draft.sections.length}
+                disabled={disabled}
+                onChange={(prototype) => onChange({ ...draft, prototype })}
+              />
+            ))}
+          {draft.sections.map(
+            (section, sectionIndex) =>
+              activeTab === `section-${section.id}` && (
+                <Box
+                  key={section.id}
+                  sx={{ gridColumn: "1 / -1", minWidth: 0 }}
+                  data-section-id={section.id}
+                >
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    sx={{ px: 2, pt: 1 }}
+                    justifyContent="space-between"
+                  >
+                    <Typography sx={bodySx}>
+                      Section {sectionIndex + 1}
+                    </Typography>
+                    <ItemActions
+                      label={`section ${sectionIndex + 1}`}
+                      first={sectionIndex === 0}
+                      last={sectionIndex === draft.sections.length - 1}
+                      onMove={(direction) =>
                         onChange({
                           ...draft,
-                          sections: draft.sections.filter(
-                            (entry) => entry.id !== section.id,
+                          sections: moveItem(
+                            draft.sections,
+                            sectionIndex,
+                            direction,
                           ),
-                        }),
-                    })
-                  }
-                />
-              </Stack>
-              <Accordion
-                expanded={expanded === section.id}
-                onChange={(_, open) => setExpanded(open ? section.id : false)}
-                disableGutters
-                elevation={0}
-                sx={{
-                  background: "transparent",
-                  "&::before": { display: "none" },
-                }}
-              >
-                <AccordionSummary
-                  expandIcon={<FaChevronDown />}
-                  aria-controls={`details-${section.id}`}
-                  id={`summary-${section.id}`}
-                >
-                  <Typography sx={{ ...headingSx, overflowWrap: "anywhere" }}>
-                    {section.title || "Untitled section"}
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails
-                  id={`details-${section.id}`}
-                  sx={{ pl: { xs: 2, sm: 3 }, pr: { xs: 1.5, sm: 2 } }}
-                >
-                  <Stack spacing={2} useFlexGap>
+                        })
+                      }
+                      onRemove={() =>
+                        setRemoval({
+                          label: section.title || `Section ${sectionIndex + 1}`,
+                          confirm: () =>
+                            onChange({
+                              ...draft,
+                              sections: draft.sections.filter(
+                                (entry) => entry.id !== section.id,
+                              ),
+                            }),
+                        })
+                      }
+                    />
+                  </Stack>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 3,
+                      gridTemplateColumns: "minmax(0, 1fr)",
+                      alignItems: "start",
+                      mt: 2,
+                    }}
+                  >
                     <TextField
                       label="Section title"
                       value={section.title}
                       fullWidth
-                      sx={fieldSx}
+                      sx={{ ...fieldSx, gridColumn: "1 / -1" }}
                       slotProps={{ htmlInput: { maxLength: 100 } }}
                       onChange={(event) =>
                         onChange({
@@ -270,10 +489,7 @@ export default function GddEditorForm({
                         <Box
                           key={item.id}
                           sx={{
-                            border: "1px solid rgba(200,162,74,0.25)",
-                            borderRadius: 1,
-                            ml: { xs: 0.5, sm: 1.5 },
-                            borderLeft: "2px solid rgba(200,162,74,0.3)",
+                            ...panelSx,
                             p: { xs: 1.5, sm: 2 },
                             minWidth: 0,
                           }}
@@ -284,11 +500,22 @@ export default function GddEditorForm({
                               justifyContent="space-between"
                               alignItems="center"
                             >
-                              <Typography sx={bodySx}>
-                                {item.type === "text"
-                                  ? "Subsection"
-                                  : "Image category"}
-                              </Typography>
+                              <EditableCardTitle
+                                value={item.heading}
+                                label={
+                                  item.type === "text"
+                                    ? "Subsection title"
+                                    : "Image category title"
+                                }
+                                disabled={disabled}
+                                onChange={(heading) =>
+                                  updateItem(section.id, {
+                                    ...item,
+                                    heading,
+                                    headingMarkdown: undefined,
+                                  })
+                                }
+                              />
                               <ItemActions
                                 label={label}
                                 first={itemIndex === 0}
@@ -311,24 +538,6 @@ export default function GddEditorForm({
                                 }
                               />
                             </Stack>
-                            <TextField
-                              label={
-                                item.type === "text"
-                                  ? "Subheading"
-                                  : "Image category title"
-                              }
-                              value={item.heading}
-                              fullWidth
-                              sx={fieldSx}
-                              slotProps={{ htmlInput: { maxLength: 100 } }}
-                              onChange={(event) =>
-                                updateItem(section.id, {
-                                  ...item,
-                                  heading: event.target.value,
-                                  headingMarkdown: undefined,
-                                })
-                              }
-                            />
                             {item.type === "text" ? (
                               <Tooltip
                                 title="Paragraphs, lists, tables and inline Markdown are supported. Empty subsections are omitted from the PDF."
@@ -480,6 +689,7 @@ export default function GddEditorForm({
                       spacing={1}
                       useFlexGap
                       flexWrap="wrap"
+                      sx={{ gridColumn: "1 / -1" }}
                     >
                       <Button
                         variant="outlined"
@@ -510,28 +720,26 @@ export default function GddEditorForm({
                         Add image category
                       </Button>
                     </Stack>
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-            </Box>
+                  </Box>
+                </Box>
+              ),
+          )}
+        </Box>
+        {[
+          "setup",
+          "technical",
+          ...draft.sections.map((section) => `section-${section.id}`),
+        ]
+          .filter((value) => value !== activeTab)
+          .map((value) => (
+            <Box
+              key={value}
+              role="tabpanel"
+              hidden
+              id={`${tabId}-panel-${value}`}
+              aria-labelledby={`${tabId}-tab-${value}`}
+            />
           ))}
-          <Button
-            variant="outlined"
-            sx={{ ...outlineButtonSx, alignSelf: "flex-start" }}
-            startIcon={<FaPlus />}
-            disabled={
-              draft.sections.length + (draft.prototype ? 1 : 0) >=
-                LIMITS.sections || count >= 400
-            }
-            onClick={() => {
-              const section = newSection();
-              setExpanded(section.id);
-              onChange({ ...draft, sections: [...draft.sections, section] });
-            }}
-          >
-            Add section
-          </Button>
-        </Stack>
       </Box>
       <Dialog
         open={removal !== null}

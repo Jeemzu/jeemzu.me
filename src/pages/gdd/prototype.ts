@@ -1,3 +1,5 @@
+import { Lexer, type MarkedToken } from "marked";
+
 export const ENGINES = [
   {
     id: "unity",
@@ -112,6 +114,9 @@ export const ENGINES = [
 ] as const;
 
 export type EngineId = (typeof ENGINES)[number]["id"];
+export const SUPPORTED_ENGINES = ENGINES.filter(
+  (engine) => engine.id !== "custom",
+);
 
 export const PLATFORMS = [
   "Windows",
@@ -128,38 +133,177 @@ export interface PrototypeRequirements {
   engines: EngineId[];
   platforms: string[];
   customPlatform: string;
-  details: Partial<Record<EngineId, string>>;
-  shared: string;
+  details: Partial<Record<EngineId, RequirementContent>>;
+  shared: RequirementContent;
+}
+
+export type RequirementDefinitions = readonly (readonly [string, string])[];
+
+export interface RequirementFields {
+  fields: Record<string, string>;
+  additional: string;
+}
+
+export type RequirementContent = string | RequirementFields;
+
+export const SHARED_FIELDS = [
+  ["Controls", "Describe supported inputs for each target platform."],
+  [
+    "Multiplayer",
+    "State None, or define mode, topology, and networking solution.",
+  ],
+  ["Launch locales", "List launch languages, or write English only."],
+  ["Save data", "Describe what persists, when, and where."],
+  [
+    "Technical constraints",
+    "Define performance targets, device/browser minimums, and licensing limits.",
+  ],
+  [
+    "Open decisions",
+    "List unresolved setup/architecture choices, or write None.",
+  ],
+] as const;
+
+export function requirementFields(
+  content: RequirementContent,
+  definitions: RequirementDefinitions,
+): RequirementFields {
+  if (typeof content !== "string") return content;
+  const fields: Record<string, string> = {};
+  const additional: string[] = [];
+  function assign(label: string, value: string): boolean {
+    const definition = definitions.find(
+      ([name]) => name.toLowerCase() === label.trim().toLowerCase(),
+    );
+    if (
+      !definition ||
+      Object.prototype.hasOwnProperty.call(fields, definition[0])
+    )
+      return false;
+    fields[definition[0]] = value;
+    return true;
+  }
+  for (const token of Lexer.lex(content, { gfm: true }) as MarkedToken[]) {
+    if (
+      token.type === "table" &&
+      token.header.length === 2 &&
+      token.header[0].text.trim().toLowerCase() === "requirement" &&
+      token.header[1].text.trim().toLowerCase() === "first prototype"
+    ) {
+      const lines = token.raw.trimEnd().split("\n");
+      const remaining = token.rows.flatMap((row, index) =>
+        assign(row[0].text, row[1].text) ? [] : [lines[index + 2]],
+      );
+      if (remaining.length)
+        additional.push(
+          [...lines.slice(0, 2), ...remaining].join("\n"),
+          "\n\n",
+        );
+    } else if (token.type === "list" && !token.ordered) {
+      for (const item of token.items) {
+        const match = /^\*\*([^*\n]+)\*\*\n\n([\s\S]*)$/.exec(item.text);
+        if (!match || item.task || !assign(match[1], match[2].trim()))
+          additional.push(item.raw, "\n\n");
+      }
+    } else {
+      additional.push(token.raw);
+    }
+  }
+  return { fields, additional: additional.join("").trim() };
+}
+
+export function requirementMarkdown(content: RequirementContent): string {
+  if (typeof content === "string") return content;
+  return [
+    ...Object.entries(content.fields).flatMap(([label, value]) =>
+      value.trim()
+        ? [
+            `- **${label}**\n\n${value
+              .trim()
+              .split("\n")
+              .map((line) => `  ${line}`)
+              .join("\n")}`,
+          ]
+        : [],
+    ),
+    content.additional.trim(),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function editableRequirements(
+  content: RequirementContent,
+  definitions: RequirementDefinitions,
+): RequirementFields {
+  if (typeof content !== "string") return content;
+  const parsed = requirementFields(content, definitions);
+  return {
+    ...parsed,
+    fields: Object.fromEntries(
+      Object.entries(parsed.fields).filter(
+        ([label, text]) =>
+          text.trim() &&
+          !definitions.some(
+            ([name, guidance]) => name === label && guidance === text.trim(),
+          ),
+      ),
+    ),
+  };
+}
+
+export function hasEngineDetails(
+  prototype: PrototypeRequirements,
+  id: EngineId,
+): boolean {
+  const engine = ENGINES.find((entry) => entry.id === id);
+  if (!engine) throw new Error("Select a supported game engine.");
+  const value = editableRequirements(
+    prototype.details[id] ?? "",
+    engine.requirements,
+  );
+  return Boolean(
+    value.additional.trim() ||
+    Object.values(value.fields).some((text) => text.trim()),
+  );
+}
+
+export function removeEngine(
+  prototype: PrototypeRequirements,
+  id: EngineId,
+): PrototypeRequirements {
+  const details = { ...prototype.details };
+  delete details[id];
+  return {
+    ...prototype,
+    engines: prototype.engines.filter((engine) => engine !== id),
+    details,
+  };
+}
+
+function requirementTable(definitions: RequirementDefinitions): string {
+  return [
+    "| Requirement | First prototype |",
+    "| --- | --- |",
+    ...definitions.map(([label, guidance]) => `| ${label} | ${guidance} |`),
+  ].join("\n");
 }
 
 export function engineRequirements(id: EngineId): string {
   const engine = ENGINES.find((entry) => entry.id === id);
   if (!engine) throw new Error("Select a supported game engine.");
-  return [
-    "| Requirement | First prototype |",
-    "| --- | --- |",
-    ...engine.requirements.map(
-      ([label, guidance]) => `| ${label} | ${guidance} |`,
-    ),
-  ].join("\n");
+  return requirementTable(engine.requirements);
 }
 
-export const SHARED_REQUIREMENTS = `| Requirement | First prototype |
-| --- | --- |
-| Controls | Describe supported inputs for each target platform. |
-| Multiplayer | State None, or define mode, topology, and networking solution. |
-| Launch locales | List launch languages, or write English only. |
-| Save data | Describe what persists, when, and where. |
-| Technical constraints | Define performance targets, device/browser minimums, and licensing limits. |
-| Open decisions | List unresolved setup/architecture choices, or write None. |`;
+export const SHARED_REQUIREMENTS = requirementTable(SHARED_FIELDS);
 
 export function defaultPrototype(): PrototypeRequirements {
   return {
     engines: ["unity"],
     platforms: [],
     customPlatform: "",
-    details: { unity: engineRequirements("unity") },
-    shared: SHARED_REQUIREMENTS,
+    details: { unity: "" },
+    shared: "",
   };
 }
 
@@ -176,9 +320,14 @@ export function prototypeItems(prototype: PrototypeRequirements) {
     ...ENGINES.filter((engine) => prototype.engines.includes(engine.id)).map(
       (engine) => ({
         heading: engine.label,
-        body: prototype.details[engine.id]?.trim() || "Undecided.",
+        body:
+          requirementMarkdown(prototype.details[engine.id] ?? "").trim() ||
+          "Undecided.",
       }),
     ),
-    { heading: "Shared requirements", body: prototype.shared },
+    {
+      heading: "Shared requirements",
+      body: requirementMarkdown(prototype.shared),
+    },
   ];
 }
