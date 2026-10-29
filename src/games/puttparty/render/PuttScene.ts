@@ -135,6 +135,8 @@ export class PuttScene {
 
   syncBalls(players: PlayerState[], positions: Map<string, Vec2>, selfId: string | null, dt: number): void {
     const seen = new Set<string>();
+    const self = players.find((p) => p.id === selfId);
+    const selfPos = self && !self.sunk && !self.disqualified ? positions.get(self.id) ?? self : null;
     for (const p of players) {
       seen.add(p.id);
       let view = this.balls.get(p.id);
@@ -145,8 +147,10 @@ export class PuttScene {
       }
       const pos = positions.get(p.id) ?? p;
       view.sinkT = p.sunk ? Math.min(1, view.sinkT + dt * 3) : 0;
-      view.mesh.visible = !p.disqualified && view.sinkT < 1;
       view.mesh.position.set(pos.x, RULES.ballRadius - view.sinkT * 0.45, pos.z);
+      // Hide other balls sitting on top of ours (e.g. at a shared tee) so ours stays readable.
+      const covering = !!selfPos && p.id !== selfId && Math.hypot(pos.x - selfPos.x, pos.z - selfPos.z) < RULES.ballRadius * 2;
+      view.mesh.visible = !p.disqualified && view.sinkT < 1 && !covering;
       const el = view.label.element;
       el.textContent = p.name;
       el.dataset.self = String(p.id === selfId);

@@ -1,5 +1,5 @@
 /**
- * Course file format shared with the server (`jeemzu.api/src/JeemzuApi/Putt/CourseModels.cs`).
+ * Course file format shared with the server (`games-api/src/GamesRealtime/Putt/CourseModels.cs`).
  * Coordinates are world units on the ground plane: x to the right, z away from the tee camera.
  */
 export const COURSE_FORMAT = "better-putt-party-course";

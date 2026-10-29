@@ -27,7 +27,23 @@ export function Overlay({ store, intents }: Props) {
       {attached && (state.phase === "playing" || state.phase === "transition") && <Hud store={store} intents={intents} state={state} selfId={playerId} />}
       {attached && state.phase === "finished" && <Results intents={intents} state={state} selfId={playerId} />}
       {connection !== "open" && <div className="bpp-toast bpp-toast--net">{t(connection === "connecting" ? "net.connecting" : "net.reconnecting")}</div>}
+      <Ping store={store} />
       <ErrorToast store={store} intents={intents} />
+    </div>
+  );
+}
+
+function Ping({ store }: { store: PuttStore }) {
+  const latency = useStore(store, (s) => s.latency);
+  const shotMs = useStore(store, (s) => s.shotMs);
+  if (!latency) return null;
+  const ms = (n: number) => Math.round(n);
+  const detail = [t("net.pingDetail", { rtt: ms(latency.rtt), min: ms(latency.min), avg: ms(latency.avg), jitter: ms(latency.jitter) })];
+  if (shotMs !== null) detail.push(t("net.shotDetail", { ms: ms(shotMs) }));
+  const quality = latency.rtt < 80 ? "good" : latency.rtt < 160 ? "ok" : "bad";
+  return (
+    <div className="bpp-ping" data-quality={quality} title={detail.join("\n")}>
+      {t("net.ping", { ms: ms(latency.rtt) })}
     </div>
   );
 }

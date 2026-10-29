@@ -41,6 +41,9 @@ const en = {
 
   "net.connecting": "Connecting…",
   "net.reconnecting": "Reconnecting…",
+  "net.ping": "{ms} ms",
+  "net.pingDetail": "Ping {rtt} ms · Min {min} · Avg {avg} · Jitter {jitter}",
+  "net.shotDetail": "Last shot confirmed in {ms} ms",
 
   "error.sessionNotFound": "Room not found",
   "error.sessionFull": "Room is full",

@@ -11,7 +11,7 @@ export class CourseExportError extends Error {
 
 /**
  * Serializes a course into the hand-off file format. Validation runs first and only known
- * properties are written, so the output can be dropped into `jeemzu.api/src/JeemzuApi/Putt/Courses/`.
+ * properties are written, so the output can be dropped into `games-api/src/GamesRealtime/Putt/Courses/`.
  */
 export function exportCourseFile(course: CourseFile): string {
   const { course: clean, errors } = validateCourse(JSON.parse(JSON.stringify(course)));

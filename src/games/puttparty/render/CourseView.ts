@@ -156,7 +156,13 @@ export class CourseView {
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w, uv.getY(i) * d);
 
     const random = rng(course.id);
+    // Keep scenery out from behind each tee, where the play camera sits.
+    const cameraSpots = course.holes.map((h) => {
+      const len = Math.hypot(h.cup.x - h.tee.x, h.cup.z - h.tee.z) || 1;
+      return { x: h.tee.x - ((h.cup.x - h.tee.x) / len) * 6, z: h.tee.z - ((h.cup.z - h.tee.z) / len) * 6 };
+    });
     const clear = (p: Vec2, pad: number) =>
+      cameraSpots.every((c) => Math.hypot(c.x - p.x, c.z - p.z) > 4.5 + pad) &&
       course.holes.every((h) => {
         const b = bounds(h.boundary);
         return p.x < b.minX - pad || p.x > b.maxX + pad || p.z < b.minZ - pad || p.z > b.maxZ + pad;

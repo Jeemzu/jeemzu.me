@@ -6,25 +6,30 @@ import { GameLoop } from "../../game-player/render/GameLoop";
 import { advanceWobble, canShoot, createAim, pull, wobbledDir } from "./aim";
 import { distance } from "./course/geometry";
 import type { Vec2 } from "./course/types";
-import { Interpolator } from "./interpolation";
+import { LatencyStats } from "./net/latency";
 import { PuttClient, socketUrl } from "./net/PuttClient";
-import type { ServerMessage, StateMessage } from "./net/protocol";
+import type { ServerMessage, ShotStartedMessage, StateMessage } from "./net/protocol";
+import { launchVelocity } from "./physics";
 import { CAMERA, overviewDistance, transitionPose, TRANSITION, yawToward, type Pose } from "./render/CameraRig";
 import { loadModels } from "./render/models";
 import { PuttScene } from "./render/PuttScene";
+import { BallSim } from "./sim";
 import { createPuttStore, type PuttIntents } from "./store";
 import { Overlay } from "./ui/Overlay";
 import "./ui/puttparty.css";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5050/api";
+const REALTIME_BASE = import.meta.env.VITE_GAMES_REALTIME_URL || "ws://localhost:5290";
 const SHOWCASE_SPIN = 0.06;
+/** Give up on an unacknowledged shot after this long and put the ball back. */
+const SHOT_TIMEOUT_MS = 3000;
 
 /** One mounted Better Putt Party client: socket, store, renderer, input and the React overlay. */
 export class PuttGame implements GameInstance {
   private readonly scene: PuttScene;
   private readonly store = createPuttStore();
   private readonly client: PuttClient;
-  private readonly interp = new Interpolator();
+  private readonly sim = new BallSim();
+  private readonly latency = new LatencyStats();
   private readonly loop: GameLoop;
   private readonly overlayEl: HTMLDivElement;
   private readonly overlay: Root;
@@ -45,9 +50,13 @@ export class PuttGame implements GameInstance {
     this.overlay = createRoot(this.overlayEl);
     this.overlay.render(createElement(Overlay, { store: this.store, intents: this.intents }));
 
-    this.client = new PuttClient(socketUrl(API_BASE), {
+    this.client = new PuttClient(socketUrl(REALTIME_BASE), {
       onMessage: (msg) => this.onMessage(msg),
-      onStatus: (connection) => this.store.setState({ connection }),
+      onStatus: (connection) => {
+        if (connection !== "open") this.latency.reset();
+        this.store.setState(connection === "open" ? { connection } : { connection, latency: null });
+      },
+      onPing: (ms) => this.store.setState({ latency: this.latency.add(ms) }),
     });
     this.loop = new GameLoop({ update: (dt) => this.update(dt), render: () => this.scene.render(this.frameDt) });
     this.bindInput();
@@ -125,25 +134,46 @@ export class PuttGame implements GameInstance {
       case "state":
         this.onState(msg);
         break;
+      case "shotStarted":
+        this.onShotStarted(msg);
+        break;
       case "error":
         this.store.setState({ error: { code: msg.code, at: performance.now() } });
         if (msg.code === "resumeFailed") {
           this.store.setState({ state: null, playerId: null });
           this.enterShowcase();
         }
-        this.pendingShot = 0;
+        this.cancelPrediction();
         break;
     }
   }
 
+  private onShotStarted(msg: ShotStartedMessage): void {
+    const launch = { x: msg.x, z: msg.z, vx: msg.vx, vz: msg.vz };
+    if (msg.playerId === this.store.getState().playerId && this.pendingShot) {
+      const now = performance.now();
+      const predicted = this.sim.launchOf(msg.playerId);
+      this.store.setState({ shotMs: now - this.pendingShot });
+      if (predicted && predicted.x === launch.x && predicted.z === launch.z && predicted.vx === launch.vx && predicted.vz === launch.vz)
+        this.sim.confirm(msg.playerId, msg.strokes);
+      else this.sim.launch(msg.playerId, launch, msg.strokes, (now - this.pendingShot) / 1000);
+      this.pendingShot = 0;
+      return;
+    }
+    this.sim.launch(msg.playerId, launch, msg.strokes, msg.elapsed);
+  }
+
+  /** Drops an unconfirmed local shot so the ball returns to the server's position. */
+  private cancelPrediction(): void {
+    const selfId = this.store.getState().playerId;
+    if (this.pendingShot && selfId) this.sim.clear(selfId);
+    this.pendingShot = 0;
+  }
+
   private onState(next: StateMessage): void {
     const prev = this.store.getState().state;
-    const selfId = this.store.getState().playerId;
     this.store.setState({ state: next });
-    this.interp.push(next, performance.now() / 1000);
-    const self = next.players.find((p) => p.id === selfId);
-    const prevSelf = prev?.players.find((p) => p.id === selfId);
-    if (self && prevSelf && (self.strokes !== prevSelf.strokes || self.moving)) this.pendingShot = 0;
+    const self = next.players.find((p) => p.id === this.store.getState().playerId);
     if (self?.holeDone || next.phase !== "playing") this.cancelAim();
 
     const holeChanged = prev?.holeIndex !== next.holeIndex || prev?.courseId !== next.courseId;
@@ -170,6 +200,8 @@ export class PuttGame implements GameInstance {
 
   private enterHole(state: StateMessage): void {
     this.showcase = false;
+    this.pendingShot = 0;
+    this.sim.setHole(this.store.getState().course?.holes[state.holeIndex] ?? null);
     this.scene.focusLight(state.holeIndex);
     const pose = this.holePose(state.holeIndex);
     if (pose && !this.scene.rig.scripted) this.scene.rig.snap(pose);
@@ -199,6 +231,8 @@ export class PuttGame implements GameInstance {
   /** Slow orbit over a hole for menus, the waiting room and results. */
   private enterShowcase(holeIndex = 0): void {
     this.showcase = true;
+    this.pendingShot = 0;
+    this.sim.setHole(null);
     this.scene.rig.setFollow(null);
     this.scene.focusLight(holeIndex);
     const pose = this.overviewPose(holeIndex, this.scene.rig.pose.yaw);
@@ -214,7 +248,7 @@ export class PuttGame implements GameInstance {
     const { state, connection } = this.store.getState();
     const self = this.self();
     return !!state && state.phase === "playing" && connection === "open" && !!self && !self.holeDone && !self.moving
-      && !self.disqualified && !this.pendingShot && !this.scene.rig.scripted;
+      && !self.disqualified && !this.pendingShot && this.sim.settled(self) && !this.scene.rig.scripted;
   }
 
   private cancelAim(): void {
@@ -256,8 +290,13 @@ export class PuttGame implements GameInstance {
       if (e.button !== 0 || !this.aiming) return;
       updatePull(e);
       if (canShoot(this.aim) && this.canAim()) {
+        const self = this.self()!;
         const dir = wobbledDir(this.aim);
-        if (this.client.send({ type: "shot", dirX: dir.x, dirZ: dir.z, power: this.aim.power })) this.pendingShot = performance.now();
+        if (this.client.send({ type: "shot", dirX: dir.x, dirZ: dir.z, power: this.aim.power })) {
+          this.pendingShot = performance.now();
+          // Roll immediately from the server's exact resting spot; the server's echo confirms or corrects it.
+          this.sim.launch(self.id, { x: self.x, z: self.z, ...launchVelocity(dir.x, dir.z, this.aim.power) }, self.strokes + 1);
+        }
       }
       this.cancelAim();
     });
@@ -281,16 +320,19 @@ export class PuttGame implements GameInstance {
   private update(dt: number): void {
     this.frameDt = dt;
     const { state, playerId } = this.store.getState();
-    if (this.pendingShot && performance.now() - this.pendingShot > 1500) this.pendingShot = 0;
+    if (this.pendingShot && performance.now() - this.pendingShot > SHOT_TIMEOUT_MS) this.cancelPrediction();
     if (this.showcase && !this.scene.rig.scripted) this.scene.rig.pose.yaw += dt * SHOWCASE_SPIN;
 
-    const now = performance.now() / 1000;
-    const players = state && state.phase !== "lobby" ? state.players : [];
+    this.sim.update(dt);
     this.positions.clear();
-    for (const p of players) this.positions.set(p.id, this.interp.position(p, now));
+    const players = (state && state.phase !== "lobby" ? state.players : []).map((p) => {
+      const pose = this.sim.pose(p, dt);
+      this.positions.set(p.id, pose);
+      return pose.sunk === p.sunk ? p : { ...p, sunk: pose.sunk };
+    });
     this.scene.syncBalls(players, this.positions, playerId, dt);
 
-    const self = this.self();
+    const self = players.find((p) => p.id === playerId);
     const selfPos = self && this.positions.get(self.id);
     const holeIndex = state?.holeIndex ?? 0;
     const hole = this.scene.course?.holes[holeIndex];

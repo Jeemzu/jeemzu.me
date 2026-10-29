@@ -1,6 +1,6 @@
 import type { CourseFile } from "../course/types";
 
-/** Mirrors `jeemzu.api/src/JeemzuApi/Putt/PuttProtocol.cs`. */
+/** Mirrors games-api `src/GamesRealtime/Putt/PuttProtocol.cs`. Contract: docs/putt-party-network.md. */
 export type Phase = "lobby" | "playing" | "transition" | "finished";
 
 export interface CourseSummary {
@@ -60,7 +60,25 @@ export interface ErrorMessage {
   code: string;
 }
 
-export type ServerMessage = WelcomeMessage | CourseMessage | StateMessage | ErrorMessage;
+/** A shot launch, with exact (unrounded) values so every client replays the same roll. */
+export interface ShotStartedMessage {
+  type: "shotStarted";
+  playerId: string;
+  x: number;
+  z: number;
+  vx: number;
+  vz: number;
+  strokes: number;
+  /** Seconds the ball has already rolled; non-zero only when replayed to a client that just attached. */
+  elapsed: number;
+}
+
+export interface PongMessage {
+  type: "pong";
+  t: number;
+}
+
+export type ServerMessage = WelcomeMessage | CourseMessage | StateMessage | ShotStartedMessage | PongMessage | ErrorMessage;
 
 export type ClientMessage =
   | { type: "create"; name: string; icon: string }
@@ -70,9 +88,10 @@ export type ClientMessage =
   | { type: "start" }
   | { type: "shot"; dirX: number; dirZ: number; power: number }
   | { type: "returnToLobby" }
-  | { type: "leave" };
+  | { type: "leave" }
+  | { type: "ping"; t: number };
 
-const TYPES = new Set(["welcome", "course", "state", "error"]);
+const TYPES = new Set(["welcome", "course", "state", "shotStarted", "pong", "error"]);
 
 export function parseServerMessage(data: unknown): ServerMessage | null {
   if (typeof data !== "string") return null;

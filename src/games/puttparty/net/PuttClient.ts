@@ -10,9 +10,9 @@ export interface SavedSession {
 
 const SESSION_KEY = "bpp.session";
 
-/** `http(s)://host/api` → `ws(s)://host/api/putt/ws`. */
-export function socketUrl(apiBase: string): string {
-  return `${apiBase.replace(/\/+$/, "").replace(/^http/, "ws")}/putt/ws`;
+/** `ws(s)://host` → `ws(s)://host/v1/games/putt-party/ws`. */
+export function socketUrl(realtimeBase: string): string {
+  return `${realtimeBase.replace(/\/+$/, "")}/v1/games/putt-party/ws`;
 }
 
 export function loadSession(storage: Pick<Storage, "getItem"> = localStorage): SavedSession | null {
@@ -38,20 +38,26 @@ function saveSession(session: SavedSession | null) {
 /** Delay before reconnect attempt `n` (0-based): 0.5 s doubling to a 5 s cap. */
 export const backoffMs = (attempt: number) => Math.min(5000, 500 * 2 ** attempt);
 
+export const PING_INTERVAL_MS = 2000;
+
 interface Handlers {
   onMessage(msg: ServerMessage): void;
   onStatus(status: ConnectionStatus): void;
+  /** Round-trip time of a ping, in ms. */
+  onPing(rttMs: number): void;
 }
 
 /**
  * Owns one WebSocket to the Putt Party server. Reconnects with backoff while mounted and,
  * when attached to a room, resumes the seat with the saved token (server keeps it for 5 minutes).
+ * Pings every 2 s while open to measure round-trip time.
  */
 export class PuttClient {
   private socket: WebSocket | null = null;
   private session: SavedSession | null;
   private attempt = 0;
   private retryTimer = 0;
+  private pingTimer = 0;
   private disposed = false;
   private readonly url: string;
   private readonly handlers: Handlers;
@@ -87,6 +93,7 @@ export class PuttClient {
   dispose(): void {
     this.disposed = true;
     clearTimeout(this.retryTimer);
+    clearInterval(this.pingTimer);
     const socket = this.socket;
     this.socket = null;
     if (socket) {
@@ -110,10 +117,17 @@ export class PuttClient {
       this.attempt = 0;
       this.handlers.onStatus("open");
       if (this.session) this.send({ type: "resume", ...this.session });
+      const ping = () => this.send({ type: "ping", t: performance.now() });
+      ping();
+      this.pingTimer = window.setInterval(ping, PING_INTERVAL_MS);
     };
     socket.onmessage = (event) => {
       const msg = parseServerMessage(event.data);
       if (!msg) return;
+      if (msg.type === "pong") {
+        this.handlers.onPing(performance.now() - msg.t);
+        return;
+      }
       if (msg.type === "welcome") {
         this.session = { code: msg.code, playerId: msg.playerId, token: msg.token };
         saveSession(this.session);
@@ -123,6 +137,7 @@ export class PuttClient {
     socket.onclose = () => {
       if (this.socket !== socket) return;
       this.socket = null;
+      clearInterval(this.pingTimer);
       this.scheduleRetry();
     };
   }
