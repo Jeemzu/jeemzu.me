@@ -33,6 +33,7 @@ import { FaChevronDown, FaTrash, FaSync } from "react-icons/fa";
 import { FONTS } from "../../lib/globals";
 import { goldButtonSx, headingSx, panelSx } from "../../lib/medievalStyles";
 import { authFetch } from "../../utils/authFetch";
+import AdminFilesPanel from "./AdminFilesPanel";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5050/api";
@@ -94,6 +95,12 @@ export default function AdminPage() {
 
       <Stack spacing={3}>
         <HealthPanel />
+        <AdminCard
+          title="My Files"
+          subtitle="Private to your admin account. Any file type, up to 25 MB per file, stored in PostgreSQL."
+        >
+          <AdminFilesPanel />
+        </AdminCard>
         <IngestPanel />
         <KnowledgePanel />
         <BudgetGapsPanel />

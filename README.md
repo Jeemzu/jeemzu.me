@@ -83,3 +83,9 @@ npm run test           # Run frontend tests
 Netlify deploys the frontend build from `dist/`. The Render Blueprint in the backend repository provisions the API, private agents service, and database; both containers auto-deploy from `main`. Set the production `VITE_API_URL` to `https://api.jeemzu.me/api`.
 
 After backend changes, GitHub Actions dispatches an `api-types-update` event to this repository. API types can also be regenerated manually with `npm run generate-api-types:prod`.
+
+## Admin File Storage
+
+The admin page's **My Files** panel uploads, lists, downloads, and deletes files private to the uploading admin account. Any file type is accepted, up to 25 MB (26,214,400 bytes) per file. Downloads use authenticated requests, not public links.
+
+Files are stored in the existing Render PostgreSQL database, not the API container's temporary filesystem. Deploy the backend's `AddStoredFiles` migration with the API before deploying this frontend; migrations run automatically on API startup. No additional disk or storage service is required. File contents share the database's capacity with all other site data; monitor overall usage in Render.
