@@ -3,6 +3,7 @@ import { authFetch } from "./authFetch";
 import {
   deleteFile,
   downloadFile,
+  fetchFileBlob,
   listFiles,
   MAX_FILE_BYTES,
   uploadFile,
@@ -92,6 +93,25 @@ describe("admin file storage", () => {
     );
   });
 
+  it("loads preview bytes through authenticated fetch with cancellation", async () => {
+    const bytes = new Uint8Array([0, 128, 255]);
+    vi.mocked(authFetch).mockResolvedValue(new Response(bytes));
+    const controller = new AbortController();
+
+    const blob = await fetchFileBlob(stored.id, controller.signal);
+
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(bytes);
+    expect(authFetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/admin\/files\/file-1$/),
+      { signal: controller.signal },
+    );
+  });
+
+  it.each([401, 403, 404, 500])("rejects unsuccessful preview requests (%i)", async (status) => {
+    vi.mocked(authFetch).mockResolvedValue(new Response(null, { status }));
+    await expect(fetchFileBlob(stored.id)).rejects.toThrow();
+  });
+
   it("downloads binary bytes with an authenticated request and revokes the blob URL", async () => {
     vi.useFakeTimers();
     const createObjectURL = vi.fn().mockReturnValue("blob:private-file");
@@ -108,7 +128,10 @@ describe("admin file storage", () => {
 
     await downloadFile(stored);
 
-    expect(authFetch).toHaveBeenCalledWith(expect.stringMatching(/\/admin\/files\/file-1$/));
+    expect(authFetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/admin\/files\/file-1$/),
+      { signal: undefined },
+    );
     const blob = createObjectURL.mock.calls[0][0] as Blob;
     expect(new Uint8Array(await blob.arrayBuffer())).toEqual(bytes);
     expect(link.download).toBe(stored.name);

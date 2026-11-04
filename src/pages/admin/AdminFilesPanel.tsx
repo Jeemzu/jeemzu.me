@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { FONTS } from "../../lib/globals";
 import { goldButtonSx } from "../../lib/medievalStyles";
+import AdminMediaViewer from "./AdminMediaViewer";
 import {
   deleteFile,
   downloadFile,
@@ -131,6 +132,7 @@ export default function AdminFilesPanel() {
       {!loading && files.length === 0 && !error && (
         <Typography sx={{ color: "parchment.main" }}>No files uploaded yet.</Typography>
       )}
+      <AdminMediaViewer files={files} loading={loading} />
       <Box sx={{ maxHeight: 450, overflow: "auto" }}>
         {files.map((file) => (
           <Stack

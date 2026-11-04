@@ -44,10 +44,14 @@ export async function uploadFile(file: File): Promise<StoredFile> {
   return response.json();
 }
 
-export async function downloadFile(file: StoredFile): Promise<void> {
-  const response = await authFetch(`${FILES_URL}/${encodeURIComponent(file.id)}`);
+export async function fetchFileBlob(id: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await authFetch(`${FILES_URL}/${encodeURIComponent(id)}`, { signal });
   await checkResponse(response);
-  const url = URL.createObjectURL(await response.blob());
+  return response.blob();
+}
+
+export async function downloadFile(file: StoredFile): Promise<void> {
+  const url = URL.createObjectURL(await fetchFileBlob(file.id));
   const link = document.createElement("a");
   link.href = url;
   link.download = file.name;

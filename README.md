@@ -195,4 +195,6 @@ After backend changes, GitHub Actions dispatches an `api-types-update` event to 
 
 The admin page's **My Files** panel uploads, lists, downloads, and deletes files private to the uploading admin account. Any file type is accepted, up to 25 MB (26,214,400 bytes) per file. Downloads use authenticated requests, not public links.
 
+The **View image or video** dropdown previews stored JPEG/JFIF, PNG/APNG, GIF, WebP, AVIF, BMP, ICO, and SVG images, and MP4/M4V, WebM, Ogg, and MOV videos in-app. Video playback uses native browser controls; format and codec support depends on the browser (no transcoding). Unsupported or damaged media displays an error. Previews use authenticated downloads and temporary local blob URLs that are released when the selection changes or the panel closes; files remain private. Each selected file is downloaded in full before previewing.
+
 Files are stored in the existing Render PostgreSQL database, not the API container's temporary filesystem. Deploy the backend's `AddStoredFiles` migration with the API before deploying this frontend; migrations run automatically on API startup. No additional disk or storage service is required. File contents share the database's capacity with all other site data; monitor overall usage in Render.
