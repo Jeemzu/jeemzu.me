@@ -3,6 +3,7 @@ import { strToU8, unzipSync } from "fflate";
 import {
   CHECKPOINTS,
   approveCheckpoint,
+  checkpointReferences,
   draftFingerprint,
   newWorkflow,
   proposalDraft,
@@ -43,6 +44,70 @@ function response(index = 0): AssistantResponse {
 }
 
 describe("GDD assistant checkpoints", () => {
+  it("sends the source document only for the initial Concept proposal", () => {
+    const draft = defaultDraft();
+    draft.assistant = newWorkflow();
+    const imagePath = "images/document-map.jpg";
+    const imageId = crypto.randomUUID();
+    draft.assistant.references = [
+      {
+        id: crypto.randomUUID(),
+        checkpoint: "document",
+        name: "Design brief.docx",
+        text: "Progression unlocks islands.",
+        url: "",
+      },
+      {
+        id: imageId,
+        checkpoint: "document",
+        name: "Document image 1",
+        text: "Source caption: Island progression map",
+        imagePath,
+        url: "",
+      },
+    ];
+    expect(readWorkflow(draft.assistant)).toEqual(draft.assistant);
+    expect(checkpointReferences(draft, 0)).toMatchObject([
+      { text: "Progression unlocks islands." },
+      { imagePath, includeImage: true },
+    ]);
+    expect(checkpointReferences(draft, 1)).toEqual([]);
+
+    const concept = response();
+    concept.proposal.sections[0].items[0].body = "Unlock new islands.";
+    concept.proposal.images = [
+      {
+        referenceId: imageId,
+        section: "Game direction",
+        heading: "Concept art",
+        caption: "Island map",
+      },
+    ];
+    draft.assistant.stages[0].response = concept;
+    draft.assistant.stages[0].history = [
+      { role: "assistant", content: concept.message },
+    ];
+    expect(checkpointReferences(draft, 0)).toMatchObject([
+      {
+        id: imageId,
+        name: "Island map",
+        text: "",
+        url: "",
+        includeImage: false,
+      },
+    ]);
+
+    const approved = approveCheckpoint(draft);
+    expect(checkpointReferences(approved, 0)).toEqual([]);
+    expect(checkpointReferences(approved, 1)).toEqual([]);
+    expect(draftMarkdown(approved, false)).toContain("Unlock new islands.");
+    expect(draftMarkdown(approved, false)).toContain(
+      `![Island map](${imagePath})`,
+    );
+    draft.assistant.stages[0].response = null;
+    expect(checkpointReferences(draft, 0)).toEqual([]);
+  });
+
   it("adds only approved uploaded reference images without duplicating placements", () => {
     const draft = defaultDraft();
     draft.title = "Image game";

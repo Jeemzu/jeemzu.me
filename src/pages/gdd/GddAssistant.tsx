@@ -27,9 +27,12 @@ import {
 } from "../../lib/medievalStyles";
 import {
   CHECKPOINTS,
+  SOURCE_DOCUMENT_GUIDANCE,
   approveCheckpoint,
+  checkpointReferences,
   draftFingerprint,
   imageBase64,
+  isInitialConceptRequest,
   newWorkflow,
   readWorkflow,
   recentHistory,
@@ -38,7 +41,11 @@ import {
   type AssistantReference,
   type AssistantWorkflow,
 } from "./assistant";
-import { importAssistantReference } from "./assistantReferences";
+import {
+  SOURCE_DOCUMENT_ACCEPT,
+  importAssistantReference,
+  importAssistantSourceDocument,
+} from "./assistantReferences";
 import AssistantMarkdown from "./AssistantMarkdown";
 import { reviewResponse, splitUnresolved } from "./assistantReview";
 import { prepareImages, type PdfImage } from "./images";
@@ -80,7 +87,11 @@ export default function GddAssistant({
   const [notes, setNotes] = useState("");
   const [link, setLink] = useState("");
   const [pendingMode, setPendingMode] = useState<AssistantMode | null>(null);
+  const [pendingSource, setPendingSource] = useState<Awaited<
+    ReturnType<typeof importAssistantSourceDocument>
+  > | null>(null);
   const upload = useRef<HTMLInputElement>(null);
+  const uploadSource = useRef<HTMLInputElement>(null);
   const request = useRef<AbortController | null>(null);
   const latest = useRef(project);
   latest.current = project;
@@ -89,6 +100,11 @@ export default function GddAssistant({
   const stage = workflow?.stages[index];
   const checkpoint = CHECKPOINTS[index];
   const locked = disabled || busy || !username;
+  const sourceDocument = workflow?.references.find(
+    (reference) => reference.checkpoint === "document" && !reference.imagePath,
+  );
+  const useSourceDocument =
+    sourceDocument && workflow && isInitialConceptRequest(workflow, index);
 
   useEffect(() => {
     setBusy(false);
@@ -123,20 +139,29 @@ export default function GddAssistant({
   function start(mode: AssistantMode) {
     if (locked) return;
     if (mode === "scratch") {
-      onChange(
-        {
-          draft: { ...defaultDraft(), assistant: newWorkflow(mode) },
-          assets: {},
-        },
-        true,
-        true,
-      );
+      try {
+        const assistant = readWorkflow({
+          ...newWorkflow(mode),
+          references: pendingSource?.references ?? [],
+        });
+        const next = {
+          draft: { ...defaultDraft(), assistant },
+          assets: pendingSource?.assets ?? {},
+        };
+        onChange({ ...next, assets: projectAssets(next) }, true, true);
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "Could not start the GDD.",
+        );
+        return;
+      }
     } else if (!update(newWorkflow(mode))) return;
     setNotes("");
     setLink("");
     setWarnings([]);
     setError("");
     setPendingMode(null);
+    setPendingSource(null);
   }
 
   async function perform(
@@ -196,22 +221,29 @@ export default function GddAssistant({
       const fingerprint = await draftFingerprint(project.draft);
       const prompt =
         stage.prompt.trim() ||
-        "Identify missing details in this checkpoint and propose additions grounded in my existing GDD. Ask focused questions where decisions are needed.";
+        (useSourceDocument
+          ? "Draft the Concept checkpoint using my uploaded reference document."
+          : workflow.mode === "scratch"
+            ? "Draft or revise this checkpoint using the current GDD and any pending proposal. Ask focused questions where decisions are needed."
+            : "Identify missing details in this checkpoint and propose additions grounded in my existing GDD. Ask focused questions where decisions are needed.");
+      const references = checkpointReferences(project.draft, index);
       const response = await completeGddCheckpoint(
         {
           mode: workflow.mode,
           checkpoint: checkpoint.id,
-          prompt,
+          prompt: useSourceDocument
+            ? SOURCE_DOCUMENT_GUIDANCE + prompt
+            : prompt,
           document,
           history: stage.history,
-          references: workflow.references.map((reference) => ({
+          references: references.map((reference) => ({
             id: reference.id,
             imagePath: reference.imagePath,
             name: reference.name,
             text: reference.text,
             url: reference.url,
             imageBase64:
-              reference.imagePath && reference.checkpoint === index
+              reference.includeImage && reference.imagePath
                 ? imageBase64(project.assets[reference.imagePath])
                 : "",
           })),
@@ -220,7 +252,7 @@ export default function GddAssistant({
         signal,
       );
       if (!active()) return;
-      validateImageProposals(response.proposal, workflow.references);
+      validateImageProposals(response.proposal, references);
       if ((await draftFingerprint(latest.current.draft)) !== fingerprint)
         throw new Error(
           "The document changed during generation. Request a new proposal.",
@@ -324,6 +356,7 @@ export default function GddAssistant({
   }
 
   function filesSelected(files: File[]) {
+    if (!workflow) return;
     void perform(async (active) => {
       const additions: AssistantReference[] = [];
       const assets = { ...project.assets };
@@ -336,9 +369,47 @@ export default function GddAssistant({
         notices.push(...imported.warnings);
       }
       if (active()) {
+        const imageCount = [...workflow.references, ...additions].filter(
+          (reference) =>
+            reference.imagePath &&
+            (reference.checkpoint === index ||
+              (useSourceDocument && reference.checkpoint === "document")),
+        ).length;
+        if (imageCount > 4)
+          throw new Error(
+            useSourceDocument
+              ? "Use up to four images for the initial Concept proposal, including source document images."
+              : "Use up to four images per checkpoint.",
+          );
         addReferences(additions, assets);
         setWarnings([...new Set(notices)]);
       }
+    });
+  }
+
+  function closeModeDialog() {
+    if (busy) return;
+    setPendingMode(null);
+    setPendingSource(null);
+    setError("");
+  }
+
+  function removeSourceDocument() {
+    if (!workflow) return;
+    const references = workflow.references.filter(
+      (reference) => reference.checkpoint !== "document",
+    );
+    const retainedIds = new Set(references.map((reference) => reference.id));
+    update({
+      ...workflow,
+      references,
+      stages: workflow.stages.map((entry) =>
+        entry.response?.proposal.images?.some(
+          (image) => !retainedIds.has(image.referenceId),
+        )
+          ? { ...entry, response: null, baseFingerprint: null }
+          : entry,
+      ),
     });
   }
 
@@ -348,7 +419,7 @@ export default function GddAssistant({
   return (
     <Box>
       <Stack spacing={2}>
-        {error && (
+        {error && pendingMode !== "scratch" && (
           <Alert severity="error" onClose={() => setError("")}>
             {error}
           </Alert>
@@ -370,7 +441,10 @@ export default function GddAssistant({
               <Button
                 disabled={locked}
                 sx={goldButtonSx}
-                onClick={() => setPendingMode("scratch")}
+                onClick={() => {
+                  setError("");
+                  setPendingMode("scratch");
+                }}
               >
                 Start from scratch
               </Button>
@@ -403,6 +477,21 @@ export default function GddAssistant({
             />
           )}
         </Stack>
+        {sourceDocument && (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography sx={{ ...bodySx, overflowWrap: "anywhere" }}>
+              Reference document: {sourceDocument.name}
+            </Typography>
+            <Button
+              disabled={locked}
+              size="small"
+              onClick={removeSourceDocument}
+              aria-label={`Remove reference document ${sourceDocument.name}`}
+            >
+              Remove
+            </Button>
+          </Stack>
+        )}
         {workflow && (
           <>
             <Stack
@@ -680,7 +769,13 @@ export default function GddAssistant({
               minRows={3}
               value={stage?.prompt ?? ""}
               disabled={locked}
-              slotProps={{ htmlInput: { maxLength: 4000 } }}
+              slotProps={{
+                htmlInput: {
+                  maxLength:
+                    4000 -
+                    (useSourceDocument ? SOURCE_DOCUMENT_GUIDANCE.length : 0),
+                },
+              }}
               sx={fieldSx}
               onChange={(event) => {
                 update({
@@ -695,7 +790,7 @@ export default function GddAssistant({
             />
             <Stack spacing={1}>
               <Tooltip
-                title={`${checkpoint.reference}. Optional; up to 12 references total, 60,000 text characters, and four images per checkpoint. Reference images remain separate from PDF illustrations.`}
+                title={`${checkpoint.reference}. Optional; up to 12 references total, 60,000 text characters, and four images per checkpoint.${useSourceDocument ? " Source images count toward the initial Concept limit." : ""}`}
               >
                 <Typography component="h3" sx={headingSx}>
                   References
@@ -796,7 +891,9 @@ export default function GddAssistant({
               <Tooltip
                 title={
                   username
-                    ? "Send the current GDD, recent checkpoint conversation, all reference notes, and this checkpoint's images to OpenAI. Nothing changes in the editor until approval."
+                    ? useSourceDocument
+                      ? "Send the current GDD, source document text and images, and other references to OpenAI for the initial Concept proposal."
+                      : "Send the current GDD, recent conversation, and checkpoint references to OpenAI. Nothing changes in the editor until approval."
                     : "Sign in to use the AI design assistant."
                 }
               >
@@ -805,7 +902,9 @@ export default function GddAssistant({
                     sx={goldButtonSx}
                     disabled={
                       locked ||
-                      (workflow.mode === "scratch" && !stage?.prompt.trim())
+                      (workflow.mode === "scratch" &&
+                        !sourceDocument &&
+                        !stage?.prompt.trim())
                     }
                     onClick={generate}
                   >
@@ -825,7 +924,7 @@ export default function GddAssistant({
       </Stack>
       <Dialog
         open={pendingMode !== null}
-        onClose={() => setPendingMode(null)}
+        onClose={closeModeDialog}
         aria-labelledby="gdd-assistant-mode-title"
         slotProps={{ paper: { sx: dialogPaperSx } }}
       >
@@ -838,9 +937,80 @@ export default function GddAssistant({
           {pendingMode === "scratch"
             ? "The current draft, images, prototype settings and assistant progress will be replaced. Saved account copies are unchanged."
             : "Assistant progress and references will be reset. Your GDD will be preserved."}
+          {pendingMode === "scratch" && (
+            <Stack spacing={1} sx={{ mt: 2 }} alignItems="flex-start">
+              <Tooltip title="Optional PDF or DOCX with up to four embedded images and 20,000 characters. Sent to OpenAI only for the initial Concept proposal.">
+                <span>
+                  <Button
+                    startIcon={<FaUpload />}
+                    sx={outlineButtonSx}
+                    disabled={locked}
+                    onClick={() => uploadSource.current?.click()}
+                  >
+                    {pendingSource
+                      ? "Change reference document"
+                      : "Upload reference document"}
+                  </Button>
+                </span>
+              </Tooltip>
+              <input
+                ref={uploadSource}
+                type="file"
+                hidden
+                accept={SOURCE_DOCUMENT_ACCEPT}
+                disabled={locked}
+                aria-label="Upload reference document"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  void perform(async (active) => {
+                    const imported = await importAssistantSourceDocument(file);
+                    if (active()) setPendingSource(imported);
+                  });
+                }}
+              />
+              {busy && (
+                <CircularProgress
+                  size={22}
+                  aria-label="Reading reference document"
+                />
+              )}
+              {pendingSource && (
+                <>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography sx={{ overflowWrap: "anywhere" }}>
+                      {pendingSource.references[0].name} (
+                      {pendingSource.references.length - 1} images)
+                    </Typography>
+                    <Button
+                      disabled={locked}
+                      size="small"
+                      onClick={() => {
+                        setPendingSource(null);
+                        setError("");
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Stack>
+                  {pendingSource.warnings.map((warning) => (
+                    <Alert key={warning} severity="warning">
+                      {warning}
+                    </Alert>
+                  ))}
+                </>
+              )}
+              {error && <Alert severity="error">{error}</Alert>}
+            </Stack>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button sx={outlineButtonSx} onClick={() => setPendingMode(null)}>
+          <Button
+            sx={outlineButtonSx}
+            disabled={busy}
+            onClick={closeModeDialog}
+          >
             Cancel
           </Button>
           <Button
