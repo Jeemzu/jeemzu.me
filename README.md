@@ -155,6 +155,8 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 
 ## Local Development
 
+Open [jeemzu.me.code-workspace](./jeemzu.me.code-workspace) with `jeemzu.api` checked out alongside this repository. Install the frontend dependencies and configure the API's user secrets using its README (local PostgreSQL is `127.0.0.1:15432`). The **Dev: All** task starts the frontend at `http://localhost:5174` and starts the API at `http://localhost:5050` after PostgreSQL is healthy. Standalone frontend startup is unchanged.
+
 ### Frontend
 
 Requirements: Node.js 20 or later. Emscripten is additionally required to rebuild the C++ WebAssembly projects.

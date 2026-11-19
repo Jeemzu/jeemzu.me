@@ -18,7 +18,6 @@
       {
         "label": "Dev: All",
         "dependsOn": [
-          "Docker: Dev Services",
           "API: Dev Server",
           "Frontend: Dev Server",
         ],
@@ -31,7 +30,8 @@
       {
         "label": "Frontend: Dev Server",
         "type": "shell",
-        "command": "npm run dev",
+        "command": "npm",
+        "args": ["run", "dev", "--", "--port", "5174", "--strictPort"],
         "options": {
           "cwd": "${workspaceFolder:jeemzu.me}",
         },
@@ -45,9 +45,14 @@
       {
         "label": "API: Dev Server",
         "type": "shell",
-        "command": "dotnet run --launch-profile Development",
+        "command": "dotnet",
+        "args": ["run", "--launch-profile", "Development"],
+        "dependsOn": "Docker: Dev Services",
         "options": {
-          "cwd": "${workspaceFolder:jeemzu.api}/src/JeemzuApi",
+          "cwd": "${workspaceFolder:jeemzu.api}\\src\\JeemzuApi",
+          "env": {
+            "Frontend__BaseUrl": "http://localhost:5174",
+          },
         },
         "isBackground": true,
         "problemMatcher": [],
@@ -59,11 +64,16 @@
       {
         "label": "Docker: Dev Services",
         "type": "shell",
-        "command": "docker compose up agents",
+        "command": "docker",
+        "args": [
+          "compose",
+          "--project-name", "jeemzuapi",
+          "--file", "docker-compose.yml",
+          "up", "--detach", "--wait", "--wait-timeout", "60", "postgres",
+        ],
         "options": {
           "cwd": "${workspaceFolder:jeemzu.api}",
         },
-        "isBackground": true,
         "problemMatcher": [],
         "presentation": {
           "panel": "new",
