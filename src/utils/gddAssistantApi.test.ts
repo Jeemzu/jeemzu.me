@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  completeGuidedGdd,
   completeGddCheckpoint,
+  type GddGuidedAssistantRequest,
   type GddAssistantRequest,
 } from "./gddAssistantApi";
 import { authFetch } from "./authFetch";
@@ -13,9 +15,70 @@ const request: GddAssistantRequest = {
   history: [],
   references: [],
 };
+const guidedRequest: GddGuidedAssistantRequest = {
+  action: "clarify",
+  prompt: "A tiny exploration game",
+  document: "Draft",
+  history: [],
+  references: [],
+};
 afterEach(() => vi.resetAllMocks());
 
 describe("GDD assistant API", () => {
+  it("sends guided clarification requests and validates selectable suggestions", async () => {
+    vi.mocked(authFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "One choice will shape the game.",
+          questions: [
+            {
+              question: "How should exploration feel?",
+              suggestions: ["Quiet and thoughtful.", "Fast and dangerous."],
+            },
+          ],
+          readyForDraft: false,
+          proposal: null,
+        }),
+      ),
+    );
+    const controller = new AbortController();
+    const result = await completeGuidedGdd(guidedRequest, controller.signal);
+    expect(result.questions[0].suggestions).toHaveLength(2);
+    expect(authFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/gdd-assistant/guided"),
+      expect.objectContaining({
+        method: "POST",
+        signal: controller.signal,
+        body: JSON.stringify(guidedRequest),
+      }),
+    );
+  });
+
+  it("rejects clarification responses that claim to include a draft", async () => {
+    vi.mocked(authFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "Ready.",
+          questions: [],
+          readyForDraft: true,
+          proposal: {
+            title: "Game",
+            introduction: "",
+            sections: [
+              {
+                title: "Game direction",
+                items: [{ heading: "Vision", body: "Explore." }],
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    await expect(
+      completeGuidedGdd(guidedRequest, new AbortController().signal),
+    ).rejects.toThrow("inconsistent");
+  });
+
   it.each(["scratch", "fill"] as const)(
     "sends %s mode in authenticated, cancellable requests and validates the response",
     async (mode) => {

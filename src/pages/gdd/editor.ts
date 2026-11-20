@@ -11,6 +11,10 @@ import {
 import { validateDimensions } from "./images";
 import { readWorkflow, type AssistantWorkflow } from "./assistant";
 import {
+  readGuidedAssistant,
+  type GuidedAssistantState,
+} from "./assistantGuided";
+import {
   defaultPrototype,
   ENGINES,
   PLATFORMS,
@@ -50,6 +54,7 @@ export interface EditorDraft {
   sections: EditorSection[];
   prototype?: PrototypeRequirements;
   assistant?: AssistantWorkflow;
+  guidedAssistant?: GuidedAssistantState;
 }
 
 export interface EditorProject {
@@ -170,6 +175,11 @@ export function projectPaths(draft: EditorDraft): string[] {
         )
         .concat(
           draft.assistant?.references.flatMap((reference) =>
+            reference.imagePath ? [reference.imagePath] : [],
+          ) ?? [],
+        )
+        .concat(
+          draft.guidedAssistant?.references.flatMap((reference) =>
             reference.imagePath ? [reference.imagePath] : [],
           ) ?? [],
         ),
@@ -491,6 +501,9 @@ export function readDraft(value: unknown): EditorDraft {
     ...(data.assistant !== undefined
       ? { assistant: readWorkflow(data.assistant) }
       : {}),
+    ...(data.guidedAssistant !== undefined
+      ? { guidedAssistant: readGuidedAssistant(data.guidedAssistant) }
+      : {}),
   };
 }
 
@@ -605,9 +618,12 @@ export function projectAssets(
     if (!bytes) throw new Error(`Missing image: ${path}`);
     if (
       bytes.length > 256 * 1024 &&
-      project.draft.assistant?.references.some(
+      (project.draft.assistant?.references.some(
         (reference) => reference.imagePath === path,
-      )
+      ) ||
+        project.draft.guidedAssistant?.references.some(
+          (reference) => reference.imagePath === path,
+        ))
     )
       throw new Error(`${path} exceeds the 256 KB assistant reference limit.`);
     validateAsset(bytes, path);

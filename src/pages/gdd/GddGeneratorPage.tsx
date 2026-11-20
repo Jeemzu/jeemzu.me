@@ -43,6 +43,7 @@ import { CHECKPOINTS } from "./assistant";
 import { prepareImages, type PdfImage } from "./images";
 import GddEditorForm from "./GddEditorForm";
 import GddAssistant from "./GddAssistant";
+import GddGuidedAssistant from "./GddGuidedAssistant";
 import ActionSidebar from "../../components/shared/ActionSidebar";
 import GddAccountLibrary from "./GddAccountLibrary";
 import GddSaveBar from "./GddSaveBar";
@@ -95,6 +96,7 @@ export default function GddGeneratorPage() {
   const [assistantView, setAssistantView] = useState<
     "closed" | "open" | "minimized"
   >("closed");
+  const [legacyAssistantOpen, setLegacyAssistantOpen] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -103,16 +105,25 @@ export default function GddGeneratorPage() {
   const status = useRef<HTMLDivElement>(null);
   const operation = useRef(0);
   const workflow = project.draft.assistant;
-  const assistantProgress = workflow
-    ? `${workflow.current + 1}/${CHECKPOINTS.length} - ${CHECKPOINTS[workflow.current].label}`
-    : "AI Assistant";
+  const guidedAssistant = project.draft.guidedAssistant;
+  const assistantProgress = guidedAssistant
+    ? "Guided GDD"
+    : workflow
+      ? `${workflow.current + 1}/${CHECKPOINTS.length} - ${CHECKPOINTS[workflow.current].label}`
+      : "AI Assistant";
   const assistantStatus = assistantBusy
     ? "Working"
-    : workflow?.stages.every((stage) => stage.approved)
+    : guidedAssistant?.approved ||
+        workflow?.stages.every((stage) => stage.approved)
       ? "Complete"
-      : workflow?.stages[workflow.current].response
+      : guidedAssistant?.response?.proposal ||
+          workflow?.stages[workflow.current].response
         ? "Ready for review"
-        : "";
+        : guidedAssistant?.readyForDraft
+          ? "Ready to generate"
+          : guidedAssistant?.response?.questions.length
+            ? "Needs your input"
+            : "";
   const setupEngine =
     project.draft.prototype?.engines.includes("threejs") &&
     !project.draft.prototype.engines.includes("unity")
@@ -750,36 +761,74 @@ export default function GddGeneratorPage() {
           </Tooltip>
         </DialogTitle>
         <DialogContent dividers>
-          <GddAssistant
-            key={`assistant-${editorVersion}`}
-            project={project}
-            disabled={busy !== null || accountBusy || assistantBusy}
-            onBusyChange={setAssistantBusy}
-            onImagesPrepared={setImages}
-            onComplete={() => setCompletionPrompt(true)}
-            onChange={(next, documentChanged, replaceDocument) => {
-              setProject(next);
-              setDirty(true);
-              setError("");
-              setNotice("");
-              if (replaceDocument) {
-                setAccountResetVersion((version) => version + 1);
-                setEditorVersion((version) => version + 1);
-                setImportWarnings([]);
-              }
-              if (documentChanged) {
-                const paths = projectPaths(next.draft);
-                setImages((current) =>
-                  Object.fromEntries(
-                    Object.entries(current).filter(([path]) =>
-                      paths.includes(path),
+          {project.draft.assistant && (
+            <Button
+              sx={outlineButtonSx}
+              onClick={() => setLegacyAssistantOpen((current) => !current)}
+            >
+              {legacyAssistantOpen
+                ? "Use full-document assistant"
+                : "Resume checkpoint assistant"}
+            </Button>
+          )}
+          {legacyAssistantOpen ? (
+            <GddAssistant
+              key={`assistant-${editorVersion}`}
+              project={project}
+              disabled={busy !== null || accountBusy || assistantBusy}
+              onBusyChange={setAssistantBusy}
+              onImagesPrepared={setImages}
+              onComplete={() => setCompletionPrompt(true)}
+              onChange={(next, documentChanged, replaceDocument) => {
+                setProject(next);
+                setDirty(true);
+                setError("");
+                setNotice("");
+                if (replaceDocument) {
+                  setAccountResetVersion((version) => version + 1);
+                  setEditorVersion((version) => version + 1);
+                  setImportWarnings([]);
+                }
+                if (documentChanged) {
+                  const paths = projectPaths(next.draft);
+                  setImages((current) =>
+                    Object.fromEntries(
+                      Object.entries(current).filter(([path]) =>
+                        paths.includes(path),
+                      ),
                     ),
-                  ),
-                );
-                invalidatePdf();
-              }
-            }}
-          />
+                  );
+                  invalidatePdf();
+                }
+              }}
+            />
+          ) : (
+            <GddGuidedAssistant
+              key={`guided-assistant-${editorVersion}`}
+              project={project}
+              disabled={busy !== null || accountBusy || assistantBusy}
+              onBusyChange={setAssistantBusy}
+              onImagesPrepared={setImages}
+              onComplete={() => setCompletionPrompt(true)}
+              onChange={(next, documentChanged) => {
+                setProject(next);
+                setDirty(true);
+                setError("");
+                setNotice("");
+                if (documentChanged) {
+                  const paths = projectPaths(next.draft);
+                  setImages((current) =>
+                    Object.fromEntries(
+                      Object.entries(current).filter(([path]) =>
+                        paths.includes(path),
+                      ),
+                    ),
+                  );
+                  invalidatePdf();
+                }
+              }}
+            />
+          )}
         </DialogContent>
         {!libraryOpen && !completionPrompt && (
           <DialogActions>{saveBar}</DialogActions>
