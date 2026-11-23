@@ -19,7 +19,7 @@ interface AuthState {
 }
 
 interface AuthActions {
-    register: (username: string, email: string, password: string, optedIn?: boolean) => Promise<{ success: boolean; conflict?: boolean; error?: string }>;
+    register: (username: string, email: string, password: string) => Promise<{ success: boolean; conflict?: boolean; error?: string }>;
     loginUser: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     /** Adopts a token pair reissued after a username or password change. */
@@ -90,9 +90,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     isAuthenticated: false,
     isInitialized: false,
 
-    register: async (username, email, password, optedIn = false) => {
+    register: async (username, email, password) => {
         try {
-            const result = await registerUserRequest({ username, email, password, optedIn });
+            const result = await registerUserRequest({ username, email, password });
             if (!result) return { success: false, error: 'Registration failed.' };
             if ('conflict' in result) return { success: false, conflict: true, error: `'${username}' is already taken.` };
             set({ ...stateFromToken(result.token, username), isInitialized: true });

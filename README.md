@@ -1,12 +1,12 @@
 # jeemzu.me
 
-[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, browser games, interactive programming projects, Budgetize (a personal budgeting tool with an AI assistant), and a GDD Generator for formatting game design documents as PDFs. The site also includes accounts, game leaderboards, and administration features backed by a separate API repository.
+[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, interactive programming projects, Budgetize (a personal budgeting tool with an AI assistant), and a GDD Generator for formatting game design documents as PDFs. The site also includes accounts and administration features backed by a separate API repository.
 
 ## Architecture Overview
 
 The frontend is a static single-page application. The .NET API and production database are deployed through a Render Blueprint; all AI workflows run inside the API.
 
-Page titles and descriptions are defined in `src/lib/routeMetadata.json`. The frontend build generates an HTML entry for every registered route (including each playable game), so link-preview crawlers receive page-specific standard, Open Graph, and Twitter metadata without running JavaScript. Netlify serves those files ahead of the SPA fallback; React updates the same metadata during client-side navigation. Add metadata here when adding a route or playable game.
+Page titles and descriptions are defined in `src/lib/routeMetadata.json`. The frontend build generates an HTML entry for every registered route, so link-preview crawlers receive page-specific standard, Open Graph, and Twitter metadata without running JavaScript. Netlify serves those files ahead of the SPA fallback; React updates the same metadata during client-side navigation. Add metadata here when adding a route.
 
 The favicon uses the header's gold JF monogram on a transparent background, supplied as a self-contained vector in [public/jf.svg](public/jf.svg).
 
@@ -22,20 +22,6 @@ Browser
 ```
 
 The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize uses a native .NET router/analyst/planner workflow with a dedicated provider key; the browser sends its authoritative forecast and still previews and explicitly applies every proposal.
-
-### Game Player
-
-- Planned move to a dedicated games site: [jeemzugames.com launch checklist](docs/jeemzugames-launch-checklist.md).
-- Snake, Tetris, Brick Break, zAim and The (Im)Possible Game launch at `/play/<id>`; their legacy `/games/<id>` URLs redirect there.
-- Shared Player code lives in `src/game-player`; each migrated game separates its entry metadata, rules, rendering, input, sound cues, and visual style under `src/games/<id>`.
-- Player chrome uses the site theme; Snake is bioluminescent and Tetris uses neon-glass blocks. Arrow keys/WASD steer or move; Up/W rotates Tetris, Down/S soft-drops, Space hard-drops, and Esc/P pauses. Touch controls are not included. Snake music (`public/sounds/snake_music.mp3`) is a 59.6 s loop rebuilt in Audacity MCP: a 64-eighth-note phrase bridged and crossfaded so the wrap stays on the beat grid.
-- Tetris uses clockwise SRS rotation, uniform piece selection, the existing 15-line level progression, and the original line/hard-drop scoring. Its next-piece preview, level, and lines are DOM HUD elements, including on narrow screens. Eleven original effects were synthesized with Audacity MCP, normalized to -12 dB peak, and exported as mono MP3/OGG pairs in `public/sounds/tetris_*`; per-cue playback gains live in `src/games/tetris/sounds.ts`.
-- Brick Break uses a synthwave field with DOM level selection and completion actions. Its 20 layouts, unlock storage, armor, weighted power-ups and cumulative score/lives are preserved. Left/Right or A/D move the paddle; Space/click serves or releases a sticky ball; Q/E or the movement keys aim a caught ball.
-- zAim plays as black targets on a white grid directly on the Player backdrop, with an inverting crosshair. During a run it shows only the countdown and a timer bar that drains and refills at each Endurance checkpoint (Reflex shows its wait/reaction cues instead); score, personal best and Top 10 appear after the run (`GameEntry.immersive`). Endurance, Reflex and Speed retain separate `zaim_<mode>` leaderboards; Reflex stores `10000 - roundedAverageMs` (clamped at zero) and decodes for display. Pause excludes elapsed time.
-- The (Im)Possible Game (`/play/impossible`) is the SDL/WASM build of `cpp/platformer`, styled as starfield noir: parallax stars, gold-rimmed ground, crimson spikes. It renders GPU geometry at canvas size × DPR, steps physics at a fixed 60 Hz, and exposes lifecycle/event exports that `src/games/impossible` bridges to the Player. Space/Up/W/click jump (held jumps repeat); deaths auto-retry with an attempt counter. Rebuild with `cpp/build-all.ps1 -Only platformer` after activating emsdk. Jump/land/death/complete cues were synthesized, normalized to -12 dB peak in Audacity MCP and stored in `public/sounds/impossible_*`.
-- The Level Editor lives at `/play/impossible/editor` (`/editor` redirects). Its canvas fits the available space at device resolution, and **Play** test-runs the current draft in an embedded Player without discarding editor state.
-- Better Putt Party (`/play/puttparty`) is 1–6 player online mini-golf. It connects over a raw WebSocket to the `games-realtime` service (`VITE_GAMES_REALTIME_URL`, production `wss://play.jeemzu.me`), which owns sessions, shots and scoring. Each client replays shots with the same deterministic physics, and the top-right chip shows the ping (see [docs/putt-party-network.md](docs/putt-party-network.md)). Create a room, share its 6-letter code, and the host starts. Drag back to aim (stronger shots wobble), right-drag to orbit, scroll to zoom. Reloading within 5 minutes resumes your seat. Entries with `realtime: true` cannot be paused. Courses are data files — see [docs/putt-party-courses.md](docs/putt-party-courses.md). Optional GLB props (tree, rock, flag) can be listed in `public/puttparty/models/manifest.json` as `{ "tree": { "file": "tree.glb", "height": 3 } }`; procedural models are used otherwise. Audio is not included yet.
-- `/play/sandbox` is development-only and exercises sizing, bloom, audio, and overlays (click to score, G to end a run). Canvas resolution follows viewport size and device pixel ratio; audio levels persist locally.
 
 ### Algorithm Visualizer
 
@@ -101,14 +87,13 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 
 - React 19, TypeScript 5.8, and Vite 6, with Wouter for routing.
 - Material UI 7 for the component system and Zustand 5 for client state.
-- Three.js (via the shared Game Player in `src/game-player`) for JavaScript games; C++20 games and the algorithm visualizer compile to WebAssembly with Emscripten.
-- Game Player routes (`/play/*`, including the Level Editor) hide the site footer; legacy `/games/:id` links redirect to `/play/:id`.
+- The C++20 algorithm visualizer compiles to WebAssembly with Emscripten.
 - `openapi-typescript` generates API types from the .NET API's Swagger document.
 - Netlify publishes the Vite `dist/` output as a single-page application.
 
 ### Backend
 
-- ASP.NET Core 8 provides the public REST API for accounts, authentication, profiles, scores, budgets, contact requests, and profile chat.
+- ASP.NET Core 8 provides the public REST API for accounts, authentication, profiles, budgets, contact requests, and profile chat.
 - Entity Framework Core 8 with Npgsql connects to PostgreSQL 16. The `pgvector` extension stores and searches knowledge embeddings.
 - JWT access tokens and httpOnly refresh cookies support authentication; Resend handles account email and contact delivery.
 - The .NET API also hosts the Budgetize and GDD assistant workflows through Semantic Kernel, using dedicated OpenAI keys without falling back to the profile key.

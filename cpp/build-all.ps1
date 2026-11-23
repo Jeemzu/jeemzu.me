@@ -4,7 +4,7 @@
 
 param(
     [string]$OutputDir = "$PSScriptRoot\..\public\wasm",
-    # Optional project names to build (e.g. -Only platformer); builds all when omitted.
+    # Optional project names to build (e.g. -Only algoviz); builds all when omitted.
     [string[]]$Only = @()
 )
 

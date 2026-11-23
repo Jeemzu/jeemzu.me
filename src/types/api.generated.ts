@@ -1356,151 +1356,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scores": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": components["schemas"]["SubmitScoreRequest"];
-                    "text/json": components["schemas"]["SubmitScoreRequest"];
-                    "application/*+json": components["schemas"]["SubmitScoreRequest"];
-                };
-            };
-            responses: {
-                /** @description Created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ScoreResponse"];
-                        "application/json": components["schemas"]["ScoreResponse"];
-                        "text/json": components["schemas"]["ScoreResponse"];
-                    };
-                };
-                /** @description Bad Request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ProblemDetails"];
-                        "application/json": components["schemas"]["ProblemDetails"];
-                        "text/json": components["schemas"]["ProblemDetails"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scores/{gameId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    limit?: number;
-                };
-                header?: never;
-                path: {
-                    gameId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["ScoreResponse"][];
-                        "application/json": components["schemas"]["ScoreResponse"][];
-                        "text/json": components["schemas"]["ScoreResponse"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scores/{gameId}/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    gameId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["GameSummaryResponse"];
-                        "application/json": components["schemas"]["GameSummaryResponse"];
-                        "text/json": components["schemas"]["GameSummaryResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/users/register": {
         parameters: {
             query?: never;
@@ -2128,7 +1983,6 @@ export interface components {
             id?: string;
             username?: string | null;
             role?: string | null;
-            optedIn?: boolean;
             /** Format: date-time */
             createdAt?: string;
         };
@@ -2339,11 +2193,6 @@ export interface components {
             /** Format: email */
             email: string;
         };
-        GameSummaryResponse: {
-            allTimeRecord?: components["schemas"]["ScoreResponse"];
-            /** Format: int32 */
-            personalBest?: number | null;
-        };
         GddAssistantItem: {
             heading?: string | null;
             body?: string | null;
@@ -2450,7 +2299,6 @@ export interface components {
             username?: string | null;
             email?: string | null;
             emailVerified?: boolean;
-            optedIn?: boolean;
             emailListSubscribed?: boolean;
             role?: string | null;
             /** Format: date-time */
@@ -2461,7 +2309,6 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
-            optedIn?: boolean;
             emailListSubscribed?: boolean;
         };
         ResetPasswordRequest: {
@@ -2473,27 +2320,12 @@ export interface components {
             /** Format: uuid */
             revision?: string | null;
         };
-        ScoreResponse: {
-            gameId?: string | null;
-            username?: string | null;
-            /** Format: int32 */
-            score?: number;
-            /** Format: int64 */
-            timestamp?: number;
-        };
         ServiceHealthStatus: {
             service?: string | null;
             healthy?: boolean;
             /** Format: int32 */
             responseTimeMs?: number | null;
             error?: string | null;
-        };
-        SubmitScoreRequest: {
-            gameId: string;
-            /** Format: int32 */
-            score?: number;
-            /** Format: int64 */
-            timestamp?: number;
         };
         TokenResponse: {
             accessToken?: string | null;
@@ -2506,16 +2338,11 @@ export interface components {
             role: string;
         };
         UpdateUserRequest: {
-            optedIn?: boolean | null;
             emailListSubscribed?: boolean | null;
         };
         UserResponse: {
             userId?: string | null;
             username?: string | null;
-            optedIn?: boolean;
-            highScores?: {
-                [key: string]: number;
-            } | null;
         };
         VerifyEmailRequest: {
             token: string;

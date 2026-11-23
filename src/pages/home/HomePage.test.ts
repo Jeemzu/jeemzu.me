@@ -28,16 +28,18 @@ describe("homepage authentication badges", () => {
   it("shows sign-in badges to guests and uses the Budgetize name", () => {
     const html = renderHome(false);
     expect(html).toContain("Sign in to save");
-    expect(html).toContain("Sign-in required");
+    expect(html).not.toContain("Level Editor");
+    expect(html).not.toContain('href="/games"');
+    expect(html).not.toContain('href="/play/impossible/editor"');
     expect(html).toContain("Budgetize");
     expect(html).not.toContain("Budgetize Me");
   });
 
-  it("hides both sign-in badges for authenticated users", () => {
+  it("hides the sign-in badge for authenticated users", () => {
     const html = renderHome(true);
     expect(html).not.toContain("Sign in to save");
     expect(html).not.toContain("Sign-in required");
-    expect(html).toContain("Level Editor");
+    expect(html).not.toContain("Level Editor");
     expect(html).toContain("Budgetize");
   });
 });

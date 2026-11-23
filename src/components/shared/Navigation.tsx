@@ -30,7 +30,7 @@ const Navigation = () => {
   const [location] = useLocation();
   const appBarRef = useRef<HTMLElement>(null);
 
-  // Full-height layouts (game player, level editor) size themselves against this.
+  // Full-height layouts size themselves against this.
   useEffect(() => {
     const el = appBarRef.current;
     if (!el) return;
@@ -48,7 +48,6 @@ const Navigation = () => {
 
   const navItems = [
     { label: "Home", path: "/" },
-    { label: "Games", path: "/games" },
     { label: "Visualizer", path: "/algoviz" },
     { label: "Budgetize", path: "/budgetize" },
     { label: "GDD Generator", path: "/gdd-generator" },

@@ -42,7 +42,6 @@ interface AdminUser {
   id: string;
   username: string;
   role: string;
-  optedIn: boolean;
   createdAt: string;
 }
 
@@ -402,7 +401,6 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
               <TableRow>
                 <TableCell sx={headerCellSx}>Username</TableCell>
                 <TableCell sx={headerCellSx}>Role</TableCell>
-                <TableCell sx={headerCellSx}>Opted In</TableCell>
                 <TableCell sx={headerCellSx}>Joined</TableCell>
                 <TableCell sx={headerCellSx} />
               </TableRow>
@@ -430,7 +428,6 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
                       <MenuItem value="Admin">Admin</MenuItem>
                     </Select>
                   </TableCell>
-                  <TableCell sx={cellSx}>{u.optedIn ? "Yes" : "No"}</TableCell>
                   <TableCell sx={cellSx}>
                     {new Date(u.createdAt).toLocaleDateString()}
                   </TableCell>
@@ -463,7 +460,7 @@ function UsersPanel({ currentUser }: { currentUser: string | null }) {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2">
-            This cannot be undone. Their scores will remain but become unlinked.
+            This cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>

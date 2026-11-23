@@ -24,7 +24,7 @@ export async function getProfileRequest(): Promise<ApiSchemas['ProfileResponse']
     return (await response.json()) as ApiSchemas['ProfileResponse'];
 }
 
-/** POST /api/users/me/preferences — leaderboard opt-in and mailing list. Omitted fields are unchanged. */
+/** POST /api/users/me/preferences — mailing list. Omitted fields are unchanged. */
 export async function updateProfilePreferencesRequest(
     body: ApiSchemas['UpdateUserRequest'],
 ): Promise<ApiSchemas['ProfileResponse']> {

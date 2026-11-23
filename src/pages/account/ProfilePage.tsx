@@ -7,7 +7,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Divider,
   FormControlLabel,
   Stack,
   Switch,
@@ -292,7 +291,7 @@ export default function ProfilePage() {
 
         <SectionPanel
           title="Username"
-          description="Your display name on leaderboards."
+          description="Your account name."
         >
           <Box component="form" onSubmit={handleUsernameSubmit}>
             <Stack spacing={2}>
@@ -381,23 +380,9 @@ export default function ProfilePage() {
 
         <SectionPanel
           title="Preferences"
-          description="Control where your name appears and what lands in your inbox."
+          description="Manage email notifications."
         >
           <Stack spacing={1}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={profile.optedIn ?? false}
-                  disabled={prefsBusy}
-                  onChange={(e) =>
-                    void savePreference({ optedIn: e.target.checked })
-                  }
-                />
-              }
-              label="Show my scores on global leaderboards"
-              sx={{ "& .MuiFormControlLabel-label": bodySx }}
-            />
-            <Divider sx={{ borderColor: "rgba(200, 162, 74, 0.16)" }} />
             <FormControlLabel
               control={
                 <Switch

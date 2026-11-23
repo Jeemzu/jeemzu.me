@@ -9,10 +9,8 @@ import {
   Chip,
 } from "@mui/material";
 import {
-  FaGamepad,
   FaChartSimple,
   FaSackDollar,
-  FaPenRuler,
   FaCode,
   FaFilePdf,
   FaTerminal,
@@ -42,15 +40,6 @@ interface AppCardDef {
 }
 
 const APPS: AppCardDef[] = [
-  {
-    title: "Games",
-    description:
-      "Snake, Tetris, Brick Break, zAim, and more — all playable in the browser.",
-    icon: <FaGamepad size={34} />,
-    path: "/games",
-    accent: "glassEmerald",
-    iconAnimation: "jz-rumble 0.6s linear both",
-  },
   {
     title: "Algorithm Visualizer",
     description:
@@ -89,15 +78,6 @@ const APPS: AppCardDef[] = [
     path: "/yt-dlp",
     accent: "glassRuby",
     iconAnimation: "jz-terminal-slide 0.55s ease-out both",
-  },
-  {
-    title: "Level Editor",
-    description: "Build your own platformer levels and play them.",
-    icon: <FaPenRuler size={34} />,
-    path: "/play/impossible/editor",
-    accent: "glassRuby",
-    note: "Sign-in required",
-    iconAnimation: "jz-scribe 0.85s ease-in-out both",
   },
 ];
 

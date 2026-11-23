@@ -1,7 +1,7 @@
 import { Button, Grid, Box, Typography, Container } from "@mui/material";
 import "./App.css";
 import { lazy, Suspense, useEffect, type JSX } from "react";
-import { Redirect, Route, Router, Switch, useRoute } from "wouter";
+import { Route, Router, Switch, useRoute } from "wouter";
 import Footer from "./components/shared/Footer";
 import Navigation from "./components/shared/Navigation";
 import PageTransition, { PageEnter } from "./components/shared/PageTransition";
@@ -82,15 +82,10 @@ function Custom404() {
 const HomePage = LC(lazy(() => import("./pages/home/HomePage")));
 const AboutPage = LC(lazy(() => import("./pages/developer/AboutPage")));
 const ProjectsPage = LC(lazy(() => import("./pages/developer/ProjectsPage")));
-const GamesPage = LC(lazy(() => import("./pages/games/GamesPage")));
 const ExperiencePage = LC(
   lazy(() => import("./pages/developer/ExperiencePage")),
 );
-const LevelEditorPage = LC(
-  lazy(() => import("./pages/editor/LevelEditorPage")),
-);
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
-const GamePlayerPage = LC(lazy(() => import("./game-player/GamePlayerPage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
 const GddGeneratorPage = LC(lazy(() => import("./pages/gdd/GddGeneratorPage")));
@@ -126,15 +121,6 @@ export function Routes() {
                 <ProjectsPage />
               </DeveloperLayout>
             </Route>
-            <Route path="/play/impossible/editor" component={LevelEditorPage} />
-            <Route path="/play/:gameId" component={GamePlayerPage} />
-            <Route path="/games/:id">
-              {({ id }) => <Redirect to={`/play/${encodeURIComponent(id)}`} replace />}
-            </Route>
-            <Route path="/games" component={GamesPage} />
-            <Route path="/editor">
-              <Redirect to="/play/impossible/editor" replace />
-            </Route>
             <Route path="/algoviz" component={AlgoVizPage} />
             <Route path="/admin" component={AdminPage} />
             <Route path="/budgetize" component={BudgetizePage} />
@@ -156,7 +142,6 @@ export function Routes() {
 }
 
 function App() {
-  const [isGamePage] = useRoute("/play/*?");
   const [isGddPage] = useRoute("/gdd-generator");
 
   useEffect(() => {
@@ -224,7 +209,7 @@ function App() {
         </Box>
 
         {/* Footer area */}
-        {!isGamePage && !isGddPage && (
+        {!isGddPage && (
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <Grid container spacing={0}>
               <Grid size={12}>
