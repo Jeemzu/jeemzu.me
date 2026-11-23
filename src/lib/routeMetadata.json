@@ -1,7 +1,7 @@
 {
   "/": {
     "title": "Jeemzu",
-    "description": "Explore developer tools, Budgetize, the GDD Generator, and other interactive apps."
+    "description": "Explore developer tools, Budgetize, and other interactive apps."
   },
   "/developer": {
     "title": "About | James Friedenberg",
@@ -26,10 +26,6 @@
   "/budgetize": {
     "title": "Budgetize",
     "description": "Plan bills, debts, and paychecks with budget calendars, financial projections, and an AI budgeting assistant."
-  },
-  "/gdd-generator": {
-    "title": "GDD Generator",
-    "description": "Create a polished game design document with customizable sections, image uploads, and PDF export."
   },
   "/yt-dlp": {
     "title": "yt-dlp Builder",

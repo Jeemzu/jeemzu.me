@@ -12,7 +12,6 @@ import {
   FaChartSimple,
   FaSackDollar,
   FaCode,
-  FaFilePdf,
   FaTerminal,
 } from "react-icons/fa6";
 import { Link } from "wouter";
@@ -60,15 +59,6 @@ const APPS: AppCardDef[] = [
     note: "Sign in to save",
     iconAnimation: "jz-jingle 1.1s ease-in-out both",
     iconOrigin: "50% 6%",
-  },
-  {
-    title: "GDD Generator",
-    description:
-      "Turn your game design text and reference images into a formatted PDF.",
-    icon: <FaFilePdf size={34} />,
-    path: "/gdd-generator",
-    accent: "glassAmethyst",
-    iconAnimation: "jz-pdf-drop 0.65s ease-out both",
   },
   {
     title: "yt-dlp Builder",

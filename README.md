@@ -1,6 +1,6 @@
 # jeemzu.me
 
-[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, interactive programming projects, Budgetize (a personal budgeting tool with an AI assistant), and a GDD Generator for formatting game design documents as PDFs. The site also includes accounts and administration features backed by a separate API repository.
+[jeemzu.me](https://jeemzu.me) is a personal portfolio and project hub for James Friedenberg. It brings together developer information, interactive programming projects, and Budgetize (a personal budgeting tool with an AI assistant). The site also includes accounts and administration features backed by a separate API repository.
 
 ## Architecture Overview
 
@@ -34,18 +34,6 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - **From Today** clears a custom plan start date and returns to the current month. The calendar's **Today** / **Start** button only changes the displayed month.
 - The bottom-right **Notifications** button opens a conversation-style feed for current funding warnings, extra debt-payment guidance, and session save/import/export notices. Its badge counts unread messages; errors are identified separately. Opening the feed marks the displayed messages read without removing active warnings. Operation notices can be dismissed, and signing out clears them.
 - Download names use `budgetize`; the internal `budgetize-me` JSON backup identifier is retained for compatibility with existing backups.
-
-### GDD Generator
-
-- `/gdd-generator` opens a visual canvas beneath the navigation with no page scrolling. Start with an empty workspace and a blank foundation, then add one block per subject from the fixed GDD collection, including **Game Title and Description** and **Prototype and Technical Requirements**. New blocks pop into place with radiating lines. Touching edges connect magnetically: any connected path to the foundation holds a structure upright, while loose groups fall and squash slightly on impact. Drag a branch with **Move**, or use **Detach** to pick it up until the next canvas click; **Escape** or **Cancel** restores its original position. A ghost outline and highlighted edge preview the nearest clear attachment, preferring bottom-to-top joins. The palette also includes **Resize** and **Delete**. Blocks cannot overlap; rotation, colors, borders, and document ordering remain editable. Subject blocks open an adjacent subsection canvas with preset or custom sections and editable text or images. Text remains upright when blocks rotate.
-- Document order defaults to block-center position (lower blocks first, then left-to-right). Manual order controls renumber and persist until **Reset order**. Subsection ordering follows the same rule.
-- The bottom toolbar provides the building palette, **PDF**, **JSON**, **Blank template**, **Open**, account actions for signed-in users, **AI**, and **Settings**. Settings persist on this device: dark mode covers the GDD builder and its dialogs (not the rest of the website), with toolbar accent, rounded-corner, and compact-density controls. Animations respect reduced-motion preferences. After PDF generation, **Download PDF** and **Open PDF** are available. Local projects are standalone JSON files with embedded images and assistant progress, capped at 60 MB; there is no ZIP-based local workflow. Importing over unsaved work requires confirmation.
-- The opt-in AI assistant requires sign-in. It supports the existing guided full-document and legacy checkpoint workflows. Reference files are processed locally, links are context only and are not fetched, and proposals require explicit approval. Assistant state is part of the project JSON.
-- PDF generation opens a new tab and downloads the current GDD. The generated document follows canvas order; empty content is omitted.
-- Account saves require sign-in and retain the compressed project JSON plus an optional current PDF. The compressed project limit is 50 MB, the PDF limit is 20 MB, and the total account quota is 100 MB. Existing cloud ZIP drafts remain loadable; unmatched legacy section titles require explicit mapping to a canvas subject.
-- Deploy the sibling API's `/api/gdd-assistant` and `/api/gdd-assistant/guided` endpoints before using AI. GDD uses a dedicated `OpenAI__GddApiKey` secret; missing configuration returns `503` without billing the chatbot key. Browser code never holds provider credentials.
-- Canvas assets are PNG/JPEG images of at most 10 MB each. JSON import validates the project structure and embedded asset metadata before replacing the current project.
-- PDF generation and its bundled OFL-licensed Noto fonts load on demand. Fonts cover Latin, Greek, and Cyrillic; other scripts and emoji are not guaranteed. Review the PDF before distributing it. The font license ships at `/licenses/gdd-fonts-OFL.txt`.
 
 ### yt-dlp Builder
 
@@ -96,14 +84,14 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - ASP.NET Core 8 provides the public REST API for accounts, authentication, profiles, budgets, contact requests, and profile chat.
 - Entity Framework Core 8 with Npgsql connects to PostgreSQL 16. The `pgvector` extension stores and searches knowledge embeddings.
 - JWT access tokens and httpOnly refresh cookies support authentication; Resend handles account email and contact delivery.
-- The .NET API also hosts the Budgetize and GDD assistant workflows through Semantic Kernel, using dedicated OpenAI keys without falling back to the profile key.
+- The .NET API also hosts the Budgetize assistant workflow through Semantic Kernel, using a dedicated OpenAI key without falling back to the profile key.
 - The API container and PostgreSQL are deployed from the [`jeemzu.api` repository](https://github.com/Jeemzu/jeemzu.api) through Render.
 
 ### AI
 
 - The profile chat uses Microsoft Semantic Kernel with OpenAI chat completions and embeddings. It retrieves relevant knowledge from PostgreSQL via pgvector before generating a grounded response.
 - Budgetize uses router → analysis/planning/capability gap → deterministic proposal validation, with explicit browser approval.
-- OpenAI powers chat, planning, and embeddings. All three assistant models independently default to GPT-6 Luna.
+- OpenAI powers chat, planning, and embeddings. The chat and Budgetize models independently default to GPT-6 Luna.
 
 ### 3rd Party Services
 

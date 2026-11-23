@@ -20,7 +20,7 @@ import {
   FaTimes,
   FaUnlock,
 } from "react-icons/fa";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { onClickUrl } from "../../utils/openInNewTab";
 import { useAuthStore } from "../../stores/authStore";
 import UserAuthModal from "./UserAuthModal";
@@ -28,19 +28,6 @@ import UserAuthModal from "./UserAuthModal";
 const Navigation = () => {
   const theme = useTheme();
   const [location] = useLocation();
-  const appBarRef = useRef<HTMLElement>(null);
-
-  // Full-height layouts size themselves against this.
-  useEffect(() => {
-    const el = appBarRef.current;
-    if (!el) return;
-    const root = document.documentElement;
-    const publish = () => root.style.setProperty("--jz-nav-h", `${el.offsetHeight}px`);
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
   const isMobile = useMediaQuery("(max-width:1280px)");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -50,7 +37,6 @@ const Navigation = () => {
     { label: "Home", path: "/" },
     { label: "Visualizer", path: "/algoviz" },
     { label: "Budgetize", path: "/budgetize" },
-    { label: "GDD Generator", path: "/gdd-generator" },
     { label: "yt-dlp", path: "/yt-dlp" },
     { label: "Developer", path: "/developer" },
     ...(role === "Admin" ? [{ label: "Admin", path: "/admin" }] : []),
@@ -176,7 +162,6 @@ const Navigation = () => {
   return (
     <>
       <AppBar
-        ref={appBarRef}
         position="sticky"
         sx={{
           backgroundColor: "rgba(13, 16, 23, 0.94)",

@@ -1,7 +1,7 @@
 import { Button, Grid, Box, Typography, Container } from "@mui/material";
 import "./App.css";
 import { lazy, Suspense, useEffect, type JSX } from "react";
-import { Route, Router, Switch, useRoute } from "wouter";
+import { Route, Router, Switch } from "wouter";
 import Footer from "./components/shared/Footer";
 import Navigation from "./components/shared/Navigation";
 import PageTransition, { PageEnter } from "./components/shared/PageTransition";
@@ -88,7 +88,6 @@ const ExperiencePage = LC(
 const AlgoVizPage = LC(lazy(() => import("./pages/algoviz/AlgoVizPage")));
 const AdminPage = LC(lazy(() => import("./pages/admin/AdminPage")));
 const BudgetizePage = LC(lazy(() => import("./pages/budgetize/BudgetizePage")));
-const GddGeneratorPage = LC(lazy(() => import("./pages/gdd/GddGeneratorPage")));
 const YtDlpPage = LC(lazy(() => import("./pages/ytdlp/YtDlpPage")));
 const ProfilePage = LC(lazy(() => import("./pages/account/ProfilePage")));
 const VerifyEmailPage = LC(
@@ -124,7 +123,6 @@ export function Routes() {
             <Route path="/algoviz" component={AlgoVizPage} />
             <Route path="/admin" component={AdminPage} />
             <Route path="/budgetize" component={BudgetizePage} />
-            <Route path="/gdd-generator" component={GddGeneratorPage} />
             <Route path="/yt-dlp" component={YtDlpPage} />
             <Route path="/account" component={ProfilePage} />
             <Route path="/verify-email" component={VerifyEmailPage} />
@@ -142,8 +140,6 @@ export function Routes() {
 }
 
 function App() {
-  const [isGddPage] = useRoute("/gdd-generator");
-
   useEffect(() => {
     // Attempt a silent token refresh on load to restore any active admin session.
     void useAuthStore.getState().initialize();
@@ -172,10 +168,8 @@ function App() {
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          height: isGddPage ? "100dvh" : undefined,
           minHeight: "100vh",
           minWidth: "100vw",
-          overflow: isGddPage ? "hidden" : undefined,
           backgroundRepeat: "repeat",
           backgroundAttachment: "fixed",
           backgroundSize: "auto",
@@ -209,15 +203,13 @@ function App() {
         </Box>
 
         {/* Footer area */}
-        {!isGddPage && (
-          <Box sx={{ position: "relative", zIndex: 1 }}>
-            <Grid container spacing={0}>
-              <Grid size={12}>
-                <Footer />
-              </Grid>
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <Grid container spacing={0}>
+            <Grid size={12}>
+              <Footer />
             </Grid>
-          </Box>
-        )}
+          </Grid>
+        </Box>
       </Box>
     </ErrorBoundary>
   );

@@ -31,6 +31,8 @@ describe("homepage authentication badges", () => {
     expect(html).not.toContain("Level Editor");
     expect(html).not.toContain('href="/games"');
     expect(html).not.toContain('href="/play/impossible/editor"');
+    expect(html).not.toContain('href="/gdd-generator"');
+    expect(html).not.toContain("GDD Generator");
     expect(html).toContain("Budgetize");
     expect(html).not.toContain("Budgetize Me");
   });
