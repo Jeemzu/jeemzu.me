@@ -28,6 +28,8 @@ import {
   deleteGdd,
   GDD_ACCOUNT_LIMIT,
   GDD_PDF_LIMIT,
+  compressGddProject,
+  decompressGddProject,
   listGdds,
   loadGddFile,
   saveGdd,
@@ -44,14 +46,19 @@ import { downloadBlob } from "../budgetize/lib/download";
 import {
   filename,
   openProject,
-  saveProject,
   type EditorProject,
 } from "./editor";
 import { prepareImages, type PdfImage } from "./images";
+import {
+  canvasFromJson,
+  canvasToEditorProject,
+  gddProjectTitle,
+} from "./canvasConversion";
+import type { GddCanvasProject } from "./projectModel";
 
 interface Props {
-  ref?: Ref<{ save: () => void }>;
-  project: EditorProject;
+  ref?: Ref<{ select: (document: SavedGdd) => void }>;
+  project: GddCanvasProject;
   pdf: Blob | null;
   dirty: boolean;
   disabled: boolean;
@@ -59,10 +66,15 @@ interface Props {
   onBusyChange: (busy: boolean) => void;
   onSavedChange: (saved: boolean) => void;
   onLoad: (
-    project: EditorProject,
+    project: GddCanvasProject,
     images: Record<string, PdfImage>,
     pdf: Blob | null,
   ) => void;
+  onLegacyLoad: (
+    project: EditorProject,
+    pdf: Blob | null,
+    document: SavedGdd,
+  ) => boolean;
 }
 
 function megabytes(bytes: number): string {
@@ -79,6 +91,7 @@ export default function GddAccountLibrary({
   onBusyChange,
   onSavedChange,
   onLoad,
+  onLegacyLoad,
 }: Props) {
   const username = useAuthStore((state) =>
     state.isAuthenticated ? state.username : null,
@@ -93,10 +106,9 @@ export default function GddAccountLibrary({
     action: "load" | "delete";
   } | null>(null);
   const request = useRef<AbortController | null>(null);
+
   useImperativeHandle(ref, () => ({
-    save: () => {
-      if (!disabled && !busy && library) save(false);
-    },
+    select: (document) => setSelected(document),
   }));
 
   useEffect(() => {
@@ -183,11 +195,8 @@ export default function GddAccountLibrary({
     void perform(async (signal, active) => {
       if (pdf && pdf.size > GDD_PDF_LIMIT)
         throw new Error("Account saves support PDFs up to 20 MB.");
-      const title = project.draft.title.trim() || "Untitled GDD";
-      const draft = saveProject({
-        ...project,
-        draft: { ...project.draft, title },
-      });
+      const title = gddProjectTitle(project);
+      const draft = await compressGddProject(JSON.stringify(project));
       const existing = asNew ? null : selected;
       const replaced = existing
         ? library?.documents.find((entry) => entry.id === existing.id)
@@ -207,8 +216,8 @@ export default function GddAccountLibrary({
       onSavedChange(true);
       setNotice(
         pdf
-          ? "PDF and editable draft saved to your account."
-          : "Editable draft saved to your account.",
+          ? "PDF and project saved to your account."
+          : "Project saved to your account.",
       );
       // A committed save stays successful even if the subsequent library refresh fails.
       try {
@@ -233,16 +242,25 @@ export default function GddAccountLibrary({
           : Promise.resolve(null),
         loadGddFile(document, "draft", signal),
       ]);
-      const imported = openProject(
-        new Uint8Array(await draftBlob.arrayBuffer()),
-      );
-      const prepared = await prepareImages(imported.assets);
+      const bytes = new Uint8Array(await draftBlob.arrayBuffer());
       if (active()) {
-        onLoad(imported, prepared, pdfBlob);
-        setSelected(document);
-        setNotice(
-          pdfBlob ? "PDF and editable draft loaded." : "Editable draft loaded.",
-        );
+        let loaded = true;
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+          const imported = canvasFromJson(await decompressGddProject(bytes));
+          const editorProject = canvasToEditorProject(imported);
+          const prepared = await prepareImages(editorProject.assets);
+          if (!active()) return;
+          onLoad(imported, prepared, pdfBlob);
+        } else {
+          const imported = openProject(bytes);
+          loaded = onLegacyLoad(imported, pdfBlob, document);
+        }
+        if (loaded) {
+          setSelected(document);
+          setNotice(pdfBlob ? "PDF and project loaded." : "Project loaded.");
+        } else {
+          setNotice("Map the legacy sections to finish loading.");
+        }
       }
     });
   }
@@ -297,7 +315,7 @@ export default function GddAccountLibrary({
         {library && (
           <>
             <Typography sx={bodySx}>
-              {megabytes(library.usedBytes)} / 100 MB
+                {megabytes(library.usedBytes)} / 100 MB
             </Typography>
             <LinearProgress
               variant="determinate"

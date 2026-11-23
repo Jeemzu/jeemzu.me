@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deleteGdd,
   GDD_ACCOUNT_LIMIT,
+  GDD_DRAFT_LIMIT,
   GDD_PDF_LIMIT,
+  compressGddProject,
+  decompressGddProject,
   listGdds,
   loadGddFile,
   saveGdd,
@@ -28,6 +31,13 @@ function reply(body: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("GDD account library", () => {
+  it("round-trips JSON through gzip for account storage", async () => {
+    const json = JSON.stringify({ format: "jeemzu-gdd-canvas", version: 1 });
+    const compressed = await compressGddProject(json);
+    expect(compressed.slice(0, 2)).toEqual(new Uint8Array([0x1f, 0x8b]));
+    await expect(decompressGddProject(compressed)).resolves.toBe(json);
+  });
+
   it("saves editable progress without uploading a PDF", async () => {
     const draftOnly = { ...saved, pdfBytes: 0 };
     const fetch = reply(draftOnly, 201);
@@ -91,10 +101,10 @@ describe("GDD account library", () => {
     },
   );
 
-  it("uploads PDF and original ZIP bytes as multipart without a forced content-type", async () => {
+  it("uploads PDF and compressed project bytes as multipart without a forced content-type", async () => {
     const fetch = reply(saved, 201);
     const pdf = new Blob(["%PDF-1.7\nsaved"], { type: "application/pdf" });
-    const bytes = new Uint8Array([80, 75, 3, 4]);
+    const bytes = new Uint8Array([0x1f, 0x8b, 8, 0]);
     expect(await saveGdd(" My game ", pdf, bytes, null)).toEqual(saved);
     const [url, options] = fetch.mock.calls[0];
     expect(url).toMatch(/\/gdd-documents$/);
@@ -107,6 +117,7 @@ describe("GDD account library", () => {
     expect(
       new Uint8Array(await (form.get("draft") as Blob).arrayBuffer()),
     ).toEqual(bytes);
+    expect((form.get("draft") as Blob).type).toBe("application/gzip");
   });
 
   it("pins updates and deletes to the selected revision", async () => {
@@ -185,17 +196,17 @@ describe("revision-pinned GDD downloads", () => {
       "fetch",
       vi
         .fn()
-        .mockResolvedValue(new Response(new Uint8Array(25 * 1024 * 1024 + 1))),
+        .mockResolvedValue(new Response(new Uint8Array(GDD_DRAFT_LIMIT + 1))),
     );
-    await expect(loadGddFile(saved, "draft")).rejects.toThrow(/25 MB/);
+    await expect(loadGddFile(saved, "draft")).rejects.toThrow(/50 MB/);
   });
 
   it("accepts files exactly at the PDF and draft byte limits", async () => {
     const pdf = new Blob(["%PDF-", new Uint8Array(GDD_PDF_LIMIT - 5)]);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(pdf)));
     expect((await loadGddFile(saved, "pdf")).size).toBe(GDD_PDF_LIMIT);
-    const draft = new Blob([new Uint8Array(25 * 1024 * 1024)]);
+    const draft = new Blob([new Uint8Array(GDD_DRAFT_LIMIT)]);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(draft)));
-    expect((await loadGddFile(saved, "draft")).size).toBe(25 * 1024 * 1024);
+    expect((await loadGddFile(saved, "draft")).size).toBe(GDD_DRAFT_LIMIT);
   });
 });

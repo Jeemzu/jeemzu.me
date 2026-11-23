@@ -3,6 +3,8 @@ import { authFetch } from "./authFetch";
 const URL_BASE = `${import.meta.env.VITE_API_URL || "http://localhost:5050/api"}/gdd-documents`;
 export const GDD_ACCOUNT_LIMIT = 100 * 1024 * 1024;
 export const GDD_PDF_LIMIT = 20 * 1024 * 1024;
+export const GDD_DRAFT_LIMIT = 50 * 1024 * 1024;
+const GDD_PROJECT_JSON_LIMIT = 60 * 1024 * 1024;
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface SavedGdd {
@@ -84,7 +86,7 @@ async function checked(response: Response): Promise<Response> {
   }
   if (response.status === 413)
     throw new Error(
-      "The save exceeds your 100 MB account limit or file limits (20 MB PDF, 25 MB draft).",
+      "The save exceeds your 100 MB account limit or file limits (20 MB PDF, 50 MB project).",
     );
   throw new Error(
     `Account storage request failed (${response.status}). Try again.`,
@@ -129,13 +131,15 @@ export async function saveGdd(
   existing: SavedGdd | null,
   signal?: AbortSignal,
 ): Promise<SavedGdd> {
+  if (draft.byteLength > GDD_DRAFT_LIMIT)
+    throw new Error("Compressed GDD projects must be no larger than 50 MB.");
   const form = new FormData();
   form.set("title", title.trim());
   if (pdf) form.set("pdf", pdf, "document.pdf");
   form.set(
     "draft",
-    new Blob([Uint8Array.from(draft).buffer], { type: "application/zip" }),
-    "draft.zip",
+    new Blob([Uint8Array.from(draft).buffer], { type: "application/gzip" }),
+    "project.json.gz",
   );
   if (existing) form.set("revision", existing.revision);
   const response = await checked(
@@ -169,9 +173,69 @@ export async function loadGddFile(
     ) {
       throw new Error("The saved PDF is invalid or exceeds 20 MB.");
     }
-  } else if (blob.size > 25 * 1024 * 1024)
-    throw new Error("The saved draft exceeds 25 MB.");
+  } else if (blob.size > GDD_DRAFT_LIMIT)
+    throw new Error("The saved project exceeds 50 MB.");
   return blob;
+}
+
+export async function compressGddProject(json: string): Promise<Uint8Array> {
+  if (typeof CompressionStream === "undefined")
+    throw new Error("Compressed account saves are not supported in this browser.");
+  const source = new TextEncoder().encode(json);
+  if (source.byteLength > GDD_PROJECT_JSON_LIMIT)
+    throw new Error("GDD project JSON must be no larger than 60 MB.");
+  const stream = new Blob([Uint8Array.from(source).buffer]).stream().pipeThrough(
+    new CompressionStream("gzip"),
+  );
+  const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+  if (compressed.byteLength > GDD_DRAFT_LIMIT)
+    throw new Error("Compressed GDD projects must be no larger than 50 MB.");
+  return compressed;
+}
+
+export async function decompressGddProject(
+  compressed: Uint8Array,
+): Promise<string> {
+  if (typeof DecompressionStream === "undefined")
+    throw new Error("Compressed account loads are not supported in this browser.");
+  const stream = new Blob([
+    Uint8Array.from(compressed).buffer,
+  ]).stream().pipeThrough(
+    new DecompressionStream("gzip"),
+  );
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > GDD_PROJECT_JSON_LIMIT) {
+        await reader.cancel();
+        throw new Error("The saved GDD project expands beyond 60 MB.");
+      }
+      chunks.push(value);
+    }
+  } catch (cause) {
+    if (
+      cause instanceof Error &&
+      cause.message === "The saved GDD project expands beyond 60 MB."
+    )
+      throw cause;
+    throw new Error("The saved compressed GDD project is invalid.");
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("The saved GDD project is not valid UTF-8.");
+  }
 }
 
 export async function deleteGdd(

@@ -1,33 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ThemeProvider, useTheme } from "@mui/material/styles";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
-  Container,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  Snackbar,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  FaArrowUpRightFromSquare,
-  FaDownload,
-  FaComments,
-  FaFileLines,
-  FaFilePdf,
-  FaMinus,
-  FaRobot,
-  FaScrewdriverWrench,
-  FaUpload,
-  FaXmark,
-} from "react-icons/fa6";
-import PageHeading from "../../components/shared/PageHeading";
-import SidebarTooltip from "../../components/shared/SidebarTooltip";
+import { FaComments, FaMinus, FaXmark } from "react-icons/fa6";
 import {
   bodySx,
   dialogPaperSx,
@@ -37,62 +29,82 @@ import {
 } from "../../lib/medievalStyles";
 import { downloadBlob } from "../budgetize/lib/download";
 import { useAuthStore } from "../../stores/authStore";
-import { createTemplate } from "./archive";
+import type { SavedGdd } from "../../utils/gddApi";
 import { LIMITS, parseDocument } from "./document";
 import { CHECKPOINTS } from "./assistant";
 import { prepareImages, type PdfImage } from "./images";
-import GddEditorForm from "./GddEditorForm";
 import GddAssistant from "./GddAssistant";
 import GddGuidedAssistant from "./GddGuidedAssistant";
-import ActionSidebar from "../../components/shared/ActionSidebar";
 import GddAccountLibrary from "./GddAccountLibrary";
-import GddSaveBar from "./GddSaveBar";
-import GddExampleDialog from "./GddExampleDialog";
-import DevSetupDialog from "./DevSetupDialog";
-import { createExample, EXAMPLE_MARKDOWN, loadExampleAssets } from "./example";
 import {
-  defaultDraft,
-  draftFromMarkdown,
   draftMarkdown,
   filename,
   projectAssets,
   projectPaths,
-  saveProject,
   validateAsset,
-  type EditorDraft,
   type EditorProject,
   type EditorImage,
 } from "./editor";
+import GddCanvasEditor from "./GddCanvasEditor";
 import {
-  DOCUMENT_ACCEPT,
-  importDocument,
-  markdownArchive,
-} from "./importDocument";
+  createGddTheme,
+  readGddAppearance,
+  saveGddAppearance,
+} from "./appearance";
+import {
+  assetsForCanvasProject,
+  canvasFromJson,
+  canvasToEditorProject,
+  canvasToJson,
+  gddProjectTitle,
+  mergeEditorProjectIntoCanvas,
+} from "./canvasConversion";
+import {
+  GDD_SUBJECTS,
+  newGddCanvasProject,
+  unmappedEditorSections,
+  type GddCanvasProject,
+  type GddSubjectId,
+  type GddSubjectMapping,
+} from "./projectModel";
+
+interface PendingMapping {
+  project: EditorProject;
+  documentChanged: boolean;
+  replaceDocument: boolean;
+  pdf?: Blob | null;
+  savedDocument?: SavedGdd;
+}
+
+const PROJECT_JSON_LIMIT = 60 * 1024 * 1024;
 
 export default function GddGeneratorPage() {
+  const outerTheme = useTheme();
+  const [appearance, setAppearance] = useState(readGddAppearance);
+  const gddTheme = useMemo(
+    () => createGddTheme(outerTheme, appearance),
+    [outerTheme, appearance],
+  );
   const signedIn = useAuthStore((state) => state.isAuthenticated);
+  const [canvas, setCanvas] = useState<GddCanvasProject>(() =>
+    newGddCanvasProject(),
+  );
   const [project, setProject] = useState<EditorProject>(() => ({
-    draft: defaultDraft(),
+    draft: { title: "", introduction: "", sections: [] },
     assets: {},
   }));
   const [images, setImages] = useState<Record<string, PdfImage>>({});
   const [accountBusy, setAccountBusy] = useState(false);
   const [assistantBusy, setAssistantBusy] = useState(false);
   const [accountResetVersion, setAccountResetVersion] = useState(0);
-  const [busy, setBusy] = useState<"import" | "images" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"load" | "images" | "pdf" | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [canvasFeedback, setCanvasFeedback] = useState("");
   const [dirty, setDirty] = useState(false);
-  const [pendingImport, setPendingImport] = useState<File | "example" | null>(
-    null,
-  );
-  const [importOpen, setImportOpen] = useState(false);
-  const [exampleOpen, setExampleOpen] = useState(false);
-  const [devSetupOpen, setDevSetupOpen] = useState(false);
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [completionPrompt, setCompletionPrompt] = useState(false);
-  const [saveError, setSaveError] = useState("");
   const [assistantView, setAssistantView] = useState<
     "closed" | "open" | "minimized"
   >("closed");
@@ -100,9 +112,21 @@ export default function GddGeneratorPage() {
   const [editorVersion, setEditorVersion] = useState(0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [mapping, setMapping] = useState<PendingMapping | null>(null);
+  const [mappingValues, setMappingValues] = useState<GddSubjectMapping>({});
+  function changeAppearance(next: typeof appearance) {
+    setAppearance(next);
+    try {
+      saveGddAppearance(next);
+    } catch (cause) {
+      console.warn("Could not save GDD appearance preferences.", cause);
+      setError("Appearance changed, but could not be saved on this device.");
+    }
+  }
+  const libraryActions = useRef<{
+    select: (document: SavedGdd) => void;
+  }>(null);
   const input = useRef<HTMLInputElement>(null);
-  const libraryActions = useRef<{ save: () => void }>(null);
-  const status = useRef<HTMLDivElement>(null);
   const operation = useRef(0);
   const workflow = project.draft.assistant;
   const guidedAssistant = project.draft.guidedAssistant;
@@ -124,11 +148,6 @@ export default function GddGeneratorPage() {
           : guidedAssistant?.response?.questions.length
             ? "Needs your input"
             : "";
-  const setupEngine =
-    project.draft.prototype?.engines.includes("threejs") &&
-    !project.draft.prototype.engines.includes("unity")
-      ? "threejs"
-      : "unity";
 
   useEffect(
     () => () => {
@@ -150,107 +169,194 @@ export default function GddGeneratorPage() {
     if (dirty) window.addEventListener("beforeunload", warnBeforeLeaving);
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
   }, [dirty]);
-  useEffect(() => {
-    if (error) status.current?.scrollIntoView({ block: "nearest" });
-  }, [error]);
-
   function invalidatePdf() {
     setPdfUrl(null);
     setPdfBlob(null);
   }
 
-  function changeDraft(draft: EditorDraft) {
-    const paths = projectPaths(draft);
-    setProject({
-      draft,
+  function commitCanvas(
+    next: GddCanvasProject,
+    changed = true,
+    editorOverride?: EditorProject,
+    invalidateDocument = changed,
+  ) {
+    const updatedProject = editorOverride ?? canvasToEditorProject(next);
+    const paths = projectPaths(updatedProject.draft);
+    const usedPaths = new Set(paths);
+    const normalizedCanvas = {
+      ...next,
       assets: Object.fromEntries(
-        Object.entries(project.assets).filter(([path]) => paths.includes(path)),
+        Object.entries(next.assets).filter(([path]) => usedPaths.has(path)),
       ),
-    });
+    };
+    const normalizedProject = editorOverride
+      ? {
+          ...editorOverride,
+          assets: Object.fromEntries(
+            Object.entries(editorOverride.assets).filter(([path]) =>
+              usedPaths.has(path),
+            ),
+          ),
+        }
+      : canvasToEditorProject(normalizedCanvas);
+    setCanvas(normalizedCanvas);
+    setProject(normalizedProject);
     setImages(
       Object.fromEntries(
-        Object.entries(images).filter(([path]) => paths.includes(path)),
+        Object.entries(images).filter(([path]) => usedPaths.has(path)),
       ),
     );
-    setDirty(true);
+    if (changed) setDirty(true);
     setError("");
     setNotice("");
-    setImportWarnings([]);
-    invalidatePdf();
+    if (invalidateDocument) invalidatePdf();
   }
 
-  async function importFile(file: File) {
-    const current = ++operation.current;
-    setError("");
-    setNotice("");
-    setBusy("import");
+  function applyEditorUpdate(
+    next: EditorProject,
+    documentChanged: boolean,
+    replaceDocument = false,
+    mappings: GddSubjectMapping = {},
+  ) {
     try {
-      const result = await importDocument(file);
-      const imported = result.project;
-      const prepared = await prepareImages(imported.assets);
-      if (operation.current === current) {
-        setProject(imported);
+      const merged = mergeEditorProjectIntoCanvas(canvas, next, mappings);
+      commitCanvas(merged, true, next, documentChanged);
+      if (replaceDocument) {
         setAccountResetVersion((version) => version + 1);
         setEditorVersion((version) => version + 1);
-        setImages(prepared);
-        setDirty(result.converted);
-        invalidatePdf();
-        setImportWarnings(result.warnings);
-        setNotice(result.converted ? "Document imported." : "Draft imported.");
       }
+      return true;
+    } catch (cause) {
+      const unmatched = unmappedEditorSections(next.draft);
+      if (unmatched.length) {
+        setMapping({
+          project: next,
+          documentChanged,
+          replaceDocument,
+        });
+        setMappingValues({});
+        return false;
+      }
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "The GDD changes could not be applied to the canvas.",
+      );
+      return false;
+    }
+  }
+
+  async function finishMapping() {
+    if (!mapping) return;
+    const missing = unmappedEditorSections(mapping.project.draft).filter(
+      (section) => !mappingValues[section.id],
+    );
+    if (missing.length) {
+      setError("Choose a subject for every unmatched section.");
+      return;
+    }
+    const current = ++operation.current;
+    setBusy("load");
+    setError("");
+    try {
+      const merged = mergeEditorProjectIntoCanvas(
+        canvas,
+        mapping.project,
+        mappingValues,
+      );
+      const prepared = await prepareImages(mapping.project.assets);
+      if (operation.current !== current) return;
+      commitCanvas(merged, true, mapping.project, mapping.documentChanged);
+      setImages(prepared);
+      if (mapping.pdf !== undefined) {
+        setPdfBlob(mapping.pdf);
+        setPdfUrl(mapping.pdf ? URL.createObjectURL(mapping.pdf) : null);
+      }
+      if (mapping.replaceDocument)
+        setAccountResetVersion((version) => version + 1);
+      setEditorVersion((version) => version + 1);
+      setMapping(null);
+      setMappingValues({});
+      setError("");
+      setLibraryOpen(false);
+      if (mapping.savedDocument)
+        libraryActions.current?.select(mapping.savedDocument);
     } catch (cause) {
       if (operation.current === current)
         setError(
           cause instanceof Error
             ? cause.message
-            : "The draft could not be imported.",
+            : "The selected sections could not be mapped.",
         );
     } finally {
       if (operation.current === current) setBusy(null);
     }
   }
 
-  function downloadSource() {
+  async function importFile(file: File) {
+    const current = ++operation.current;
     setError("");
+    setNotice("");
+    setBusy("load");
     try {
-      const bytes = markdownArchive(project);
-      downloadBlob(
-        `${filename(project.draft.title)} - GDD.zip`,
-        new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
-      );
+      if (file.size > PROJECT_JSON_LIMIT)
+        throw new Error("GDD project JSON must be no larger than 60 MB.");
+      const imported = canvasFromJson(await file.text());
+      const converted = canvasToEditorProject(imported);
+      const prepared = await prepareImages(converted.assets);
+      if (operation.current === current) {
+        commitCanvas(imported, true, converted);
+        setAccountResetVersion((version) => version + 1);
+        setEditorVersion((version) => version + 1);
+        setImages(prepared);
+        setNotice("Project opened.");
+      }
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "The source ZIP could not be created.",
-      );
+      if (operation.current === current)
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "The project could not be opened.",
+        );
+    } finally {
+      if (operation.current === current) setBusy(null);
     }
   }
 
   function saveLocally() {
     setError("");
-    setSaveError("");
     try {
-      const bytes = saveProject(project);
+      const json = canvasToJson(canvas);
+      if (new Blob([json]).size > PROJECT_JSON_LIMIT)
+        throw new Error("GDD project JSON must be no larger than 60 MB.");
       downloadBlob(
-        `${filename(project.draft.title)} - GDD.zip`,
-        new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
+        `${filename(gddProjectTitle(canvas))} - GDD project.json`,
+        new Blob([json], { type: "application/json" }),
       );
       setDirty(false);
-      setNotice("Editable progress saved locally.");
+      setNotice("Project JSON downloaded.");
     } catch (cause) {
       const message =
         cause instanceof Error
           ? cause.message
-          : "The draft could not be saved locally.";
+          : "The project JSON could not be downloaded.";
       setError(message);
-      setSaveError(message);
     }
   }
 
+  function downloadBlankTemplate() {
+    downloadBlob(
+      "GDD project template.json",
+      new Blob([canvasToJson(newGddCanvasProject())], {
+        type: "application/json",
+      }),
+    );
+    setNotice("Blank project template downloaded.");
+  }
+
   async function uploadImages(
-    sectionId: string,
-    groupId: string,
+    parentId: string,
+    subsectionId: string,
     files: File[],
   ) {
     const current = ++operation.current;
@@ -258,15 +364,23 @@ export default function GddGeneratorPage() {
     setError("");
     setNotice("");
     try {
-      const section = project.draft.sections.find(
-        (entry) => entry.id === sectionId,
-      );
-      const group = section?.items.find((entry) => entry.id === groupId);
-      if (!group || group.type !== "images")
-        throw new Error("The image category no longer exists.");
       if (projectPaths(project.draft).length + files.length > 97)
         throw new Error("Use no more than 97 image files per document.");
-      const assets = { ...project.assets };
+      const parent = canvas.blocks.blocks.find(
+        (block) => block.id === parentId,
+      );
+      const group = parent?.subsections.blocks.find(
+        (block) => block.id === subsectionId,
+      );
+      const imageContent = group?.content;
+      if (
+        !parent ||
+        !group ||
+        !imageContent ||
+        typeof imageContent === "string"
+      )
+        throw new Error("The image subsection no longer exists.");
+      const assets: Record<string, Uint8Array> = {};
       const additions: EditorImage[] = [];
       for (const file of files) {
         if (!/\.(png|jpe?g)$/i.test(file.name))
@@ -285,33 +399,41 @@ export default function GddGeneratorPage() {
           caption: file.name.replace(/\.[^.]+$/, "").slice(0, 400),
         });
       }
-      const draft: EditorDraft = {
-        ...project.draft,
-        sections: project.draft.sections.map((entry) =>
-          entry.id === sectionId
-            ? {
-                ...entry,
-                items: entry.items.map((item) =>
-                  item.id === groupId
-                    ? { ...group, images: [...group.images, ...additions] }
-                    : item,
-                ),
-              }
-            : entry,
-        ),
+      const updatedCanvas = {
+        ...canvas,
+        assets: {
+          ...canvas.assets,
+          ...assetsForCanvasProject(assets),
+        },
+        blocks: {
+          ...canvas.blocks,
+          blocks: canvas.blocks.blocks.map((block) =>
+            block.id === parentId
+              ? {
+                  ...block,
+                  subsections: {
+                    ...block.subsections,
+                    blocks: block.subsections.blocks.map((entry) =>
+                      entry.id === subsectionId
+                        ? {
+                            ...entry,
+                            content: {
+                              type: "images" as const,
+                              images: [...imageContent.images, ...additions],
+                            },
+                          }
+                        : entry,
+                    ),
+                  },
+                }
+              : block,
+          ),
+        },
       };
-      const next = { draft, assets };
-      projectAssets(next);
-      const prepared = await prepareImages(
-        Object.fromEntries(
-          additions.map((image) => [image.path, assets[image.path]]),
-        ),
-      );
+      const prepared = await prepareImages(assets);
       if (operation.current === current) {
-        setProject(next);
-        setImages({ ...images, ...prepared });
-        setDirty(true);
-        invalidatePdf();
+        commitCanvas(updatedCanvas);
+        setImages((currentImages) => ({ ...currentImages, ...prepared }));
       }
     } catch (cause) {
       if (operation.current === current)
@@ -336,6 +458,7 @@ export default function GddGeneratorPage() {
     try {
       const content = parseDocument(draftMarkdown(project.draft));
       projectAssets(project);
+      const preparedImages = await prepareImages(project.assets);
       preview = window.open("about:blank", "_blank");
       if (preview) preview.opener = null;
       const { generatePdf } = await import("./generatePdf").catch(() => {
@@ -343,9 +466,13 @@ export default function GddGeneratorPage() {
           "The site was updated. Reload the page to generate the PDF.",
         );
       });
-      const blob = await generatePdf(content, images);
+      const blob = await generatePdf(content, preparedImages);
       if (operation.current === current) {
         setPdfBlob(blob);
+        downloadBlob(
+          `${filename(project.draft.title)} - Game Design Document.pdf`,
+          blob,
+        );
         const url = URL.createObjectURL(blob);
         setPdfUrl(url);
         if (preview && !preview.closed) {
@@ -368,264 +495,88 @@ export default function GddGeneratorPage() {
     }
   }
 
-  async function populateExample() {
-    const current = ++operation.current;
-    setBusy("images");
-    setError("");
-    setNotice("");
-    try {
-      const draft = draftFromMarkdown(EXAMPLE_MARKDOWN);
-      const assets = await loadExampleAssets();
-      const prepared = await prepareImages(assets);
-      if (operation.current !== current) return;
-      setProject({ draft, assets });
-      setImages(prepared);
-      setAccountResetVersion((version) => version + 1);
-      setEditorVersion((version) => version + 1);
-      setDirty(true);
-      invalidatePdf();
-      setImportWarnings([]);
-      setNotice("Dino Rush example loaded.");
-    } catch (cause) {
-      if (operation.current === current)
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "The example could not be loaded.",
-        );
-    } finally {
-      if (operation.current === current) setBusy(null);
-    }
+  function openLibrary() {
+    setAssistantView((current) => (current === "open" ? "minimized" : current));
+    setLibraryOpen(true);
   }
-
-  async function downloadTemplate(example = false) {
-    const current = ++operation.current;
-    if (example) setBusy("images");
-    setError("");
-    setNotice("");
-    try {
-      const bytes = example
-        ? createExample(await loadExampleAssets())
-        : createTemplate(project.draft.prototype);
-      if (operation.current !== current) return;
-      downloadBlob(
-        example ? "dino-rush-example.zip" : "gdd-template.zip",
-        new Blob([Uint8Array.from(bytes).buffer], { type: "application/zip" }),
-      );
-    } catch (cause) {
-      if (operation.current === current)
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "The ZIP could not be downloaded.",
-        );
-    } finally {
-      if (operation.current === current) setBusy(null);
-    }
-  }
-
-  const saveBar = (
-    <GddSaveBar
-      signedIn={signedIn}
-      disabled={busy !== null || accountBusy || assistantBusy}
-      error={saveError}
-      onCloud={() => {
-        setSaveError("");
-        setAssistantView((current) =>
-          current === "open" ? "minimized" : current,
-        );
-        setCompletionPrompt(false);
-        setLibraryOpen(true);
-        libraryActions.current?.save();
-      }}
-      onLocal={saveLocally}
-    />
-  );
 
   return (
-    <Container maxWidth={false} disableGutters sx={{ pb: 12 }}>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
-        <ActionSidebar
-          title="GDD tools"
-          sections={[
-            ...(signedIn
-              ? [
-                  {
-                    id: "library",
-                    label: "My GDDs",
-                    icon: <FaFileLines />,
-                    onClick: () => setLibraryOpen(true),
-                  },
-                ]
-              : []),
-            {
-              id: "assistant",
-              label: "AI Assistant",
-              icon: <FaRobot />,
-              onClick: () => setAssistantView("open"),
-            },
-            {
-              id: "example",
-              label: "Example GDD",
-              icon: <FaFileLines />,
-              content: (
-                <SidebarTooltip title="Preview the Dino Rush example GDD, load it into the editor, or download its source ZIP.">
-                  <span>
-                    <Button
-                      variant="text"
-                      disabled={busy !== null || accountBusy || assistantBusy}
-                      onClick={() => setExampleOpen(true)}
-                    >
-                      View Example GDD
-                    </Button>
-                  </span>
-                </SidebarTooltip>
-              ),
-            },
-            {
-              id: "setup",
-              label: "Setup prompt",
-              icon: <FaScrewdriverWrench />,
-              content: (
-                <SidebarTooltip title="Create a personalized Windows setup prompt for Unity or Three.js and supporting tools.">
-                  <Button variant="text" onClick={() => setDevSetupOpen(true)}>
-                    Dev Setup Prompt
-                  </Button>
-                </SidebarTooltip>
-              ),
-            },
-            {
-              id: "pdf",
-              label: "PDF actions",
-              icon: <FaFilePdf />,
-              content: (
-                <>
-                  <SidebarTooltip title="Empty sections and subsections are omitted from the PDF.">
-                    <Box component="span">
-                      <Button
-                        fullWidth
-                        startIcon={<FaFilePdf />}
-                        variant="text"
-                        disabled={busy !== null || accountBusy || assistantBusy}
-                        onClick={() => void generate()}
-                      >
-                        Generate PDF
-                      </Button>
-                    </Box>
-                  </SidebarTooltip>
-                  <SidebarTooltip
-                    title={
-                      !pdfBlob
-                        ? "Generate a PDF first."
-                        : "Download the current GDD as a PDF file."
-                    }
-                  >
-                    <span>
-                      <Button
-                        fullWidth
-                        startIcon={<FaDownload />}
-                        variant="text"
-                        disabled={!pdfBlob}
-                        onClick={() => {
-                          if (pdfBlob)
-                            downloadBlob(
-                              `${filename(project.draft.title)} - Game Design Document.pdf`,
-                              pdfBlob,
-                            );
-                        }}
-                      >
-                        Download PDF
-                      </Button>
-                    </span>
-                  </SidebarTooltip>
-                  <SidebarTooltip
-                    title={
-                      !pdfUrl
-                        ? "Generate a PDF first."
-                        : "Open the current GDD PDF in a new browser tab."
-                    }
-                  >
-                    <span>
-                      <Button
-                        fullWidth
-                        startIcon={<FaArrowUpRightFromSquare />}
-                        component="a"
-                        href={pdfUrl ?? undefined}
-                        disabled={!pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="text"
-                      >
-                        Open PDF
-                      </Button>
-                    </span>
-                  </SidebarTooltip>
-                </>
-              ),
-            },
-            {
-              id: "local",
-              label: "Local editing",
-              icon: <FaUpload />,
-              content: (
-                <>
-                  <SidebarTooltip title="Download a blank GDD template ZIP for local editing and later import.">
-                    <span>
-                      <Button
-                        startIcon={<FaDownload />}
-                        variant="text"
-                        disabled={busy !== null || accountBusy || assistantBusy}
-                        onClick={() => void downloadTemplate()}
-                      >
-                        Download template
-                      </Button>
-                    </span>
-                  </SidebarTooltip>
-                  <SidebarTooltip title="Load a GDD from ZIP, PDF, DOCX, Markdown, text, or HTML into the editor.">
-                    <span>
-                      <Button
-                        startIcon={<FaUpload />}
-                        variant="text"
-                        disabled={busy !== null || accountBusy || assistantBusy}
-                        onClick={() => setImportOpen(true)}
-                      >
-                        Import GDD
-                      </Button>
-                    </span>
-                  </SidebarTooltip>
-                  <SidebarTooltip title="Download GDD source and images. Guided drafts also include editor metadata and reference materials to resume checkpoints.">
-                    <span>
-                      <Button
-                        startIcon={<FaDownload />}
-                        variant="text"
-                        disabled={busy !== null || accountBusy || assistantBusy}
-                        onClick={downloadSource}
-                      >
-                        Download source ZIP
-                      </Button>
-                    </span>
-                  </SidebarTooltip>
-                </>
-              ),
-            },
-          ]}
+    <ThemeProvider theme={gddTheme}>
+      <Box
+        sx={{
+          height: "calc(100dvh - var(--jz-nav-h, 64px))",
+          width: "100%",
+          minHeight: 0,
+          position: "relative",
+          overflow: "hidden",
+          bgcolor: "background.default",
+          color: "text.primary",
+        }}
+      >
+        <GddCanvasEditor
+          appearance={appearance}
+          onAppearanceChange={changeAppearance}
+          project={canvas}
+          images={images}
+          busy={
+            busy !== null || accountBusy || assistantBusy || mapping !== null
+          }
+          disabled={
+            busy !== null || accountBusy || assistantBusy || mapping !== null
+          }
+          signedIn={signedIn}
+          onChange={commitCanvas}
+          onUpload={(parentId, subsectionId, files) =>
+            void uploadImages(parentId, subsectionId, files)
+          }
+          onExportPdf={() => void generate()}
+          onDownloadPdf={() => {
+            if (pdfBlob)
+              downloadBlob(
+                `${filename(project.draft.title)} - Game Design Document.pdf`,
+                pdfBlob,
+              );
+          }}
+          onExportJson={saveLocally}
+          onExportTemplate={downloadBlankTemplate}
+          pdfUrl={pdfUrl}
+          onImportJson={() => input.current?.click()}
+          onCloudSave={openLibrary}
+          onOpenLibrary={openLibrary}
+          onOpenAssistant={() => setAssistantView("open")}
+          onFeedback={setCanvasFeedback}
         />
-        <Stack
-          spacing={3}
+        <Snackbar
+          open={Boolean(error || notice || canvasFeedback || busy)}
+          anchorOrigin={{ vertical: "top", horizontal: "left" }}
+          onClose={(_, reason) => {
+            if (reason === "clickaway") return;
+            setError("");
+            setNotice("");
+            setCanvasFeedback("");
+          }}
           sx={{
-            flex: 1,
-            minWidth: 0,
-            px: { xs: 2, sm: 3, md: 0 },
-            pr: { md: 3 },
-            py: { xs: 4, md: 6 },
+            top: "calc(var(--jz-nav-h, 64px) + 8px + env(safe-area-inset-top)) !important",
+            left: "max(12px, env(safe-area-inset-left)) !important",
+            right: "auto",
+            bottom: "auto",
+            width: "min(380px, calc(100vw - 24px))",
           }}
         >
-          <Box>
-            <PageHeading title="GDD Generator" />
-          </Box>
-          <Box
-            ref={status}
-            hidden={!error && !notice && !importWarnings.length && !busy}
+          <Stack
+            spacing={1}
+            sx={{
+              width: "100%",
+              maxHeight: "calc(100dvh - var(--jz-nav-h, 64px) - 32px)",
+              overflow: "auto",
+              "& .MuiAlert-root": { boxShadow: 3 },
+              "& .MuiAlert-message": {
+                minWidth: 0,
+                maxHeight: "25dvh",
+                overflow: "auto",
+                overflowWrap: "anywhere",
+              },
+            }}
           >
             {error && (
               <Alert severity="error" onClose={() => setError("")}>
@@ -637,13 +588,9 @@ export default function GddGeneratorPage() {
                 {notice}
               </Alert>
             )}
-            {importWarnings.length > 0 && (
-              <Alert severity="warning" onClose={() => setImportWarnings([])}>
-                <Box component="ul" sx={{ m: 0, pl: 2 }}>
-                  {importWarnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </Box>
+            {canvasFeedback && (
+              <Alert severity="warning" onClose={() => setCanvasFeedback("")}>
+                {canvasFeedback}
               </Alert>
             )}
             {busy && (
@@ -653,353 +600,348 @@ export default function GddGeneratorPage() {
                 alignItems="center"
                 role="status"
                 aria-live="polite"
+                sx={{
+                  bgcolor: "background.paper",
+                  p: 1.5,
+                  borderRadius: 1,
+                  boxShadow: 3,
+                }}
               >
                 <CircularProgress size={22} />
                 <Typography sx={bodySx}>
-                  {busy === "import"
-                    ? "Reading draft..."
+                  {busy === "load"
+                    ? "Opening project..."
                     : busy === "images"
                       ? "Reading images..."
                       : "Formatting PDF..."}
                 </Typography>
               </Stack>
             )}
-          </Box>
-          <GddEditorForm
-            key={editorVersion}
-            draft={project.draft}
-            images={images}
-            disabled={busy !== null || accountBusy || assistantBusy}
-            onChange={changeDraft}
-            onUpload={(sectionId, groupId, files) =>
-              void uploadImages(sectionId, groupId, files)
-            }
-          />
-        </Stack>
-      </Stack>
-      <Dialog
-        open={libraryOpen}
-        onClose={() => setLibraryOpen(false)}
-        keepMounted
-        fullWidth
-        maxWidth="lg"
-        aria-labelledby="gdd-library-title"
-        slotProps={{ paper: { sx: dialogPaperSx } }}
-      >
-        <DialogTitle id="gdd-library-title" sx={headingSx}>
-          My GDDs
-        </DialogTitle>
-        <DialogContent>
-          <GddAccountLibrary
-            ref={libraryActions}
-            project={project}
-            pdf={pdfBlob}
-            dirty={dirty}
-            disabled={busy !== null || assistantBusy}
-            resetVersion={accountResetVersion}
-            onBusyChange={setAccountBusy}
-            onSavedChange={(saved) => setDirty(!saved)}
-            onLoad={(loaded, prepared, pdf) => {
-              setProject(loaded);
-              setImages(prepared);
-              setEditorVersion((version) => version + 1);
-              setDirty(false);
-              setError("");
-              setNotice("");
-              setImportWarnings([]);
-              setPdfBlob(pdf);
-              setPdfUrl(pdf ? URL.createObjectURL(pdf) : null);
-              setLibraryOpen(false);
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          {!completionPrompt && saveBar}
-          <Button sx={outlineButtonSx} onClick={() => setLibraryOpen(false)}>
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        open={assistantView === "open"}
-        onClose={() => setAssistantView("minimized")}
-        keepMounted
-        fullWidth
-        maxWidth="md"
-        aria-labelledby="gdd-assistant-title"
-        slotProps={{ paper: { sx: dialogPaperSx } }}
-      >
-        <DialogTitle
-          id="gdd-assistant-toolbar"
-          component="div"
-          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+          </Stack>
+        </Snackbar>
+        <Dialog
+          open={libraryOpen}
+          onClose={() => setLibraryOpen(false)}
+          keepMounted
+          fullWidth
+          maxWidth="lg"
+          aria-labelledby="gdd-library-title"
+          slotProps={{ paper: { sx: dialogPaperSx } }}
         >
-          <Typography
-            component="h2"
-            id="gdd-assistant-title"
-            sx={{ ...headingSx, flex: 1 }}
+          <DialogTitle id="gdd-library-title" sx={headingSx}>
+            My GDDs
+          </DialogTitle>
+          <DialogContent>
+            <GddAccountLibrary
+              ref={libraryActions}
+              project={canvas}
+              pdf={pdfBlob}
+              dirty={dirty}
+              disabled={busy !== null || assistantBusy}
+              resetVersion={accountResetVersion}
+              onBusyChange={setAccountBusy}
+              onSavedChange={(saved) => setDirty(!saved)}
+              onLoad={(loaded, prepared, pdf) => {
+                commitCanvas(loaded, false);
+                setImages(prepared);
+                setDirty(false);
+                setError("");
+                setNotice("");
+                setPdfBlob(pdf);
+                setPdfUrl(pdf ? URL.createObjectURL(pdf) : null);
+                setLibraryOpen(false);
+              }}
+              onLegacyLoad={(loaded, pdf, savedDocument) => {
+                if (unmappedEditorSections(loaded.draft).length) {
+                  setMapping({
+                    project: loaded,
+                    documentChanged: true,
+                    replaceDocument: false,
+                    pdf,
+                    savedDocument,
+                  });
+                  setMappingValues({});
+                  return false;
+                } else {
+                  const merged = mergeEditorProjectIntoCanvas(canvas, loaded);
+                  commitCanvas(merged, false, loaded, false);
+                  setDirty(false);
+                  setEditorVersion((version) => version + 1);
+                  setPdfBlob(pdf);
+                  setPdfUrl(pdf ? URL.createObjectURL(pdf) : null);
+                  setLibraryOpen(false);
+                  return true;
+                }
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button sx={outlineButtonSx} onClick={() => setLibraryOpen(false)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          open={assistantView === "open"}
+          onClose={() => setAssistantView("minimized")}
+          keepMounted
+          fullWidth
+          maxWidth="md"
+          aria-labelledby="gdd-assistant-title"
+          slotProps={{ paper: { sx: dialogPaperSx } }}
+        >
+          <DialogTitle
+            id="gdd-assistant-toolbar"
+            component="div"
+            sx={{ display: "flex", alignItems: "center", gap: 1 }}
           >
-            AI Assistant
-          </Typography>
-          <Tooltip title="Minimize">
-            <IconButton
-              aria-label="Minimize AI Assistant"
-              onClick={() => setAssistantView("minimized")}
-              sx={{ color: "medievalGold.light" }}
+            <Typography
+              component="h2"
+              id="gdd-assistant-title"
+              sx={{ ...headingSx, flex: 1 }}
             >
-              <FaMinus size={18} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Close">
-            <IconButton
-              aria-label="Close AI Assistant"
-              onClick={() => setAssistantView("closed")}
-              sx={{ color: "medievalGold.light" }}
+              AI Assistant
+            </Typography>
+            <Tooltip title="Minimize">
+              <IconButton
+                aria-label="Minimize AI Assistant"
+                onClick={() => setAssistantView("minimized")}
+                sx={{ color: "medievalGold.light" }}
+              >
+                <FaMinus size={18} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Close">
+              <IconButton
+                aria-label="Close AI Assistant"
+                onClick={() => setAssistantView("closed")}
+                sx={{ color: "medievalGold.light" }}
+              >
+                <FaXmark size={18} />
+              </IconButton>
+            </Tooltip>
+          </DialogTitle>
+          <DialogContent dividers>
+            {canvas.assistant && (
+              <Button
+                sx={outlineButtonSx}
+                onClick={() => setLegacyAssistantOpen((current) => !current)}
+              >
+                {legacyAssistantOpen
+                  ? "Use full-document assistant"
+                  : "Resume checkpoint assistant"}
+              </Button>
+            )}
+            {legacyAssistantOpen ? (
+              <GddAssistant
+                key={`assistant-${editorVersion}`}
+                project={project}
+                disabled={busy !== null || accountBusy || assistantBusy}
+                onBusyChange={setAssistantBusy}
+                onImagesPrepared={setImages}
+                onComplete={() => setCompletionPrompt(true)}
+                onChange={applyEditorUpdate}
+              />
+            ) : (
+              <GddGuidedAssistant
+                key={`guided-assistant-${editorVersion}`}
+                project={project}
+                disabled={busy !== null || accountBusy || assistantBusy}
+                onBusyChange={setAssistantBusy}
+                onImagesPrepared={setImages}
+                onComplete={() => setCompletionPrompt(true)}
+                onChange={applyEditorUpdate}
+              />
+            )}
+          </DialogContent>
+          {!libraryOpen && !completionPrompt && (
+            <DialogActions>
+              <Button sx={outlineButtonSx} onClick={saveLocally}>
+                Export JSON
+              </Button>
+              {signedIn && (
+                <Button sx={outlineButtonSx} onClick={openLibrary}>
+                  Save to account
+                </Button>
+              )}
+            </DialogActions>
+          )}
+        </Dialog>
+        {assistantView === "minimized" && (
+          <Tooltip title="Restore AI Assistant">
+            <Button
+              variant="contained"
+              aria-label="Restore AI Assistant"
+              aria-haspopup="dialog"
+              onClick={() => setAssistantView("open")}
+              startIcon={
+                assistantBusy ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <FaComments />
+                )
+              }
+              sx={{
+                ...goldButtonSx,
+                position: "fixed",
+                right: { xs: 16, sm: 24 },
+                bottom: "calc(88px + env(safe-area-inset-bottom))",
+                zIndex: (theme) => theme.zIndex.fab,
+                borderRadius: 8,
+                maxWidth: "calc(100vw - 32px)",
+                boxShadow: 6,
+                textTransform: "none",
+              }}
             >
-              <FaXmark size={18} />
-            </IconButton>
+              <Box component="span" role="status" aria-live="polite">
+                {assistantStatus ? `${assistantStatus} - ` : ""}
+                {assistantProgress}
+              </Box>
+            </Button>
           </Tooltip>
-        </DialogTitle>
-        <DialogContent dividers>
-          {project.draft.assistant && (
+        )}
+        <Dialog
+          open={completionPrompt}
+          onClose={() => setCompletionPrompt(false)}
+          aria-labelledby="gdd-completion-title"
+          slotProps={{ paper: { sx: { ...dialogPaperSx, mb: 12 } } }}
+        >
+          <DialogTitle id="gdd-completion-title" sx={headingSx}>
+            Generate a new PDF?
+          </DialogTitle>
+          <DialogActions>
             <Button
               sx={outlineButtonSx}
-              onClick={() => setLegacyAssistantOpen((current) => !current)}
+              onClick={() => setCompletionPrompt(false)}
             >
-              {legacyAssistantOpen
-                ? "Use full-document assistant"
-                : "Resume checkpoint assistant"}
+              Not now
             </Button>
-          )}
-          {legacyAssistantOpen ? (
-            <GddAssistant
-              key={`assistant-${editorVersion}`}
-              project={project}
+            <Button
+              sx={goldButtonSx}
               disabled={busy !== null || accountBusy || assistantBusy}
-              onBusyChange={setAssistantBusy}
-              onImagesPrepared={setImages}
-              onComplete={() => setCompletionPrompt(true)}
-              onChange={(next, documentChanged, replaceDocument) => {
-                setProject(next);
-                setDirty(true);
-                setError("");
-                setNotice("");
-                if (replaceDocument) {
-                  setAccountResetVersion((version) => version + 1);
-                  setEditorVersion((version) => version + 1);
-                  setImportWarnings([]);
-                }
-                if (documentChanged) {
-                  const paths = projectPaths(next.draft);
-                  setImages((current) =>
-                    Object.fromEntries(
-                      Object.entries(current).filter(([path]) =>
-                        paths.includes(path),
-                      ),
-                    ),
-                  );
-                  invalidatePdf();
-                }
+              onClick={() => {
+                setCompletionPrompt(false);
+                setAssistantView("minimized");
+                void generate();
               }}
-            />
-          ) : (
-            <GddGuidedAssistant
-              key={`guided-assistant-${editorVersion}`}
-              project={project}
-              disabled={busy !== null || accountBusy || assistantBusy}
-              onBusyChange={setAssistantBusy}
-              onImagesPrepared={setImages}
-              onComplete={() => setCompletionPrompt(true)}
-              onChange={(next, documentChanged) => {
-                setProject(next);
-                setDirty(true);
-                setError("");
-                setNotice("");
-                if (documentChanged) {
-                  const paths = projectPaths(next.draft);
-                  setImages((current) =>
-                    Object.fromEntries(
-                      Object.entries(current).filter(([path]) =>
-                        paths.includes(path),
-                      ),
-                    ),
-                  );
-                  invalidatePdf();
+            >
+              Generate PDF
+            </Button>
+          </DialogActions>
+        </Dialog>
+        {mapping && (
+          <Dialog
+            open
+            onClose={() => {
+              if (busy !== null) return;
+              setMapping(null);
+              setLibraryOpen(false);
+            }}
+            fullWidth
+            maxWidth="sm"
+            aria-labelledby="gdd-mapping-title"
+            slotProps={{ paper: { sx: dialogPaperSx } }}
+          >
+            <DialogTitle id="gdd-mapping-title" sx={headingSx}>
+              Map imported sections
+            </DialogTitle>
+            <DialogContent>
+              <Typography sx={{ ...bodySx, textAlign: "left", mb: 2 }}>
+                Choose a canvas subject for each section that does not match an
+                existing subject.
+              </Typography>
+              <Stack spacing={2}>
+                {unmappedEditorSections(mapping.project.draft).map(
+                  (section) => (
+                    <FormControl key={section.id} fullWidth>
+                      <InputLabel id={`mapping-${section.id}`}>
+                        {section.title}
+                      </InputLabel>
+                      <Select<GddSubjectId>
+                        labelId={`mapping-${section.id}`}
+                        label={section.title}
+                        value={mappingValues[section.id] ?? ""}
+                        onChange={(event) =>
+                          setMappingValues((current) => ({
+                            ...current,
+                            [section.id]: event.target.value,
+                          }))
+                        }
+                      >
+                        {GDD_SUBJECTS.map((subject) => (
+                          <MenuItem key={subject.id} value={subject.id}>
+                            {subject.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ),
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                sx={outlineButtonSx}
+                disabled={busy !== null}
+                onClick={() => {
+                  setMapping(null);
+                  setLibraryOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                sx={goldButtonSx}
+                disabled={
+                  busy !== null ||
+                  unmappedEditorSections(mapping.project.draft).some(
+                    (section) => !mappingValues[section.id],
+                  )
                 }
-              }}
-            />
-          )}
-        </DialogContent>
-        {!libraryOpen && !completionPrompt && (
-          <DialogActions>{saveBar}</DialogActions>
+                onClick={() => void finishMapping()}
+              >
+                Continue
+              </Button>
+            </DialogActions>
+          </Dialog>
         )}
-      </Dialog>
-      {assistantView === "minimized" && (
-        <Tooltip title="Restore AI Assistant">
-          <Button
-            variant="contained"
-            aria-label="Restore AI Assistant"
-            aria-haspopup="dialog"
-            onClick={() => setAssistantView("open")}
-            startIcon={
-              assistantBusy ? (
-                <CircularProgress size={18} color="inherit" />
-              ) : (
-                <FaComments />
-              )
-            }
-            sx={{
-              ...goldButtonSx,
-              position: "fixed",
-              right: { xs: 16, sm: 24 },
-              bottom: "calc(88px + env(safe-area-inset-bottom))",
-              zIndex: (theme) => theme.zIndex.fab,
-              borderRadius: 8,
-              maxWidth: "calc(100vw - 32px)",
-              boxShadow: 6,
-              textTransform: "none",
-            }}
-          >
-            <Box component="span" role="status" aria-live="polite">
-              {assistantStatus ? `${assistantStatus} - ` : ""}
-              {assistantProgress}
-            </Box>
-          </Button>
-        </Tooltip>
-      )}
-      {!libraryOpen && assistantView !== "open" && !completionPrompt && saveBar}
-      <Dialog
-        open={completionPrompt}
-        onClose={() => setCompletionPrompt(false)}
-        aria-labelledby="gdd-completion-title"
-        slotProps={{ paper: { sx: { ...dialogPaperSx, mb: 12 } } }}
-      >
-        <DialogTitle id="gdd-completion-title" sx={headingSx}>
-          Generate a new PDF?
-        </DialogTitle>
-        <DialogActions>
-          {saveBar}
-          <Button
-            sx={outlineButtonSx}
-            onClick={() => setCompletionPrompt(false)}
-          >
-            Not now
-          </Button>
-          <Button
-            sx={goldButtonSx}
-            disabled={busy !== null || accountBusy || assistantBusy}
-            onClick={() => {
-              setCompletionPrompt(false);
-              setAssistantView("minimized");
-              void generate();
-            }}
-          >
-            Generate PDF
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <input
-        ref={input}
-        type="file"
-        accept={DOCUMENT_ACCEPT}
-        aria-label="Import GDD document or ZIP"
-        hidden
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (!file) return;
-          setImportOpen(false);
-          if (dirty) setPendingImport(file);
-          else void importFile(file);
-        }}
-      />
-      <DevSetupDialog
-        key={setupEngine}
-        initialEngine={setupEngine}
-        open={devSetupOpen}
-        onClose={() => setDevSetupOpen(false)}
-      />
-      <GddExampleDialog
-        open={exampleOpen}
-        disabled={busy !== null || accountBusy || assistantBusy}
-        onClose={() => setExampleOpen(false)}
-        onDownload={() => void downloadTemplate(true)}
-        onPopulate={() => {
-          setExampleOpen(false);
-          if (dirty) setPendingImport("example");
-          else void populateExample();
-        }}
-      />
-      <Dialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        aria-labelledby="gdd-import-title"
-        fullWidth
-        maxWidth="sm"
-        slotProps={{ paper: { sx: dialogPaperSx } }}
-      >
-        <DialogTitle id="gdd-import-title" sx={headingSx}>
-          Import GDD
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ ...bodySx, textAlign: "left" }}>
-            Import PDF, DOCX, Markdown, text, HTML, or a GDD ZIP. For ZIP
-            imports, keep images/ beside gdd.md.
-          </Typography>
-          <Box
-            component="pre"
-            sx={{
-              p: 2,
-              overflowX: "auto",
-              color: "parchment.main",
-              backgroundColor: "rgba(0,0,0,0.25)",
-              fontSize: "0.85rem",
-            }}
-          >
-            {`Contents ZIP              Parent folder ZIP
-game.zip                  game.zip
-|-- gdd.md                +-- my-game/
-+-- images/                   |-- gdd.md
-    +-- reference.png         +-- images/
-                                  +-- reference.png`}
-          </Box>
-          <Typography sx={{ ...bodySx, textAlign: "left" }}>
-            Images are optional (PNG/JPEG). Existing editor.json drafts are also
-            supported. ZIP limit: 25 MB.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button sx={outlineButtonSx} onClick={() => setImportOpen(false)}>
-            Cancel
-          </Button>
-          <Button sx={goldButtonSx} onClick={() => input.current?.click()}>
-            Choose file
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        open={pendingImport !== null}
-        onClose={() => setPendingImport(null)}
-        slotProps={{ paper: { sx: dialogPaperSx } }}
-      >
-        <DialogTitle sx={headingSx}>Replace unsaved draft?</DialogTitle>
-        <DialogActions>
-          <Button sx={outlineButtonSx} onClick={() => setPendingImport(null)}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            disabled={busy !== null || accountBusy || assistantBusy}
-            onClick={() => {
-              if (pendingImport === "example") void populateExample();
-              else if (pendingImport) void importFile(pendingImport);
-              setPendingImport(null);
-            }}
-          >
-            Replace
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+        <input
+          ref={input}
+          type="file"
+          accept="application/json,.json"
+          aria-label="Import GDD project JSON"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            if (dirty) setPendingImport(file);
+            else void importFile(file);
+          }}
+        />
+        <Dialog
+          open={pendingImport !== null}
+          onClose={() => setPendingImport(null)}
+          slotProps={{ paper: { sx: dialogPaperSx } }}
+        >
+          <DialogTitle sx={headingSx}>Replace unsaved draft?</DialogTitle>
+          <DialogActions>
+            <Button sx={outlineButtonSx} onClick={() => setPendingImport(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="error"
+              disabled={busy !== null || accountBusy || assistantBusy}
+              onClick={() => {
+                if (pendingImport) void importFile(pendingImport);
+                setPendingImport(null);
+              }}
+            >
+              Replace
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </ThemeProvider>
   );
 }

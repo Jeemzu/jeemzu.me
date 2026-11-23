@@ -157,6 +157,7 @@ export function Routes() {
 
 function App() {
   const [isGamePage] = useRoute("/play/*?");
+  const [isGddPage] = useRoute("/gdd-generator");
 
   useEffect(() => {
     // Attempt a silent token refresh on load to restore any active admin session.
@@ -186,8 +187,10 @@ function App() {
           position: "relative",
           display: "flex",
           flexDirection: "column",
+          height: isGddPage ? "100dvh" : undefined,
           minHeight: "100vh",
           minWidth: "100vw",
+          overflow: isGddPage ? "hidden" : undefined,
           backgroundRepeat: "repeat",
           backgroundAttachment: "fixed",
           backgroundSize: "auto",
@@ -221,7 +224,7 @@ function App() {
         </Box>
 
         {/* Footer area */}
-        {!isGamePage && (
+        {!isGamePage && !isGddPage && (
           <Box sx={{ position: "relative", zIndex: 1 }}>
             <Grid container spacing={0}>
               <Grid size={12}>
