@@ -99,6 +99,7 @@ export type BudgetChatResult =
       capabilityGap: CapabilityGap | null;
     }
   | { status: "unauthorized" }
+  | { status: "forbidden" }
   | { status: "unavailable"; message: string }
   | { status: "busy"; message: string }
   | { status: "error"; message: string };
@@ -124,8 +125,8 @@ export async function budgetChat(
         strategy,
       }),
     });
-    if (response.status === 401 || response.status === 403)
-      return { status: "unauthorized" };
+    if (response.status === 401) return { status: "unauthorized" };
+    if (response.status === 403) return { status: "forbidden" };
     if (!response.ok) {
       const problem: unknown = await response.json().catch(() => null);
       const message =

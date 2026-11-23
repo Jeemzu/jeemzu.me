@@ -68,7 +68,9 @@ export function BudgetAssistant({ data, start, weekCount, strategy, mode, onAppl
       const message =
         result.status === 'unauthorized'
           ? 'Your session expired. Sign in again to keep chatting.'
-          : result.message;
+          : result.status === 'forbidden'
+            ? 'The assistant is available to admins only.'
+            : result.message;
       setTurns((prev) => [...prev, { role: 'assistant', content: message }]);
       return;
     }

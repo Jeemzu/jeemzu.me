@@ -66,13 +66,13 @@ describe("native Budgetize API", () => {
     );
   });
 
-  it.each([401, 403])(
-    "handles HTTP %i as expired authentication",
-    async (status) => {
-      vi.mocked(authFetch).mockResolvedValue(new Response("", { status }));
-      expect(await call()).toEqual({ status: "unauthorized" });
-    },
-  );
+  it.each([
+    [401, "unauthorized"],
+    [403, "forbidden"],
+  ])("distinguishes HTTP %i", async (status, expected) => {
+    vi.mocked(authFetch).mockResolvedValue(new Response("", { status }));
+    expect(await call()).toEqual({ status: expected });
+  });
   it.each([400, 502, 504])(
     "surfaces API problem details for HTTP %i",
     async (status) => {

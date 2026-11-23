@@ -21,7 +21,7 @@ Browser
               └── OpenAI: chat completions and embeddings
 ```
 
-The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize uses a native .NET router/analyst/planner workflow with a dedicated provider key; the browser sends its authoritative forecast and still previews and explicitly applies every proposal.
+The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeline. Budgetize uses a native .NET router/analyst/planner workflow; all AI features use the same server-side OpenAI key. The browser sends its authoritative forecast and still previews and explicitly applies every proposal.
 
 ### Algorithm Visualizer
 
@@ -31,6 +31,7 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 ### Budgetize workspace
 
 - Budgetize uses the shared gilded page heading and flush-left tools sidebar, starting directly below the navbar. **Views** contains the former tabs, with the current view highlighted; **Import / export** contains workbook/backup import, the spreadsheet template, JSON backup export, and spreadsheet export. Both groups use indented link-style actions with tooltips, and closing every group collapses the sidebar to an icon rail. On smaller screens it stacks above the workspace. Save, reload, undo/redo, and planning settings remain in the main workspace.
+- The assistant is available only to admins; the API checks the current account role on every request.
 - **From Today** clears a custom plan start date and returns to the current month. The calendar's **Today** / **Start** button only changes the displayed month.
 - The bottom-right **Notifications** button opens a conversation-style feed for current funding warnings, extra debt-payment guidance, and session save/import/export notices. Its badge counts unread messages; errors are identified separately. Opening the feed marks the displayed messages read without removing active warnings. Operation notices can be dismissed, and signing out clears them.
 - Download names use `budgetize`; the internal `budgetize-me` JSON backup identifier is retained for compatibility with existing backups.
@@ -84,14 +85,14 @@ The profile chat uses the .NET API's retrieval-augmented generation (RAG) pipeli
 - ASP.NET Core 8 provides the public REST API for accounts, authentication, profiles, budgets, contact requests, and profile chat.
 - Entity Framework Core 8 with Npgsql connects to PostgreSQL 16. The `pgvector` extension stores and searches knowledge embeddings.
 - JWT access tokens and httpOnly refresh cookies support authentication; Resend handles account email and contact delivery.
-- The .NET API also hosts the Budgetize assistant workflow through Semantic Kernel, using a dedicated OpenAI key without falling back to the profile key.
+- The .NET API also hosts the Budgetize assistant workflow through Semantic Kernel, using the same OpenAI API key as profile chat and embeddings.
 - The API container and PostgreSQL are deployed from the [`jeemzu.api` repository](https://github.com/Jeemzu/jeemzu.api) through Render.
 
 ### AI
 
 - The profile chat uses Microsoft Semantic Kernel with OpenAI chat completions and embeddings. It retrieves relevant knowledge from PostgreSQL via pgvector before generating a grounded response.
 - Budgetize uses router → analysis/planning/capability gap → deterministic proposal validation, with explicit browser approval.
-- OpenAI powers chat, planning, and embeddings. The chat and Budgetize models independently default to GPT-6 Luna.
+- Profile chat and Budgetize both use GPT-6 Luna. RAG embeddings use the compatible `text-embedding-3-small` embedding model.
 
 ### 3rd Party Services
 

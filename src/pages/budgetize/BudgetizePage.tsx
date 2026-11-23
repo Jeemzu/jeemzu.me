@@ -101,7 +101,8 @@ export default function BudgetizePage() {
 }
 
 function BudgetWorkspace() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, role } = useAuthStore();
+  const canUseAssistant = isAuthenticated && role === "Admin";
   const [state, dispatch] = useReducer(
     budgetHistoryReducer,
     initialHistoryState,
@@ -116,6 +117,7 @@ function BudgetWorkspace() {
     ]);
   }, []);
   const [tab, setTab] = useState<ViewTab>("month");
+  const activeTab = tab === "assistant" && !canUseAssistant ? "month" : tab;
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState("");
   // Raw server payload that failed validation; enables backup + reset on the error screen.
@@ -627,22 +629,17 @@ function BudgetWorkspace() {
               icon: <FaTableCells />,
               content: (
                 <nav aria-label="Budgetize sections">
-                  {VIEW_TABS.map((entry) => (
+                  {VIEW_TABS.filter(
+                    (entry) => entry.id !== "assistant" || canUseAssistant,
+                  ).map((entry) => (
                     <SidebarTooltip
                       key={entry.id}
-                      title={
-                        entry.id === "assistant" && !isAuthenticated
-                          ? "Sign in to use the assistant."
-                          : entry.tooltip
-                      }
+                      title={entry.tooltip}
                     >
                       <span style={{ display: "block" }}>
                         <Button
                           variant="text"
-                          aria-current={tab === entry.id ? "page" : undefined}
-                          disabled={
-                            entry.id === "assistant" && !isAuthenticated
-                          }
+                          aria-current={activeTab === entry.id ? "page" : undefined}
                           onClick={() => setTab(entry.id)}
                         >
                           {entry.label}
@@ -825,7 +822,7 @@ function BudgetWorkspace() {
                   id="projection-range"
                   className="select-input"
                   value={projectionRange}
-                  title="How far ahead the projection, warnings, and assistant look"
+                  title="How far ahead the projection and warnings look"
                   onChange={(e) =>
                     setProjectionRange(e.target.value as ProjectionRange)
                   }
@@ -877,7 +874,7 @@ function BudgetWorkspace() {
               </section>
             )}
 
-            {tab === "month" && (
+            {activeTab === "month" && (
               <>
                 <section className="month-row">
                   <div className="month-nav">
@@ -938,7 +935,7 @@ function BudgetWorkspace() {
               </>
             )}
 
-            {tab === "projections" && (
+            {activeTab === "projections" && (
               <>
                 <section className="card">
                   <h3>
@@ -997,7 +994,7 @@ function BudgetWorkspace() {
               </>
             )}
 
-            {tab === "personal" && (
+            {activeTab === "personal" && (
               <>
                 <section className="card">
                   <h3>
@@ -1094,7 +1091,7 @@ function BudgetWorkspace() {
               </>
             )}
 
-            {tab === "assistant" && (
+            {activeTab === "assistant" && canUseAssistant && (
               <section className="card">
                 <h3>Budget assistant</h3>
                 <BudgetAssistant
@@ -1110,7 +1107,7 @@ function BudgetWorkspace() {
               </section>
             )}
 
-            {tab === "data" && (
+            {activeTab === "data" && (
               <>
                 <section className="card">
                   <h3>
